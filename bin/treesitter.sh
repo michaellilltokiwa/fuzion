@@ -76,4 +76,4 @@ EBNF=$(sed -e 's/[a-z]=//g' <<< "$EBNF")
 echo "$EBNF"
 
 echo "$EBNF" > build/fuzion_w3c.ebnf
-./bin/ebnf2treesitter.lua build/fuzion_w3c.ebnf > build/fuzion_treesitter.js
+./bin/ebnf2treesitter.lua build/fuzion_w3c.ebnf > build/fuzion_treesitter.json
