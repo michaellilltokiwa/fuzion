@@ -311,6 +311,7 @@ public class Impl extends ANY
    */
   public void visit(FeatureVisitor v, Feature outer)
   {
+    check(this._outerOfInitialValue == null || this._outerOfInitialValue == outer);
     if (this._code != null)
       {
         this._code = this._code.visit(v, outer);

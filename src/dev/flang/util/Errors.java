@@ -101,13 +101,23 @@ public class Errors extends ANY
   public static int MAX_WARNING_MESSAGES = Integer.getInteger(MAX_WARNING_MESSAGES_PROPERTY, Integer.MAX_VALUE);
 
 
+  public static TreeSet<Error> get(){
+    return new TreeSet<Error>(_errors_);
+  }
+
+
+  public static void clear(){
+    _errors_.clear();
+    _warnings_.clear();
+  }
+
   /*-----------------------------  classes  -----------------------------*/
 
 
-  static class Error implements Comparable<Error>
+  public static class Error implements Comparable<Error>
   {
-    SourcePosition pos;
-    String msg, detail;
+    public SourcePosition pos;
+    public String msg, detail;
 
     Error(SourcePosition pos, String msg, String detail)
     {

@@ -301,4 +301,14 @@ public class Types extends ANY
     return types.size();
   }
 
+  public static void clear()
+  {
+    types.clear();
+    resolved = null;
+    t_ADDRESS = new Type(ADDRESS_NAME);
+    t_UNDEFINED = new Type(UNDEFINED_NAME);
+    t_ERROR = new Type(ERROR_NAME);
+    f_ERROR = new Feature(true);
+  }
+
 }

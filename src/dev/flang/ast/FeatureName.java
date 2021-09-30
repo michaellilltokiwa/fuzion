@@ -224,6 +224,10 @@ public class FeatureName extends ANY implements Comparable<FeatureName>
     return _baseName.equals(o._baseName) && _argCount == o._argCount;
   }
 
+  public static void clear(){
+    _all_.clear();
+  }
+
 }
 
 /* end of file */
