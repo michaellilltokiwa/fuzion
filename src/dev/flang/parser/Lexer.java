@@ -889,9 +889,7 @@ NUM_LITERAL : [0-9]+
             }
           case K_LETTER  :    // 'A'..'Z', 'a'..'z'
             {
-              while (kind(curCodePoint()) == K_LETTER  ||
-                     kind(curCodePoint()) == K_DIGIT   ||
-                     kind(curCodePoint()) == K_NUMERIC   )
+              while (partOfIdentifier(curCodePoint()))
                 {
                   nextCodePoint();
                 }
@@ -910,11 +908,32 @@ NUM_LITERAL : [0-9]+
             }
           default:
             {
-              throw new Error("unexpected character kind: "+kind(p));
+              Errors.error(sourcePos(),
+                           "Unexpected unicode character \\u" + Integer.toHexString(0x1000000+p).substring(1).toUpperCase() + " found",
+                           null);
+              token = Token.t_error;
             }
           }
       }
     _curToken = token;
+  }
+
+
+  /**
+   * Check if the given code point may be part of an identifier.  This is true
+   * for letters, digits and numeric code points.
+   *
+   * @param cp a code point
+   *
+   * @return true iff cp may be part of an identifier, e.g., 'i', '3', '²', etc.
+   */
+  private boolean partOfIdentifier(int cp)
+  {
+    return switch (kind(cp))
+      {
+      case K_LETTER, K_DIGIT, K_NUMERIC -> true;
+      default -> false;
+      };
   }
 
 
@@ -2174,7 +2193,6 @@ HEX_TAIL    : "." HEX_DIGITS
          _pos == -1);
 
       int p = curCodePoint();
-      var finishBy = StringEnd.QUOTE;
       switch (_state)
         {
         case EXPR_EXPECTED:

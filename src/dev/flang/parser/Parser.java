@@ -1740,9 +1740,6 @@ tuple       : LPAREN RPAREN
             ;
 klammerLambd: LPAREN argNamesOpt RPAREN lambda
             ;
-argNamesOpt : argNames
-            |
-            ;
    */
   Expr klammer()
   {
@@ -1763,9 +1760,31 @@ argNamesOpt : argNames
         return elements;
       });
     return
-      isLambdaPrefix()          ? lambda(f.relaxLineAndSpaceLimit(() -> f.skip(Token.t_rparen) ? new List<>() : f.argNames())) :
+      isLambdaPrefix()          ? lambda(f.relaxLineAndSpaceLimit(() ->
+                                                                  { var r = f.argNamesOpt();
+                                                                    if (!f.skip(Token.t_rparen) || f.pos() != pos())
+                                                                      {
+                                                                        f.syntaxError(f.pos(), "plain list of argument names (argNameOpt) before lambda", "klammer");
+                                                                      }
+                                                                    return r;
+                                                                  })) :
       tupleElements.size() == 1 ? tupleElements.get(0) // a klammerexpr, not a tuple
                                 : new Call(pos, null, "tuple", tupleElements);
+  }
+
+
+  /**
+   * Parse argNamesOpt
+   *
+argNamesOpt : argNames
+            |
+            ;
+   */
+  List<String> argNamesOpt()
+  {
+    return (current() == Token.t_ident)
+      ? argNames()
+      : new List<>();
   }
 
 
@@ -1948,7 +1967,7 @@ simpleterm  : bracketTerm
 stringTerm  : STRING
             # NYI string interpolation
             # | STRING$ ident stringTerm
-            # | STRING{ expr  stringTerm
+            # | STRING{ block stringTerm
             ;
   */
   Expr stringTerm(Expr leftString)
@@ -1963,7 +1982,7 @@ stringTerm  : STRING
             next();
             if (isPartialString(t))
               {
-                result = stringTerm(concatString(posObject(), result, expr()));
+                result = stringTerm(concatString(posObject(), result, block(false)));
               }
           }
         else
