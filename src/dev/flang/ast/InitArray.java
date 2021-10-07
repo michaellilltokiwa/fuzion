@@ -93,7 +93,7 @@ public class InitArray extends Expr
 
 
   /**
-   * typeOrNull returns the type of this expression or Null if the type is still
+   * typeOrNull returns the type of this expression or null if the type is still
    * unknown, i.e., before or during type resolution.
    *
    * @return this Expr's type or null if not known.
@@ -105,14 +105,20 @@ public class InitArray extends Expr
         var t = Types.resolved.t_void;
         for (var e : _elements)
           {
-            t = t.union(e.type());
+            var et = e.typeOrNull();
+            t =
+              t  == null ? null :
+              et == null ? null : t.union(et);
           }
-        type_ = Types.intern(new Type(pos(),
-                                      "array",
-                                      new List<>(t),
-                                      null,
-                                      Types.resolved.f_array,
-                                      Type.RefOrVal.LikeUnderlyingFeature));
+        type_ =
+          t == null              ? null :
+          t == Types.t_UNDEFINED ? null :
+          Types.intern(new Type(pos(),
+                                "array",
+                                new List<>(t),
+                                null,
+                                Types.resolved.f_array,
+                                Type.RefOrVal.LikeUnderlyingFeature));
       }
     return type_;
   }

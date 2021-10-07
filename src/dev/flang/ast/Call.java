@@ -847,7 +847,7 @@ public class Call extends Expr
 
 
   /**
-   * typeOrNull returns the type of this expression or Null if the type is still
+   * typeOrNull returns the type of this expression or null if the type is still
    * unknown, i.e., before or during type resolution.
    *
    * @return this Expr's type or null if not known.
@@ -1132,7 +1132,7 @@ public class Call extends Expr
   private void resolveType(Resolution res, Type t, Feature outer)
   {
     boolean open = _select != -1;
-     if (open != t.isOpenGeneric())
+    if (open != t.isOpenGeneric())
       {
         if (_select == -1)
           {
@@ -1240,48 +1240,35 @@ public class Call extends Expr
           (Errors.count() > 0 || frml.state().atLeast(Feature.State.RESOLVED_DECLARATIONS));
 
         Type t = frml.resultTypeIfPresent(res, NO_GENERICS);
-        if (t.isGenericArgument() && t.genericArgument().feature() == calledFeature_)
+        if (t.isGenericArgument() &&
+            t.genericArgument().feature() == calledFeature_ &&
+            t.genericArgument().isOpen())
           {
-            Generic g = t.genericArgument();
-            if (g.isOpen())
-              {
-                inferredOpen = new List<Type>();
-                while (aargs.hasNext() && inferredOpen != null)
-                  {
-                    count++;
-                    Expr actual = resolveTypeForNextActual(aargs, res, outer);
-                    Type actualType = actual.typeOrNull();
-                    if (actualType == null)
-                      {
-                        actualType = Types.t_ERROR;
-                        Errors.error(pos,
-                                     "Failed to infer open generic argument type from actual argument.",
-                                     "Type of " + Errors.ordinal(count) + " actual argument could not be inferred at " + actual.pos.show());
-                      }
-                    inferredOpen.add(actualType);
-                  }
-              }
-            else if (aargs.hasNext())
+            inferredOpen = new List<Type>();
+            while (aargs.hasNext() && inferredOpen != null)
               {
                 count++;
                 Expr actual = resolveTypeForNextActual(aargs, res, outer);
                 Type actualType = actual.typeOrNull();
-                if (actualType != null)
+                if (actualType == null)
                   {
-                    int i = g.index();
-                    if (found[i] == null || actualType.isAssignableFromOrContainsError(found[i]))
-                      {
-                        found[i] = actualType;
-                      }
-                    conflict[i] = conflict[i] || !found[i].isAssignableFromOrContainsError(actualType);
-                    foundAt [i] = (foundAt[i] == null ? "" : foundAt[i]) + actualType + " found at " + actual.pos.show() + "\n";
+                    actualType = Types.t_ERROR;
+                    Errors.error(pos,
+                                 "Failed to infer open generic argument type from actual argument.",
+                                 "Type of " + Errors.ordinal(count) + " actual argument could not be inferred at " + actual.pos.show());
                   }
+                inferredOpen.add(actualType);
               }
           }
         else if (aargs.hasNext())
           {
-            aargs.next();
             count++;
+            Expr actual = resolveTypeForNextActual(aargs, res, outer);
+            Type actualType = actual.typeOrNull();
+            if (actualType != null)
+              {
+                inferGeneric(res, t, actualType, actual.pos, found, conflict, foundAt);
+              }
           }
       }
     generics = new List<Type>();
@@ -1320,6 +1307,82 @@ public class Call extends Expr
                      "In call to " + calledFeature_.qualifiedName() + ", no actual generic parameters are given and inference of the generic parameters failed.\n" +
                      "Expected generic parameters: " + calledFeature_.generics + "\n"+
                      "Type inference failed for generic " + (missing.size() > 1 ? "arguments" : "argument") + " " + missing + "\n");
+      }
+  }
+
+
+  /**
+   * Perform type inference for generics used in formalType that are instantiated by actualType.
+   *
+   * @param res the resolution instance.
+   *
+   * @param formalType the (possibly generic) formal type
+   *
+   * @param actualType the actual type
+   *
+   * @param pos source code position of the expression actualType was derived from
+   *
+   * @param found set of generics that could be inferred. Will receive any newly
+   * inferred generics
+   *
+   * @param conflict set of generics that caused conflicts
+   *
+   * @param foundAt the position of the expressions from which actual generics
+   * were taken.
+   */
+  private void inferGeneric(Resolution res, Type formalType, Type actualType, SourcePosition pos, Type[] found, boolean[] conflict, String[] foundAt)
+  {
+    if (formalType.isGenericArgument())
+      {
+        var g = formalType.genericArgument();
+        if (g.feature() == calledFeature_)
+          { // we found a use of a generic type, so record it:
+            var i = g.index();
+            if (found[i] == null || actualType.isAssignableFromOrContainsError(found[i]))
+              {
+                found[i] = actualType;
+              }
+            conflict[i] = conflict[i] || !found[i].isAssignableFromOrContainsError(actualType);
+            foundAt [i] = (foundAt[i] == null ? "" : foundAt[i]) + actualType + " found at " + pos.show() + "\n";
+          }
+      }
+    else
+      {
+        var fft = formalType.featureOfType();
+        fft.resolveTypes(res);
+        var aft = actualType.isGenericArgument() ? null : actualType.featureOfType();
+        if (fft == aft)
+          {
+            for (int i=0; i < formalType._generics.size(); i++)
+              {
+                if (i < actualType._generics.size())
+                  {
+                    inferGeneric(res,
+                                 formalType._generics.get(i),
+                                 actualType._generics.get(i),
+                                 pos, found, conflict, foundAt);
+                  }
+              }
+          }
+        else if (formalType.isChoice())
+          {
+            for (var ct : formalType.choiceGenerics())
+              {
+                inferGeneric(res, ct, actualType, pos, found, conflict, foundAt);
+              }
+          }
+        else if (aft != null)
+          {
+            for (Call p: aft.inherits)
+              {
+                var pt = p.typeOrNull();
+                if (pt != null)
+                  {
+                    var apt = actualType.actualType(pt);
+                    inferGeneric(res, formalType, apt, pos, found, conflict, foundAt);
+                  }
+              }
+          }
       }
   }
 
@@ -1422,7 +1485,12 @@ public class Call extends Expr
                 count++;
               }
           }
+
+        // NYI: Need to check why this is needed, it does not make sense to
+        // propagate the target's type to target. But if removed,
+        // tests/reg_issue16_chainedBool/ fails with C backend:
         target = target.propagateExpectedType(res, outer, target.typeOrNull());
+
       }
   }
 

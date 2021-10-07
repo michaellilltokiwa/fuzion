@@ -190,29 +190,13 @@ public class Match extends Expr
    */
   private Type typeFromCases()
   {
-    Type result = null;
+    Type result = Types.resolved.t_void;
     for (Case c: cases)
       {
-        Type t = c.code.type();
-        result = result == null ? t : result.union(t);
+        Type t = c.code.typeOrNull();
+        result = result == null || t == null ? null : result.union(t);
       }
-    return result;
-  }
-
-
-  /**
-   * typeOrNull returns the type of this expression or Null if the type is still
-   * unknown, i.e., before or during type resolution.
-   *
-   * @return this Expr's type or null if not known.
-   */
-  public Type typeOrNull()
-  {
-    if (type_ == null)
-      {
-        type_ = typeFromCases();
-      }
-    if (type_ == Types.t_UNDEFINED)
+    if (result == Types.t_UNDEFINED)
       {
         new IncompatibleResultsOnBranches(pos,
                                           "Incompatible types in cases of match statement",
@@ -222,7 +206,23 @@ public class Match extends Expr
                                             public boolean hasNext() { return it.hasNext(); }
                                             public Expr next() { return it.next().code; }
                                           });
-        return Types.t_ERROR;
+        result = Types.t_ERROR;
+      }
+    return result;
+  }
+
+
+  /**
+   * typeOrNull returns the type of this expression or null if the type is still
+   * unknown, i.e., before or during type resolution.
+   *
+   * @return this Expr's type or null if not known.
+   */
+  public Type typeOrNull()
+  {
+    if (type_ == null)
+      {
+        type_ = typeFromCases();
       }
     return type_;
   }

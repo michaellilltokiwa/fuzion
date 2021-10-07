@@ -76,40 +76,27 @@ list<A> : choice<nil, Cons<A, list<A>>>, List<A> is
 
   # call f in order on all elements of this list
   #
-  redef forAll (f fun (A)) unit is
+  redef forAll (f A -> unit) unit is
     list.this ? nil    =>
               | c Cons => f c.head; c.tail.forAll f
 
 
   # get the head of this list, panic if list is empty
   #
-  # NYI: Remove, this is just for experiments
-  #
   forceHead
     pre
       debug: !isEmpty
-    => list.this ? nil    => panic
+    => list.this ? nil    => fuzion.std.panic "list.forceHead called on empty list"
                  | c Cons => c.head
 
 
   # get the tail of this list, panic if list is empty
   #
-  # NYI: Remove, this is just for experiments
-  #
   forceTail
     pre
       debug: !isEmpty
-    => list.this ? nil    => panic
+    => list.this ? nil    => fuzion.std.panic "list.forceTail called on empty list"
                  | c Cons => c.tail
-
-
-  # terminate with "*** panic"
-  #
-  # NYI: Remove, this is just for experiments
-  #
-  panic void is
-    say "*** panic"
-    fuzion.std.exit 1
 
 
   # map the list to a new list applying function f to all elements
@@ -117,20 +104,14 @@ list<A> : choice<nil, Cons<A, list<A>>>, List<A> is
   # This performs a lazy mapping, f is called only when the elements
   # are taken from the list.
   #
-  map<B>(f fun(A) B) list<B> is
+  map<B>(f A -> B) list<B> is
     match list.this
       _ nil  => nil
       c Cons =>
         ref : Cons<B, list<B>>
         // Cons<B, list<B>> with    # NYI: better syntax for anonymous feature
           head => f c.head
-          tail => c.tail.map<B> f
-
-  # fmap lifts a function from A to B to a function from list<A> to list<B>
-  #
-  # NYI: This should be declared outside of list<A>, it should not require an
-  # instance to be called on.
-  fmap<B> (f fun(A) B) => fun (l list<A>) => l.map<B> f
+          tail => c.tail.map f
 
 
   # fold the elements of this list using the given monoid.
@@ -180,10 +161,18 @@ list<A> : choice<nil, Cons<A, list<A>>>, List<A> is
 
 
   # create a string representation of this list including all the string
-  # representations of its contents.
+  # representations of its contents, separated by ',' and enclosed in '['
+  # and ']'.
   #
-  redef asString string is
-    "[{map<string>(fun (x A) => x.asString).fold (strings.concat ",")}]"
+  redef asString =>
+    "[{list.this.asString ","}]"
+
+
+  # create a string rlepresentation of this list including all the string
+  # representations of its contents, separated by 'sep'.
+  #
+  redef asString (sep string) =>
+    "{map<string>(x -> x.asString).fold (strings.concat sep)}"
 
 
   # List concatenation, O(count)
@@ -232,7 +221,7 @@ list<A> : choice<nil, Cons<A, list<A>>>, List<A> is
 
   # Lazily take the first elements of a list for which predicate 'p' holds.
   #
-  redef takeWhile (p fun(A) bool) list<A>
+  redef takeWhile (p A -> bool) list<A>
   is
     match list.this
       _ nil  => nil
@@ -248,7 +237,7 @@ list<A> : choice<nil, Cons<A, list<A>>>, List<A> is
 
   # Lazily drop the first elements of a list for which predicate 'p' holds.
   #
-  redef dropWhile (p fun(A) bool) list<A>
+  redef dropWhile (p A -> bool) list<A>
   is
     match list.this
       _ nil  => nil

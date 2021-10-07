@@ -210,15 +210,23 @@ public class If extends Expr
         Iterator<Expr> it = branches();
         while (it.hasNext())
           {
-            result = result.union(it.next().type());
+            var t = it.next().typeOrNull();
+            result = result == null || t == null ? null : result.union(t);
           }
+      }
+    if (result == Types.t_UNDEFINED)
+      {
+        new IncompatibleResultsOnBranches(pos,
+                                          "Incompatible types in branches of if statement",
+                                          branches());
+        result = Types.t_ERROR;
       }
     return result;
   }
 
 
   /**
-   * typeOrNull returns the type of this expression or Null if the type is still
+   * typeOrNull returns the type of this expression or null if the type is still
    * unknown, i.e., before or during type resolution.
    *
    * @return this Expr's type or null if not known.
@@ -228,13 +236,6 @@ public class If extends Expr
     if (_type == null)
       {
         _type = typeFromIfOrElse();
-      }
-    if (_type == Types.t_UNDEFINED)
-      {
-        new IncompatibleResultsOnBranches(pos,
-                                          "Incompatible types in branches of if statement",
-                                          branches());
-        _type = Types.t_ERROR;
       }
     return _type;
   }

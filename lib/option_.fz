@@ -17,21 +17,20 @@
 #
 #  Tokiwa Software GmbH, Germany
 #
-#  Source code of Fuzion standard library feature FALSE
+#  Source code of Fuzion standard library feature option (1 argument)
 #
 #  Author: Fridtjof Siebert (siebert@tokiwa.software)
 #
 # -----------------------------------------------------------------------
 
-# boolean value "false"
+# option with 1 argument provides an short-hand to wrap a value into an option
 #
-# Note that this value is of unit type >>FALSE<<, not of type >>bool<<, i.e.,
-# if it is used for type inference as in
+# Using this enables to write
 #
-#    myBoolean := FALSE
+#   o := option x
 #
-# you will get a variable of type >>FALSE<<, it will not be possible to assign
-# >>TRUE<< to it.  You can use >>false<< as an alternative to get type >>bool<<.
+# insted of
 #
+#   o option<TypeOfX> := x
 #
-FALSE is
+option<T> (o option<T>) => o
