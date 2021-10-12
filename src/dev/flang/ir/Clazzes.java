@@ -151,7 +151,7 @@ public class Clazzes extends ANY
   /**
    * Handy preallocated classes to be used during execution:
    */
-  public static final OnDemandClazz universe    = new OnDemandClazz(null, true);
+  public static OnDemandClazz universe    = new OnDemandClazz(null, true);
   public static final OnDemandClazz c_void      = new OnDemandClazz(() -> Types.resolved.t_void             );
   public static final OnDemandClazz bool        = new OnDemandClazz(() -> Types.resolved.t_bool             );
   public static final OnDemandClazz c_TRUE      = new OnDemandClazz(() -> Types.resolved.f_TRUE .thisType() );
@@ -178,7 +178,7 @@ public class Clazzes extends ANY
   public static final OnDemandClazz ref_f64     = new OnDemandClazz(() -> Types.resolved.t_ref_f64          );
   public static final OnDemandClazz object      = new OnDemandClazz(() -> Types.resolved.t_object           );
   public static final OnDemandClazz string      = new OnDemandClazz(() -> Types.resolved.t_string           );
-  public static final OnDemandClazz conststring = new OnDemandClazz(() -> Types.resolved.t_conststring      , true /* needed? */);
+  public static OnDemandClazz conststring = new OnDemandClazz(() -> Types.resolved.t_conststring      , true /* needed? */);
   public static final OnDemandClazz c_unit      = new OnDemandClazz(() -> Types.resolved.t_unit             );
   public static final OnDemandClazz error       = new OnDemandClazz(() -> Types.t_ERROR                     );
   public static Clazz constStringBytesArray;  // result clazz of conststring.internalArray
@@ -1141,6 +1141,20 @@ public class Clazzes extends ANY
   public static boolean isUsed(Feature thiz, Clazz staticClazz)
   {
     return thiz.state().atLeast(Feature.State.RESOLVED);
+  }
+
+
+  public static void clear()
+  {
+    clazzes.clear();
+    _clazzesForTypes_.clear();
+    clazzesToBeVisited.clear();
+    closed = false;
+    _calledDynamically_.clear();
+    _whenCalled_.clear();
+    _whenCalledDynamically_.clear();
+    universe    = new OnDemandClazz(null, true);
+    conststring = new OnDemandClazz(() -> Types.resolved.t_conststring, true);
   }
 
 
