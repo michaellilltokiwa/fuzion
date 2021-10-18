@@ -52,7 +52,7 @@ public class Instance extends Value
   /**
    * Handy preallocated global instances to be used during execution:
    */
-  public static final Instance universe = new Instance(Clazzes.universe.get());
+  public static Instance universe;
 
 
   /*----------------------------  variables  ----------------------------*/

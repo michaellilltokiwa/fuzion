@@ -152,35 +152,35 @@ public class Clazzes extends ANY
    * Handy preallocated classes to be used during execution:
    */
   public static OnDemandClazz universe    = new OnDemandClazz(null, true);
-  public static final OnDemandClazz c_void      = new OnDemandClazz(() -> Types.resolved.t_void             );
-  public static final OnDemandClazz bool        = new OnDemandClazz(() -> Types.resolved.t_bool             );
-  public static final OnDemandClazz c_TRUE      = new OnDemandClazz(() -> Types.resolved.f_TRUE .thisType() );
-  public static final OnDemandClazz c_FALSE     = new OnDemandClazz(() -> Types.resolved.f_FALSE.thisType() );
-  public static final OnDemandClazz i8          = new OnDemandClazz(() -> Types.resolved.t_i8               );
-  public static final OnDemandClazz i16         = new OnDemandClazz(() -> Types.resolved.t_i16              );
-  public static final OnDemandClazz i32         = new OnDemandClazz(() -> Types.resolved.t_i32              );
-  public static final OnDemandClazz i64         = new OnDemandClazz(() -> Types.resolved.t_i64              );
-  public static final OnDemandClazz u8          = new OnDemandClazz(() -> Types.resolved.t_u8               );
-  public static final OnDemandClazz u16         = new OnDemandClazz(() -> Types.resolved.t_u16              );
-  public static final OnDemandClazz u32         = new OnDemandClazz(() -> Types.resolved.t_u32              );
-  public static final OnDemandClazz u64         = new OnDemandClazz(() -> Types.resolved.t_u64              );
-  public static final OnDemandClazz f32         = new OnDemandClazz(() -> Types.resolved.t_f32              );
-  public static final OnDemandClazz f64         = new OnDemandClazz(() -> Types.resolved.t_f64              );
-  public static final OnDemandClazz ref_i8      = new OnDemandClazz(() -> Types.resolved.t_ref_i8           );
-  public static final OnDemandClazz ref_i16     = new OnDemandClazz(() -> Types.resolved.t_ref_i16          );
-  public static final OnDemandClazz ref_i32     = new OnDemandClazz(() -> Types.resolved.t_ref_i32          );
-  public static final OnDemandClazz ref_i64     = new OnDemandClazz(() -> Types.resolved.t_ref_i64          );
-  public static final OnDemandClazz ref_u8      = new OnDemandClazz(() -> Types.resolved.t_ref_u8           );
-  public static final OnDemandClazz ref_u16     = new OnDemandClazz(() -> Types.resolved.t_ref_u16          );
-  public static final OnDemandClazz ref_u32     = new OnDemandClazz(() -> Types.resolved.t_ref_u32          );
-  public static final OnDemandClazz ref_u64     = new OnDemandClazz(() -> Types.resolved.t_ref_u64          );
-  public static final OnDemandClazz ref_f32     = new OnDemandClazz(() -> Types.resolved.t_ref_f32          );
-  public static final OnDemandClazz ref_f64     = new OnDemandClazz(() -> Types.resolved.t_ref_f64          );
-  public static final OnDemandClazz object      = new OnDemandClazz(() -> Types.resolved.t_object           );
-  public static final OnDemandClazz string      = new OnDemandClazz(() -> Types.resolved.t_string           );
+  public static OnDemandClazz c_void      = new OnDemandClazz(() -> Types.resolved.t_void             );
+  public static OnDemandClazz bool        = new OnDemandClazz(() -> Types.resolved.t_bool             );
+  public static OnDemandClazz c_TRUE      = new OnDemandClazz(() -> Types.resolved.f_TRUE .thisType() );
+  public static OnDemandClazz c_FALSE     = new OnDemandClazz(() -> Types.resolved.f_FALSE.thisType() );
+  public static OnDemandClazz i8          = new OnDemandClazz(() -> Types.resolved.t_i8               );
+  public static OnDemandClazz i16         = new OnDemandClazz(() -> Types.resolved.t_i16              );
+  public static OnDemandClazz i32         = new OnDemandClazz(() -> Types.resolved.t_i32              );
+  public static OnDemandClazz i64         = new OnDemandClazz(() -> Types.resolved.t_i64              );
+  public static OnDemandClazz u8          = new OnDemandClazz(() -> Types.resolved.t_u8               );
+  public static OnDemandClazz u16         = new OnDemandClazz(() -> Types.resolved.t_u16              );
+  public static OnDemandClazz u32         = new OnDemandClazz(() -> Types.resolved.t_u32              );
+  public static OnDemandClazz u64         = new OnDemandClazz(() -> Types.resolved.t_u64              );
+  public static OnDemandClazz f32         = new OnDemandClazz(() -> Types.resolved.t_f32              );
+  public static OnDemandClazz f64         = new OnDemandClazz(() -> Types.resolved.t_f64              );
+  public static OnDemandClazz ref_i8      = new OnDemandClazz(() -> Types.resolved.t_ref_i8           );
+  public static OnDemandClazz ref_i16     = new OnDemandClazz(() -> Types.resolved.t_ref_i16          );
+  public static OnDemandClazz ref_i32     = new OnDemandClazz(() -> Types.resolved.t_ref_i32          );
+  public static OnDemandClazz ref_i64     = new OnDemandClazz(() -> Types.resolved.t_ref_i64          );
+  public static OnDemandClazz ref_u8      = new OnDemandClazz(() -> Types.resolved.t_ref_u8           );
+  public static OnDemandClazz ref_u16     = new OnDemandClazz(() -> Types.resolved.t_ref_u16          );
+  public static OnDemandClazz ref_u32     = new OnDemandClazz(() -> Types.resolved.t_ref_u32          );
+  public static OnDemandClazz ref_u64     = new OnDemandClazz(() -> Types.resolved.t_ref_u64          );
+  public static OnDemandClazz ref_f32     = new OnDemandClazz(() -> Types.resolved.t_ref_f32          );
+  public static OnDemandClazz ref_f64     = new OnDemandClazz(() -> Types.resolved.t_ref_f64          );
+  public static OnDemandClazz object      = new OnDemandClazz(() -> Types.resolved.t_object           );
+  public static OnDemandClazz string      = new OnDemandClazz(() -> Types.resolved.t_string           );
   public static OnDemandClazz conststring = new OnDemandClazz(() -> Types.resolved.t_conststring      , true /* needed? */);
-  public static final OnDemandClazz c_unit      = new OnDemandClazz(() -> Types.resolved.t_unit             );
-  public static final OnDemandClazz error       = new OnDemandClazz(() -> Types.t_ERROR                     );
+  public static OnDemandClazz c_unit      = new OnDemandClazz(() -> Types.resolved.t_unit             );
+  public static OnDemandClazz error       = new OnDemandClazz(() -> Types.t_ERROR                     );
   public static Clazz constStringBytesArray;  // result clazz of conststring.internalArray
 
 
@@ -1153,8 +1153,36 @@ public class Clazzes extends ANY
     _calledDynamically_.clear();
     _whenCalled_.clear();
     _whenCalledDynamically_.clear();
-    universe    = new OnDemandClazz(null, true);
-    conststring = new OnDemandClazz(() -> Types.resolved.t_conststring, true);
+    universe = new OnDemandClazz(null, true);
+    c_void = new OnDemandClazz(() -> Types.resolved.t_void);
+    bool = new OnDemandClazz(() -> Types.resolved.t_bool);
+    c_TRUE = new OnDemandClazz(() -> Types.resolved.f_TRUE.thisType());
+    c_FALSE = new OnDemandClazz(() -> Types.resolved.f_FALSE.thisType());
+    i8 = new OnDemandClazz(() -> Types.resolved.t_i8);
+    i16 = new OnDemandClazz(() -> Types.resolved.t_i16);
+    i32 = new OnDemandClazz(() -> Types.resolved.t_i32);
+    i64 = new OnDemandClazz(() -> Types.resolved.t_i64);
+    u8 = new OnDemandClazz(() -> Types.resolved.t_u8);
+    u16 = new OnDemandClazz(() -> Types.resolved.t_u16);
+    u32 = new OnDemandClazz(() -> Types.resolved.t_u32);
+    u64 = new OnDemandClazz(() -> Types.resolved.t_u64);
+    f32 = new OnDemandClazz(() -> Types.resolved.t_f32);
+    f64 = new OnDemandClazz(() -> Types.resolved.t_f64);
+    ref_i8 = new OnDemandClazz(() -> Types.resolved.t_ref_i8);
+    ref_i16 = new OnDemandClazz(() -> Types.resolved.t_ref_i16);
+    ref_i32 = new OnDemandClazz(() -> Types.resolved.t_ref_i32);
+    ref_i64 = new OnDemandClazz(() -> Types.resolved.t_ref_i64);
+    ref_u8 = new OnDemandClazz(() -> Types.resolved.t_ref_u8);
+    ref_u16 = new OnDemandClazz(() -> Types.resolved.t_ref_u16);
+    ref_u32 = new OnDemandClazz(() -> Types.resolved.t_ref_u32);
+    ref_u64 = new OnDemandClazz(() -> Types.resolved.t_ref_u64);
+    ref_f32 = new OnDemandClazz(() -> Types.resolved.t_ref_f32);
+    ref_f64 = new OnDemandClazz(() -> Types.resolved.t_ref_f64);
+    object = new OnDemandClazz(() -> Types.resolved.t_object);
+    string = new OnDemandClazz(() -> Types.resolved.t_string);
+    conststring = new OnDemandClazz(() -> Types.resolved.t_conststring, true /* needed? */);
+    c_unit = new OnDemandClazz(() -> Types.resolved.t_unit);
+    error = new OnDemandClazz(() -> Types.t_ERROR);
   }
 
 
