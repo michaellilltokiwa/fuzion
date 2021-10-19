@@ -17,31 +17,22 @@
 #
 #  Tokiwa Software GmbH, Germany
 #
-#  Source code of Fuzion standard library feature complexes
+#  Source code of Fuzion standard library feature psMap
 #
 #  Author: Fridtjof Siebert (siebert@tokiwa.software)
 #
 # -----------------------------------------------------------------------
 
-# complexes -- unit type defining features related to complex
+# psMap -- routine to initialize a partially sorted map from two Lists
 #
-# complexes is a unit type defining features related to complex but not
-# requiring an instance.
+# See psMap.fz for details.
 #
-# The plural form of complex is complexes or complices (archaic), according
-# to https://www.wordhippo.com/what-is/the-plural-of/complex.html, so we
-# use complexes.
+# This feature creates a pre-initialized instance of psMap.
 #
-complexes<E : numeric<E>> : numerics<complex<E>> is
-
-  redef name => "complex"
-
-  # NYI: There is currently no easy way to get hold of an instance of the unit
-  # type corresponding to E.
-  #
-  #   redef zero => complex E.zero E.zero
-  #   redef one  => complex E.one  E.zero
-  #
-  # dummy implementations:
-  # redef zero => fuzion.std.panic "NYI: complexes.zero not implemented, needs to instantiate type arg E"
-  # redef one  => fuzion.std.panic "NYI: complexes.one not implemented, needs to instantiate type arg E"
+psMap<K : ordered<K>, V> (ks List<K>, vs List<V>) =>
+  for
+    r := psMap<K,V>, r.add k v
+    k in ks
+    v in vs
+  else
+    r

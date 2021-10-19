@@ -17,31 +17,16 @@
 #
 #  Tokiwa Software GmbH, Germany
 #
-#  Source code of Fuzion standard library feature complexes
+#  Source code of Fuzion standard library feature psSet
 #
 #  Author: Fridtjof Siebert (siebert@tokiwa.software)
 #
 # -----------------------------------------------------------------------
 
-# complexes -- unit type defining features related to complex
+# psSet -- routine to initialize a partially sorted set from one List
 #
-# complexes is a unit type defining features related to complex but not
-# requiring an instance.
+# See psSet.fz for details.
 #
-# The plural form of complex is complexes or complices (archaic), according
-# to https://www.wordhippo.com/what-is/the-plural-of/complex.html, so we
-# use complexes.
+# This feature creates a pre-initialized instance of psSet.
 #
-complexes<E : numeric<E>> : numerics<complex<E>> is
-
-  redef name => "complex"
-
-  # NYI: There is currently no easy way to get hold of an instance of the unit
-  # type corresponding to E.
-  #
-  #   redef zero => complex E.zero E.zero
-  #   redef one  => complex E.one  E.zero
-  #
-  # dummy implementations:
-  # redef zero => fuzion.std.panic "NYI: complexes.zero not implemented, needs to instantiate type arg E"
-  # redef one  => fuzion.std.panic "NYI: complexes.one not implemented, needs to instantiate type arg E"
+psSet<K : ordered<K>> (vs List<K>) => psSet<K>.addAll vs

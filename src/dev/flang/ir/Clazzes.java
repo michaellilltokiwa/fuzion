@@ -45,7 +45,7 @@ import dev.flang.ast.Feature; // NYI: remove dependency!
 import dev.flang.ast.FunctionReturnType; // NYI: remove dependency!
 import dev.flang.ast.If; // NYI: remove dependency!
 import dev.flang.ast.Impl; // NYI: remove dependency!
-import dev.flang.ast.InitArray; // NYI: remove dependency!
+import dev.flang.ast.InlineArray; // NYI: remove dependency!
 import dev.flang.ast.NumLiteral; // NYI: remove dependency!
 import dev.flang.ast.Match; // NYI: remove dependency!
 import dev.flang.ast.Old; // NYI: remove dependency!
@@ -629,7 +629,7 @@ public class Clazzes extends ANY
     Clazz vc = clazz(b._value, outerClazz);
     Clazz rc = vc;
     var s = b._stmnt;
-    Clazz fc = null;
+    Clazz ft = null;
     if (s instanceof Call c)
       {
         var tclazz = clazz(c.target, outerClazz);
@@ -647,7 +647,7 @@ public class Clazzes extends ANY
             // while unused is something like 'of unit type'.
             if (b._arg < afs.length)
               {
-                fc = afs[b._arg];
+                ft = afs[b._arg].resultClazz();
               }
           }
       }
@@ -657,16 +657,19 @@ public class Clazzes extends ANY
         if (isUsed(f, outerClazz))
           {
             Clazz sClazz = clazz(a._target, outerClazz);
-            fc = sClazz.asValue().lookup(f, Call.NO_GENERICS, a.pos());
+            ft = sClazz.asValue().lookup(f, Call.NO_GENERICS, a.pos()).resultClazz();
           }
+      }
+    else if (s instanceof InlineArray i)
+      {
+        ft = outerClazz.actualClazz(i.elementType());
       }
     else
       {
         throw new Error("unexpected box target statement: " + s.getClass());
       }
-    if (fc != null)
+    if (ft != null)
       {
-        var ft = fc.resultClazz();
         if (ft.isRef() ||
             (ft._type.isChoice() &&
              !ft._type.isAssignableFrom(vc._type) &&
@@ -863,7 +866,7 @@ public class Clazzes extends ANY
   /**
    * Find all static clazzes for this Tag and store them in outerClazz.
    */
-  public static void findClazzes(InitArray i, Clazz outerClazz)
+  public static void findClazzes(InlineArray i, Clazz outerClazz)
   {
     Clazz ac = clazz(i, outerClazz);
     if (i._arrayClazzId < 0)
@@ -966,7 +969,7 @@ public class Clazzes extends ANY
         result = outerClazz.actualClazz(t._taggedType);
       }
 
-    else if (e instanceof InitArray ia)
+    else if (e instanceof InlineArray ia)
       {
         result = outerClazz.actualClazz(ia.type());
       }

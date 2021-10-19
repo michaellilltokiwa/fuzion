@@ -36,3 +36,8 @@ Set<T: hasEquals<T>> ref is
   # does this set contain the given value?
   #
   contains (e T) bool is abstract
+
+
+  # list representation of values in this set
+  #
+  asList list<T> is abstract

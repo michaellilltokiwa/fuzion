@@ -1418,8 +1418,26 @@ actualArgs  : actualsList               // must be in same line as name of calle
    */
   boolean endsActuals(Indentation in)
   {
-    var t = in != null ? currentNoLimit() : current();
-    var result =  switch (t)
+    return
+      (in != null) ? currentAtMinIndent() == Token.t_indentationLimit ||
+                     endsActuals(currentNoLimit()) ||
+                     !in.ok()
+                   : endsActuals(current());
+  }
+
+
+  /**
+   * Does the given current tokenl end a list of space separated actual arguments to a
+   * call.
+   *
+   * @param t the token
+   *
+   * @return true if t ends actual arguments
+   */
+  boolean endsActuals(Token t)
+  {
+    return
+      switch (t)
       {
       case t_semicolon       ,
            t_comma           ,
@@ -1463,7 +1481,6 @@ actualArgs  : actualsList               // must be in same line as name of calle
       // after 'f a b'.
       default              -> isContinuedString(t);
       };
-    return result || (in!=null) && !in.ok();
   }
 
 
@@ -1525,12 +1542,22 @@ actualsLstC : COMMA expr actualsLstC
           }
         else
           {
-            var p = -1;
-            while (!endsActuals(in) &&
-                   p != pos() /* make sure we do not get stuck on a syntax error */)
+            var done = false;
+            while (!done)
               {
-                p = pos();
-                result.add(exprUntilSpace());
+                if (in == null && line() != line && oldLine == -1)
+                  { // indentation starts after the first argument:
+                    line = -1;
+                    sameLine(-1);
+                    in = new Indentation();
+                  }
+                done = endsActuals(in);
+                if (!done)
+                  {
+                    var p = pos();
+                    result.add(exprUntilSpace());
+                    done = p == pos(); /* make sure we do not get stuck on a syntax error */
+                  }
               }
           }
       }
@@ -1548,7 +1575,7 @@ actualsLstC : COMMA expr actualsLstC
    *
 bracketTerm : block
             | klammer
-            | initArray
+            | inlineArray
             ;
    */
   Expr bracketTerm(boolean mayBeAtMinIndent)
@@ -1563,7 +1590,7 @@ bracketTerm : block
       {
       case t_lbrace  : return block(mayBeAtMinIndent);
       case t_lparen  : return klammer();
-      case t_lcrochet: return initArray();
+      case t_lcrochet: return inlineArray();
       default: throw new Error("Unexpected case: "+c);
       }
   }
@@ -1608,9 +1635,6 @@ exprInLine  : expr             // within one line
           //
           //   { a; b } + c
           //
-          //   { a; b }
-          //   + c
-          //
           //   { a; b
           //   }
           //   .f
@@ -1620,24 +1644,19 @@ exprInLine  : expr             // within one line
           //   { a; b
           //   }
           //   + c
-          //
-          // NYI: check: This seems to allow
-          //
-          //   { a; b }
-          //   .f
-          //   + c
-          //
-          // is this desired?
           var f = fork();
           f.bracketTerm(false);
-          result = (f.line() == line || f.isOperator('.')) ? expr() : bracketTerm(false);
+          if (f.line() != line && f.isOperator('.'))
+            {
+              line = -1;
+            }
           break;
         }
       default:
-        sameLine(line);
-        result = expr();
         break;
       }
+    sameLine(line);
+    result = expr();
     sameLine(oldLine);
     return result;
   }
@@ -1872,17 +1891,17 @@ plainLambda : argNames lambda
 
 
   /**
-   * Parse initArray
+   * Parse inlineArray
    *
-initArray   : LBRACKET expr (COMMA expr)+ RBRACKET
+inlineArray : LBRACKET expr (COMMA expr)+ RBRACKET
             | LBRACKET expr (SEMI  expr)+ RBRACKET
             ;
    */
-  Expr initArray()
+  Expr inlineArray()
   {
     return relaxLineAndSpaceLimit(() -> {
         SourcePosition pos = posObject();
-        match(Token.t_lcrochet, "initArray");
+        match(Token.t_lcrochet, "inlineArray");
         List<Expr> elements = new List<>();
         if (!skip(Token.t_rcrochet)) // not empty array
           {
@@ -1901,9 +1920,9 @@ initArray   : LBRACKET expr (COMMA expr)+ RBRACKET
                     reportedMixed = true;
                   }
               }
-            match(Token.t_rcrochet, "initArray");
+            match(Token.t_rcrochet, "inlineArray");
           }
-        return new InitArray(pos, elements);
+        return new InlineArray(pos, elements);
       });
   }
 
