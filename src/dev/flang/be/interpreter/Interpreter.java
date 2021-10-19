@@ -224,12 +224,7 @@ public class Interpreter extends ANY
           }
         catch (RuntimeException | Error e)
           {
-            if (!(e instanceof StackOverflowError))
-              {
-                Errors.error("*** " + e + "\n" + callStack());
-                throw e;
-              }
-            Errors.fatal("*** " + e + "\n" + callStack());
+            throw e;
           }
         check
           (Errors.count() == 0);
