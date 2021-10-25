@@ -28,41 +28,10 @@ package dev.flang.parser;
 
 import java.nio.file.Path;
 
-import dev.flang.ast.Assign;
-import dev.flang.ast.Block;
-import dev.flang.ast.Call;
-import dev.flang.ast.Case;
-import dev.flang.ast.Check;
-import dev.flang.ast.Cond;
-import dev.flang.ast.Consts;
-import dev.flang.ast.Contract;
-import dev.flang.ast.Destructure;
-import dev.flang.ast.Expr;
-import dev.flang.ast.FeErrors;
-import dev.flang.ast.Feature;
-import dev.flang.ast.FormalGenerics;
-import dev.flang.ast.Function;
-import dev.flang.ast.FunctionReturnType;
-import dev.flang.ast.Generic;
-import dev.flang.ast.If;
-import dev.flang.ast.Impl;
-import dev.flang.ast.InlineArray;
-import dev.flang.ast.Loop;
-import dev.flang.ast.Match;
-import dev.flang.ast.NoType;
-import dev.flang.ast.NumLiteral;
-import dev.flang.ast.Old;
-import dev.flang.ast.RefType;
-import dev.flang.ast.ReturnType;
-import dev.flang.ast.Stmnt;
-import dev.flang.ast.StrConst;
-import dev.flang.ast.This;
-import dev.flang.ast.Type;
-import dev.flang.ast.ValueType;
-import dev.flang.ast.Visi;
 import dev.flang.util.Errors;
 import dev.flang.util.List;
 import dev.flang.util.SourcePosition;
+import dev.flang.ast.*;
 
 
 /**
