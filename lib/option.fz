@@ -91,12 +91,12 @@ is
 
   # converts option to a string
   #
-  # returns the result of T.asString for an option containing an instance
-  # of T, alternatively returns "--nil--" for an option that is nil.
+  # returns the result of $T for an option containing an instance
+  # of T, alternatively returns $nil for an option that is nil.
   #
   redef asString string is
-    option.this ? v T => v.asString
-                | nil => "--nil--"
+    option.this ? v T => $v
+                | nil => $nil
 
 
   # unwraps an option that is known to contain a value
@@ -104,9 +104,17 @@ is
   # this can only be called in cases where it is known for sure that this option
   # is not nil.  A runtime error will be created otherwise.
   #
-  unwrap
+  get
     pre
       safety: option.this??
     =>
       option.this ? v T => v
-                  | nil => fuzion.std.panic "option.unwrap called on nil"
+                  | nil => fuzion.std.panic "option.get called on nil"
+
+
+  # unwraps an option if it exists, returns default value otherwise.
+  #
+  get(default T)
+    =>
+      option.this ? v T => v
+                  | nil => default

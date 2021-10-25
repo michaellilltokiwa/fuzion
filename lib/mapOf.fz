@@ -17,21 +17,15 @@
 #
 #  Tokiwa Software GmbH, Germany
 #
-#  Source code of Fuzion standard library feature nil
+#  Source code of Fuzion standard library feature mapOf
 #
 #  Author: Fridtjof Siebert (siebert@tokiwa.software)
 #
 # -----------------------------------------------------------------------
 
-# nil -- value for options that are not present
+# mapOf -- routine to initialize a map from arrays of ordered elements
+# and values
 #
-# This is a unit type that is preferred to represent instances that are
-# not present, e.g, in an option.
+# This feature creates an instance of a map.
 #
-#
-nil is
-
-
-  # convert this to a string.
-  #
-  redef asString string is "--nil--"
+mapOf<K : ordered<K>,V> (ks array<K>, vs array<V>) map<K,V> is orderedMap ks vs

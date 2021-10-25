@@ -745,7 +745,7 @@ public class Call extends Expr
                 findChainedBooleans(res, thiz);
                 if (calledFeature_ == null) // nothing found, so flag error
                   {
-                    FeErrors.calledFeatureNotFound(this, calledName, targetFeature);
+                    AstErrors.calledFeatureNotFound(this, calledName, targetFeature);
                   }
               }
           }
@@ -1552,22 +1552,17 @@ public class Call extends Expr
         int fsz = resolvedFormalArgumentTypes.length;
         if (_actuals.size() !=  fsz)
           {
-            FeErrors.wrongNumberOfActualArguments(this);
+            AstErrors.wrongNumberOfActualArguments(this);
           }
         else
           {
             int count = 0;
             for (Expr actl : _actuals)
               {
-                Type actlT = actl.type();
-
-                check
-                  (actlT == Types.intern(actlT));
-
                 Type frmlT = resolvedFormalArgumentTypes[count];
-                if (frmlT != null && !frmlT.isAssignableFromOrContainsError(actlT))
+                if (frmlT != null /* NYI: make sure this is never null */ && !frmlT.isAssignableFrom(actl))
                   {
-                    FeErrors.incompatibleArgumentTypeInCall(calledFeature_, count, frmlT, actlT, actl);
+                    AstErrors.incompatibleArgumentTypeInCall(calledFeature_, count, frmlT, actl);
                   }
                 count++;
               }

@@ -37,9 +37,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 
 import java.util.TreeMap;
+import java.util.TreeSet;
 
 import dev.flang.ast.Block;
-import dev.flang.ast.FeErrors;
 import dev.flang.ast.Feature;
 import dev.flang.ast.Impl;
 import dev.flang.ast.Resolution;
@@ -50,6 +50,7 @@ import dev.flang.parser.Parser;
 
 import dev.flang.util.ANY;
 import dev.flang.util.Errors;
+import dev.flang.util.SourceDir;
 import dev.flang.util.SourceFile;
 import dev.flang.util.SourcePosition;
 
@@ -82,7 +83,7 @@ public class FrontEnd extends ANY
   /**
    * All the directories we are reading Fuzion sources form.
    */
-  private final Dir[] _sourceDirs;
+  private final SourceDir[] _sourceDirs;
 
 
   /*--------------------------  constructors  ---------------------------*/
@@ -91,14 +92,15 @@ public class FrontEnd extends ANY
   public FrontEnd(FrontEndOptions options)
   {
     _options = options;
-    _sourceDirs = new Dir[SOURCE_PATHS.length + options._modules.size()];
-    for (int i = 0; i < SOURCE_PATHS.length; i++)
+    var sourcePaths = new Path[] { options._fuzionHome.resolve("lib"), Path.of(".") };
+    _sourceDirs = new SourceDir[sourcePaths.length + options._modules.size()];
+    for (int i = 0; i < sourcePaths.length; i++)
       {
-        _sourceDirs[i] = new Dir(SOURCE_PATHS[i]);
+        _sourceDirs[i] = new SourceDir(sourcePaths[i]);
       }
     for (int i = 0; i < options._modules.size(); i++)
       {
-        _sourceDirs[SOURCE_PATHS.length + i] = new Dir(FUZION_HOME.resolve(Path.of("modules")).resolve(Path.of(options._modules.get(i))));
+        _sourceDirs[sourcePaths.length + i] = new SourceDir(options._fuzionHome.resolve(Path.of("modules")).resolve(Path.of(options._modules.get(i))));
       }
   }
 
@@ -167,30 +169,46 @@ public class FrontEnd extends ANY
       {
         Errors.showAndExit();
       }
-    if (d != null && Errors.count() == 0)
+
+    return createMIR(d);
+  }
+
+
+
+  /**
+   * Create MIR based on given main feature.
+   */
+  MIR createMIR(Feature main)
+  {
+    if (main != null && Errors.count() == 0)
       {
-        if (d.arguments.size() != 0)
+        if (main.arguments.size() != 0)
           {
-            FeErrors.mainFeatureMustNotHaveArguments(d);
+            FeErrors.mainFeatureMustNotHaveArguments(main);
           }
-        if (d.isField())
+        if (main.isField())
           {
-            FeErrors.mainFeatureMustNotBeField(d);
+            FeErrors.mainFeatureMustNotBeField(main);
           }
-        if (d.impl == Impl.ABSTRACT)
+        if (main.impl == Impl.ABSTRACT)
           {
-            FeErrors.mainFeatureMustNotBeAbstract(d);
+            FeErrors.mainFeatureMustNotBeAbstract(main);
           }
-        if (d.impl == Impl.INTRINSIC)
+        if (main.impl == Impl.INTRINSIC)
           {
-            FeErrors.mainFeatureMustNotBeIntrinsic(d);
+            FeErrors.mainFeatureMustNotBeIntrinsic(main);
           }
-        if (!d.generics.list.isEmpty())
+        if (!main.generics.list.isEmpty())
           {
-            FeErrors.mainFeatureMustNotHaveTypeArguments(d);
+            FeErrors.mainFeatureMustNotHaveTypeArguments(main);
           }
       }
-    return new MIR(d);
+    var result = new MIR(main);
+    if (Errors.count() == 0)
+      {
+        new DFA(result).check();
+      }
+    return result;
   }
 
 
@@ -200,7 +218,7 @@ public class FrontEnd extends ANY
    */
   Feature loadUniverse()
   {
-    Feature result = parseFile(FUZION_HOME.resolve("sys").resolve("universe.fz"));
+    Feature result = parseFile(_options._fuzionHome.resolve("sys").resolve("universe.fz"));
     result.findDeclarations(null);
     new Resolution(_options, result, (r, f) -> loadInnerFeatures(r, f));
     return result;
@@ -218,7 +236,7 @@ public class FrontEnd extends ANY
    * @return a path from root, via the base names of f's outer features to a
    * directory wtih f's base name, null if this does not exist.
    */
-  private Dir dirExists(Dir root, Feature f) throws IOException, UncheckedIOException
+  private SourceDir dirExists(SourceDir root, Feature f) throws IOException, UncheckedIOException
   {
     var o = f.outer();
     if (o == null)
@@ -259,7 +277,7 @@ public class FrontEnd extends ANY
    */
   private void loadInnerFeatures(Resolution res, Feature f)
   {
-    for (Dir root : _sourceDirs)
+    for (var root : _sourceDirs)
       {
         try
           {
@@ -304,64 +322,6 @@ public class FrontEnd extends ANY
     _options.verbosePrintln(2, " - " + fname);
     return new Parser(fname).unit();
   }
-
-
-
-  /* NYI: Cleanup: move this directory handling to dev.flang.util.Dir or similar: */
-  private static final Path FUZION_HOME;
-  private static final Path CURRENT_DIRECTORY;
-  private static final Path[] SOURCE_PATHS;
-  static {
-
-    CURRENT_DIRECTORY = Path.of(".");
-    if(!System.getProperties().containsKey("fuzion.home"))
-      {
-        System.err.println("property fuzion.home not set.");
-        System.exit(1);
-      }
-
-    FUZION_HOME = Path.of(System.getProperty("fuzion.home"));
-
-    SOURCE_PATHS = new Path[] { FUZION_HOME.resolve("lib"), CURRENT_DIRECTORY };
-  }
-
-  /**
-   * Class to cache all the sub-dirs within SOURCE_PATHS for loading inner
-   * features.
-   */
-  static class Dir
-  {
-    Path _dir;
-    TreeMap<String, Dir> _subDirs = null;
-
-    /*
-     * Create an entry for the given (sub-) directory
-     */
-    Dir(Path d)
-    {
-      _dir = d;
-    }
-
-    /**
-     * If this contains a sub-directory with given name, return it.
-     */
-    Dir dir(String name) throws IOException, UncheckedIOException
-    {
-      if (_subDirs == null)
-        { // on first call, create dir listing and cache it:
-          _subDirs = new TreeMap<>();
-          Files.list(_dir)
-            .forEach(p ->
-                     { if (Files.isDirectory(p))
-                         {
-                           _subDirs.put(p.getFileName().toString(), new Dir(p));
-                         }
-                     });
-        }
-      return _subDirs.get(name);
-    }
-  }
-
 
 }
 

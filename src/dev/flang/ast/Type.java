@@ -835,7 +835,7 @@ public class Type extends ANY implements Comparable<Type>
           {
             if (outer().isGenericArgument())
               {
-                FeErrors.formalGenericAsOuterType(pos, this);
+                AstErrors.formalGenericAsOuterType(pos, this);
               }
           }
         else
@@ -850,7 +850,7 @@ public class Type extends ANY implements Comparable<Type>
 
             if ((generic != null) && !_generics.isEmpty())
               {
-                FeErrors.formalGenericWithGenericArgs(pos, this, generic);
+                AstErrors.formalGenericWithGenericArgs(pos, this, generic);
               }
           }
       }
@@ -968,7 +968,7 @@ public class Type extends ANY implements Comparable<Type>
                   }
                 if (type_fs.size() > 1)
                   {
-                    FeErrors.ambiguousType(this, type_fs);
+                    AstErrors.ambiguousType(this, type_fs);
                     feature = Types.f_ERROR;
                   }
                 o = o.outer();
@@ -980,7 +980,7 @@ public class Type extends ANY implements Comparable<Type>
                 feature = Types.f_ERROR;
                 if (name != Types.ERROR_NAME)
                   {
-                    FeErrors.typeNotFound(this, outerfeat, nontype_fs);
+                    AstErrors.typeNotFound(this, outerfeat, nontype_fs);
                   }
               }
           }
@@ -1023,7 +1023,7 @@ public class Type extends ANY implements Comparable<Type>
       {
         if (isRef())
           {
-            FeErrors.refToChoice(pos);
+            AstErrors.refToChoice(pos);
           }
 
         int i1 = 0;
@@ -1044,7 +1044,7 @@ public class Type extends ANY implements Comparable<Type>
                         t1 != Types.t_ERROR &&
                         t2 != Types.t_ERROR)
                       {
-                        FeErrors.genericsMustBeDisjoint(pos, t1, t2);
+                        AstErrors.genericsMustBeDisjoint(pos, t1, t2);
                       }
                   }
                 i2++;
@@ -1150,7 +1150,7 @@ public class Type extends ANY implements Comparable<Type>
 
     if (isOpenGeneric())
       {
-        FeErrors.illegalUseOfOpenFormalGeneric(pos, generic);
+        AstErrors.illegalUseOfOpenFormalGeneric(pos, generic);
         result = false;
       }
     return result;
@@ -1575,6 +1575,28 @@ public class Type extends ANY implements Comparable<Type>
 
 
   /**
+   * Check if given value can be assigned to this static type.  In addition to
+   * isAssignableFromOrContainsError, this checks if 'expr' is not '<xyz>.this'
+   * (Current or an outer ref) that might be a value type that is a heir of this
+   * type.
+   *
+   * @param expr the expression to be assigned to a variable of this type.
+   *
+   * @return true iff the assignment is ok.
+   */
+  public boolean isAssignableFrom(Expr expr)
+  {
+    var actlT = expr.type();
+
+    check
+      (actlT == Types.intern(actlT));
+
+    return isAssignableFromOrContainsError(actlT) &&
+      (!expr.isCallToOuterRef() && !(expr instanceof Current) || actlT.isRef() || actlT.isChoice());
+  }
+
+
+  /**
    * Find a type that is assignable from values of two types, this and t. If no
    * such type exists, return Types.resovled.t_unit.
    *
@@ -1602,7 +1624,8 @@ public class Type extends ANY implements Comparable<Type>
        result == Types.t_ERROR     ||
        this == Types.resolved.t_void && result == that ||
        that == Types.resolved.t_void && result == this ||
-       result.isAssignableFrom(this) && result.isAssignableFrom(that));
+       (result.isAssignableFrom(this) || result.isAssignableFrom(this.asRef()) &&
+        result.isAssignableFrom(that) || result.isAssignableFrom(that.asRef())    ));
 
     return result;
   }

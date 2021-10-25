@@ -41,6 +41,7 @@ JAVA_FILES_UTIL = \
           $(SRC)/dev/flang/util/Map2Int.java \
           $(SRC)/dev/flang/util/MapComparable2Int.java \
           $(SRC)/dev/flang/util/Profiler.java \
+          $(SRC)/dev/flang/util/SourceDir.java \
           $(SRC)/dev/flang/util/SourceFile.java \
           $(SRC)/dev/flang/util/SourcePosition.java \
           $(SRC)/dev/flang/util/Terminal.java \
@@ -51,6 +52,7 @@ JAVA_FILES_UTIL_UNICODE = \
 
 JAVA_FILES_AST = \
           $(SRC)/dev/flang/ast/Assign.java \
+          $(SRC)/dev/flang/ast/AstErrors.java \
           $(SRC)/dev/flang/ast/Block.java \
           $(SRC)/dev/flang/ast/BoolConst.java \
           $(SRC)/dev/flang/ast/Box.java \
@@ -63,7 +65,6 @@ JAVA_FILES_AST = \
           $(SRC)/dev/flang/ast/Current.java \
           $(SRC)/dev/flang/ast/Destructure.java \
           $(SRC)/dev/flang/ast/Expr.java \
-          $(SRC)/dev/flang/ast/FeErrors.java \
           $(SRC)/dev/flang/ast/Feature.java \
           $(SRC)/dev/flang/ast/FeatureName.java \
           $(SRC)/dev/flang/ast/FeatureVisitor.java \
@@ -105,12 +106,15 @@ JAVA_FILES_PARSER = \
 JAVA_FILES_IR = \
           $(SRC)/dev/flang/ir/Clazz.java \
           $(SRC)/dev/flang/ir/Clazzes.java \
+          $(SRC)/dev/flang/ir/IR.java \
           $(SRC)/dev/flang/ir/IrErrors.java \
 
 JAVA_FILES_MIR = \
           $(SRC)/dev/flang/mir/MIR.java \
 
 JAVA_FILES_FE = \
+          $(SRC)/dev/flang/fe/DFA.java \
+          $(SRC)/dev/flang/fe/FeErrors.java \
           $(SRC)/dev/flang/fe/FrontEnd.java \
           $(SRC)/dev/flang/fe/FrontEndOptions.java \
 

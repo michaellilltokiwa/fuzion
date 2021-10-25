@@ -235,16 +235,16 @@ public class Assign extends ANY implements Stmnt
         f = fo.filter(_pos, FeatureName.get(_name, 0), __ -> false);
         if (f == null)
           {
-            FeErrors.assignmentTargetNotFound(this, outer);
+            AstErrors.assignmentTargetNotFound(this, outer);
             f = Types.f_ERROR;
           }
         _assignedField = f;
         _target        = fo.target(_pos, res, outer);
       }
     if      (f == Types.f_ERROR        ) { check(Errors.count() > 0); /* ignore */ }
-    else if (!f.isField()              ) { FeErrors.assignmentToNonField    (this, f, outer); }
+    else if (!f.isField()              ) { AstErrors.assignmentToNonField    (this, f, outer); }
     else if (!_indexVarAllowed &&
-             f._isIndexVarUpdatedByLoop) { FeErrors.assignmentToIndexVar    (this, f, outer); }
+             f._isIndexVarUpdatedByLoop) { AstErrors.assignmentToIndexVar    (this, f, outer); }
     else if (f == f.outer().resultField())
       {
         f.outer().foundAssignmentToResult();
@@ -310,18 +310,12 @@ public class Assign extends ANY implements Stmnt
       {
         Type frmlT = f.resultType();
 
-        Type actlT = _value.type();
-
         check
-          (actlT == Types.intern(actlT));
+          (Errors.count() > 0 || frmlT != Types.t_ERROR);
 
-        check
-          (Errors.count() > 0 || (frmlT != Types.t_ERROR &&
-                                actlT != Types.t_ERROR    ));
-
-        if (!frmlT.isAssignableFromOrContainsError(actlT))
+        if (!frmlT.isAssignableFrom(_value))
           {
-            FeErrors.incompatibleTypeInAssignment(_pos, f, frmlT, actlT, _value);
+            AstErrors.incompatibleTypeInAssignment(_pos, f, frmlT, _value);
           }
 
         check

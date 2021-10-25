@@ -413,12 +413,13 @@ public class Feature extends ANY implements Stmnt, Comparable<Feature>
    *
    * @param pos the soucecode position, used for error messages.
    *
-   * @param t the result type
+   * @param r the result type
    *
-   * @param s the signature, containin g the generic parameters, the
-   * arguments, the throws clause, the inherits list and the contract.
+   * @param i the inherits calls
    *
-   * @param p the implementation (feature body etc).
+   * @param c the contract
+   *
+   * @param b the implementation block
    */
   public Feature(SourcePosition pos,
                  ReturnType r,
@@ -450,8 +451,6 @@ public class Feature extends ANY implements Stmnt, Comparable<Feature>
    * @param t the result type
    *
    * @param qname the name of this feature
-   *
-   * @param c the contract
    *
    * @param outer the declaring feature that will be set as an outer feature of
    * the newly created feature via a call to findDeclarations.
@@ -583,7 +582,9 @@ public class Feature extends ANY implements Stmnt, Comparable<Feature>
    *
    * @param pos the soucecode position, used for error messages.
    *
-   * @param t the result type
+   * @param r the result type
+   *
+   * @param qname the name of this feature
    *
    * @param a the arguments
    *
@@ -623,14 +624,17 @@ public class Feature extends ANY implements Stmnt, Comparable<Feature>
    *
    * @param m the modifiers
    *
-   * @param t the result type
+   * @param r the result type
    *
    * @param qname the name of this feature
    *
    * @param g the generic parameters
    *
-   * @param s the signature, containin g the generic parameters, the
-   * arguments, the throws clause, the inherits list and the contract.
+   * @param a the arguments
+   *
+   * @param i the inherits calls
+   *
+   * @param c the contract
    *
    * @param p the implementation (feature body etc).
    */
@@ -741,7 +745,7 @@ public class Feature extends ANY implements Stmnt, Comparable<Feature>
       }
     if (!isResultField() && qname.getLast().equals(RESULT_NAME))
       {
-        FeErrors.declarationOfResultFeature(pos);
+        AstErrors.declarationOfResultFeature(pos);
       }
   }
 
@@ -809,7 +813,7 @@ public class Feature extends ANY implements Stmnt, Comparable<Feature>
               }
             if (error)
               {
-                FeErrors.duplicateFeatureDeclaration(f.pos, f, existing);
+                AstErrors.duplicateFeatureDeclaration(f.pos, f, existing);
               }
           }
       }
@@ -1148,7 +1152,7 @@ public class Feature extends ANY implements Stmnt, Comparable<Feature>
       { // declaring field with initial value in different file than outer
         // feature.  We would have to add this to the statements of the outer
         // feature.  But if there are several such fields, in what order?
-        FeErrors.initialValueNotAllowed(this);
+        AstErrors.initialValueNotAllowed(this);
       }
 
     this.state_ = State.LOADED;
@@ -2101,7 +2105,7 @@ public class Feature extends ANY implements Stmnt, Comparable<Feature>
         Type[] ra = r.argTypes();
         if (ta.length != ra.length)
           {
-            FeErrors.argumentLengthsMismatch(this, ta.length, r, ra.length);
+            AstErrors.argumentLengthsMismatch(this, ta.length, r, ra.length);
           }
         else
           {
@@ -2120,7 +2124,7 @@ public class Feature extends ANY implements Stmnt, Comparable<Feature>
 
                     Feature actualArg   = r.arguments.get(i);
                     Feature originalArg =   arguments.get(ai);
-                    FeErrors.argumentTypeMismatchInRedefinition(this, originalArg,
+                    AstErrors.argumentTypeMismatchInRedefinition(this, originalArg,
                                                                 r,    actualArg);
                   }
               }
@@ -2133,7 +2137,7 @@ public class Feature extends ANY implements Stmnt, Comparable<Feature>
              : !t1.isAssignableFrom(t2)) &&
             t2 != Types.resolved.t_void)
           {
-            FeErrors.resultTypeMismatchInRedefinition(this, r);
+            AstErrors.resultTypeMismatchInRedefinition(this, r);
           }
       }
 
@@ -2143,7 +2147,7 @@ public class Feature extends ANY implements Stmnt, Comparable<Feature>
         var rt = res.type();
         if (!Types.resolved.t_unit.isAssignableFrom(rt))
           {
-            FeErrors.constructorResultMustBeUnit(impl._code);
+            AstErrors.constructorResultMustBeUnit(impl._code);
           }
       }
   }
@@ -2375,13 +2379,13 @@ public class Feature extends ANY implements Stmnt, Comparable<Feature>
               {
                 if (set.isEmpty())
                   {
-                    FeErrors.internallyReferencedFeatureNotFound(pos, qname, f, nam);
+                    AstErrors.internallyReferencedFeatureNotFound(pos, qname, f, nam);
                   }
                 else
                   { // NYI: This might happen if the user adds additional features
                     // with different argCounts. qname should contain argCount to
                     // avoid this
-                    FeErrors.internallyReferencedFeatureNotUnique(pos, qname + (argcount >= 0 ? " (" + Errors.argumentsString(argcount) : ""), set);
+                    AstErrors.internallyReferencedFeatureNotUnique(pos, qname + (argcount >= 0 ? " (" + Errors.argumentsString(argcount) : ""), set);
                   }
                 err = true;
               }
@@ -2797,7 +2801,7 @@ public class Feature extends ANY implements Stmnt, Comparable<Feature>
         else if (existing == f && f.generics != FormalGenerics.NONE ||
                  existing != f && declaredFeatures().get(fn) == null)
           { // NYI: Should be ok if existing or f is abstract.
-            FeErrors.repeatedInheritanceCannotBeResolved(pos, this, fn, existing, f);
+            AstErrors.repeatedInheritanceCannotBeResolved(pos, this, fn, existing, f);
           }
       }
     declaredOrInheritedFeatures_.put(fn, f);
@@ -2821,7 +2825,7 @@ public class Feature extends ANY implements Stmnt, Comparable<Feature>
           {
             if ((f.modifiers & Consts.MODIFIER_REDEFINE) != 0)
               {
-                FeErrors.redefineModifierDoesNotRedefine(f);
+                AstErrors.redefineModifierDoesNotRedefine(f);
               }
           }
         else if (existing.outer() == this)
@@ -2829,15 +2833,15 @@ public class Feature extends ANY implements Stmnt, Comparable<Feature>
             // This cannot happen, this case was already handled in addDeclaredInnerFeature:
             check
               (false);
-            FeErrors.duplicateFeatureDeclaration(f.pos, this, existing);
+            AstErrors.duplicateFeatureDeclaration(f.pos, this, existing);
           }
         else if (existing.generics != FormalGenerics.NONE)
           {
-            FeErrors.cannotRedefineGeneric(f.pos, this, existing);
+            AstErrors.cannotRedefineGeneric(f.pos, this, existing);
           }
         else if ((f.modifiers & Consts.MODIFIER_REDEFINE) == 0 && existing.impl != Impl.ABSTRACT)
           {
-            FeErrors.redefineModifierMissing(f.pos, this, existing);
+            AstErrors.redefineModifierMissing(f.pos, this, existing);
           }
         else
           {
@@ -2972,9 +2976,13 @@ public class Feature extends ANY implements Stmnt, Comparable<Feature>
           if (fn.equalsExceptId(name))  /* an exact match, so use it: */
             {
               check
-                (Errors.count() > 0 || !match);
-              found = new List<>(ff);
-              match = true;
+                (Errors.count() > 0 || !match || fn.argCount() == 0);
+              if (!match)
+                {
+                  found = new List<>();
+                  match = true;
+                }
+              found.add(ff);
             }
           else if (!match && isCandidate.test(ff))
             { /* no exact match, but we have a candidate to check later: */
@@ -2987,7 +2995,7 @@ public class Feature extends ANY implements Stmnt, Comparable<Feature>
         case 1 -> found.get(0);
         default ->
         {
-          FeErrors.ambiguousCallTargets(pos, name, found);
+          AstErrors.ambiguousCallTargets(pos, name, found);
           yield Types.f_ERROR;
         }
         };
