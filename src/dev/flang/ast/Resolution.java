@@ -135,7 +135,7 @@ public class Resolution extends ANY
   /*----------------------------  variables  ----------------------------*/
 
 
-  final InnerFeaturesLoader innerFeaturesLoader; // =  (f) -> loadInnerFeatures(f);
+  public InnerFeaturesLoader innerFeaturesLoader; // =  (f) -> loadInnerFeatures(f);
 
 
   final FuzionOptions _options;
@@ -187,16 +187,6 @@ public class Resolution extends ANY
    * List of features scheduled for second pass of type checking
    */
   final List<Feature> forCheckTypes2 = new List<>();
-
-  /**
-   * List of features scheduled for feature index resolution
-   */
-  final List<Feature> forFindingUsedFeatures = new List<>();
-
-  /**
-   * List of features scheduled for feature index resolution
-   */
-  final List<Feature> forFeatureIndex = new List<>();
 
 
   /*--------------------------  constructors  ---------------------------*/
@@ -335,32 +325,6 @@ public class Resolution extends ANY
 
 
   /**
-   * Add a feature to the set of features scheduled for feature index
-   * resolution
-   */
-  void scheduleForFindUsedFeatures(Feature f)
-  {
-    if (PRECONDITIONS) require
-      (f.state() == Feature.State.CHECKED_TYPES2);
-
-    forFindingUsedFeatures.add(f);
-  }
-
-
-  /**
-   * Add a feature to the set of features scheduled for feature index
-   * resolution
-   */
-  void scheduleForFeatureIndexResolution(Feature f)
-  {
-    if (PRECONDITIONS) require
-      (f.state() == Feature.State.FOUND_USED_FEATURES);
-
-    forFeatureIndex.add(f);
-  }
-
-
-  /**
    * Resolve all entries in the lists for resolution (forInheritance, etc.) up
    * to state RESOLVED_TYPES.
    */
@@ -450,17 +414,6 @@ public class Resolution extends ANY
         // correct input.  So if there were any errors, let's give up at this
         // point:
         result = false;
-      }
-    else if (!forFindingUsedFeatures.isEmpty())
-      {
-        Types.resolved.markInternallyUsed(this);
-        Feature f = forFindingUsedFeatures.removeFirst();
-        f.findUsedFeatures(this);
-      }
-    else if (!forFeatureIndex.isEmpty())
-      {
-        Feature f = forFeatureIndex.removeFirst();
-        f.resolveFeatureIndex(this);
       }
     else
       {
