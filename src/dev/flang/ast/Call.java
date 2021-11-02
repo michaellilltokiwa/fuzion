@@ -122,7 +122,7 @@ public class Call extends Expr
    * The feature that is called by this call, resolved when
    * loadCalledFeature() is called.
    */
-  public Feature calledFeature_;
+  public AbstractFeature calledFeature_;
 
 
   /**
@@ -364,10 +364,10 @@ public class Call extends Expr
    *
    * @param select
    */
-  public Call(SourcePosition pos, Expr t, Feature calledFeature, int select)
+  public Call(SourcePosition pos, Expr t, AbstractFeature calledFeature, int select)
   {
     super(pos);
-    this.name = calledFeature._featureName.baseName();
+    this.name = calledFeature.featureName().baseName();
     this._select = select;
     this.generics = NO_GENERICS;
     this._actuals = NO_PARENTHESES;
@@ -403,7 +403,7 @@ public class Call extends Expr
    */
   public Call(SourcePosition pos,
               Expr    target,
-              Feature anonymous)
+              AbstractFeature anonymous)
   {
     super(pos);
     this.target         = target;
@@ -433,7 +433,7 @@ public class Call extends Expr
    * @param type
    */
   public Call(SourcePosition pos,
-              String name, List<Type> generics, List<Expr> actuals, Expr target, Feature calledFeature, Type type)
+              String name, List<Type> generics, List<Expr> actuals, Expr target, AbstractFeature calledFeature, Type type)
   {
     super(pos);
     this.name = name;
@@ -464,34 +464,12 @@ public class Call extends Expr
 
 
   /**
-   * Find all the inner declarations within this call
-   *
-   * @param outer the root feature that contains this statement.  For
-   * all found feature declarations, the outer feature will be set to
-   * this value.
-   */
-  public void findDeclarations(Feature outer)
-  {
-    if (name == null)
-      { /* this is an anonymous feature declaration */
-        check
-          (Errors.count() > 0  || calledFeature_ != null);
-
-        if (calledFeature_ != null)
-          {
-            calledFeature_.findDeclarations(outer);
-          }
-      }
-  }
-
-
-  /**
    * Get the type of the target.  In case the target's type is a generic type
    * parameter, return its constraint.
    *
    * @return the type of the target.
    */
-  private Type targetTypeOrConstraint()
+  private Type targetTypeOrConstraint(Resolution res)
   {
     if (PRECONDITIONS) require
                          (target != null);
@@ -500,7 +478,7 @@ public class Call extends Expr
     if (result.isGenericArgument())
       {
         var g = result.genericArgument();
-        result = g.constraint().resolve(g.feature());
+        result = g.constraint().resolve(res, g.feature());
       }
 
     if (POSTCONDITIONS) ensure
@@ -521,7 +499,7 @@ public class Call extends Expr
    *
    * @return the feature of the target of this call.
    */
-  private Feature targetFeature(Resolution res, Feature thiz)
+  private AbstractFeature targetFeature(Resolution res, Feature thiz)
   {
     // are we searching for features called via thiz' inheritance calls?
     if (thiz.state() == Feature.State.RESOLVING_INHERITANCE)
@@ -540,7 +518,7 @@ public class Call extends Expr
     else if (target != null)
       {
         target.loadCalledFeature(res, thiz);
-        return targetTypeOrConstraint().featureOfType();
+        return targetTypeOrConstraint(res).featureOfType();
       }
     else
       { // search for feature in thiz
@@ -563,24 +541,24 @@ public class Call extends Expr
    * @return the map of FeatureName to Features of the found candidates. May be
    * empty. ERROR_MAP in case an error occured and was reported already.
    */
-  private Feature.FeaturesAndOuter calledFeatureCandidates(Feature targetFeature, Resolution res, Feature thiz)
+  private FeaturesAndOuter calledFeatureCandidates(AbstractFeature targetFeature, Resolution res, Feature thiz)
   {
     if (PRECONDITIONS) require
       (targetFeature != null);
 
-    Feature.FeaturesAndOuter result;
+    FeaturesAndOuter result;
     // are we searching for features called via thiz' inheritance calls?
     SortedMap<FeatureName, Feature> fs = EMPTY_MAP;
     if (target != null)
       {
         res.resolveDeclarations(targetFeature);
-        result = new Feature.FeaturesAndOuter();
-        result.features = targetFeature.findDeclaredOrInheritedFeatures(name);
+        result = new FeaturesAndOuter();
+        result.features = res._module.lookupFeatures(targetFeature, name);
         result.outer = targetFeature;
       }
     else
       { /* search for feature in thiz and outer classes */
-        result = targetFeature.findDeclaredInheritedOrOuterFeatures(name, this, null, null);
+        result = res._module.lookupNoTarget(targetFeature, name, this, null, null);
         target = result.target(pos, res, thiz);
       }
     return result;
@@ -611,7 +589,8 @@ public class Call extends Expr
         var b = cb._actuals.get(0);
         b.visit(rt, thiz);
         String tmpName = "#chainedBoolTemp" + (_chainedBoolTempId_++);
-        var tmp = new Feature(pos(),
+        var tmp = new Feature(res,
+                              pos(),
                               Consts.VISIBILITY_INVISIBLE,
                               b.type(),
                               tmpName,
@@ -758,12 +737,12 @@ public class Call extends Expr
    * After resolveTypes or if calledFeatureKnown(), this can be called to obtain
    * the feature that is called.
    */
-  public Feature calledFeature()
+  public AbstractFeature calledFeature()
   {
     if (PRECONDITIONS) require
       (Errors.count() > 0 || calledFeatureKnown());
 
-    Feature result = calledFeature_ != null ? calledFeature_ : Types.f_ERROR;
+    AbstractFeature result = calledFeature_ != null ? calledFeature_ : Types.f_ERROR;
 
     if (POSTCONDITIONS) ensure
       (result != null);
@@ -919,7 +898,7 @@ public class Call extends Expr
     if (!forFun && // not a call to "b" within an expression of the form "fun a.b", will be handled after syntactic sugar
         _type.isFunType() &&
         calledFeature_ != Types.resolved.f_function && // exclude inherits call in function type
-        calledFeature_.arguments.size() == 0 &&
+        calledFeature_.arguments().size() == 0 &&
         hasParentheses())
       {
         // a Function: the result is the first generic argument
@@ -930,7 +909,7 @@ public class Call extends Expr
                           NO_GENERICS,
                           _actuals,
                           this /* this becomes target of "call" */,
-                          _type.featureOfType().findDeclaredOrInheritedFeature(FeatureName.get("call", _actuals.size())),
+                          res._module.lookupFeature(_type.featureOfType(), FeatureName.get("call", _actuals.size())),
                           funResultType)
           .resolveTypes(res, outer);
         _actuals = NO_PARENTHESES;
@@ -955,16 +934,16 @@ public class Call extends Expr
    * @return the number of arguments that correspond to argnum after handing
    * down.
    */
-  private int handDownFormalArg(Resolution res, int argnum, Feature frml)
+  private int handDownFormalArg(Resolution res, int argnum, AbstractFeature frml)
   {
     int result = 1;
     Type frmlT = frml.resultType();
     check(frmlT == Types.intern(frmlT));
-    Feature declF = calledFeature_.outer();
-    Feature heirF = targetTypeOrConstraint().featureOfType();
+    var declF = calledFeature_.outer();
+    var heirF = targetTypeOrConstraint(res).featureOfType();
     if (declF != heirF)
       {
-        var a = calledFeature_.handDown(new Type[] { frmlT }, heirF);
+        var a = calledFeature_.handDown(res, new Type[] { frmlT }, heirF);
         if (a.length != 1)
           {
             // Check that the number or args can only change for the
@@ -1014,7 +993,7 @@ public class Call extends Expr
    *
    * @param frml the formal argument
    */
-  private void replaceGenericsInFormalArg(Resolution res, int argnum, int n, Feature frml)
+  private void replaceGenericsInFormalArg(Resolution res, int argnum, int n, AbstractFeature frml)
   {
     for (int i = 0; i < n; i++)
       {
@@ -1037,7 +1016,7 @@ public class Call extends Expr
               }
             else
               {
-                frmlT = targetTypeOrConstraint().actualType(frmlT);
+                frmlT = targetTypeOrConstraint(res).actualType(frmlT);
                 frmlT = frmlT.actualType(calledFeature_, generics);
                 frmlT = Types.intern(frmlT);
                 resolvedFormalArgumentTypes[argnum + i] = frmlT;
@@ -1064,7 +1043,7 @@ public class Call extends Expr
    *
    * @param frml the argument whose type we are resolving.
    */
-  private void addToResolvedFormalArgumentTypes(Resolution res, int argnum, Type[] a, Feature frml)
+  private void addToResolvedFormalArgumentTypes(Resolution res, int argnum, Type[] a, AbstractFeature frml)
   {
     if (a.length != 1)
       {
@@ -1089,11 +1068,11 @@ public class Call extends Expr
    */
   private void resolveFormalArgumentTypes(Resolution res)
   {
-    List<Feature> fargs = calledFeature_.arguments;
+    var fargs = calledFeature_.arguments();
     resolvedFormalArgumentTypes = fargs.size() == 0 ? Type.NO_TYPES
                                                     : new Type[fargs.size()];
     int count = 0;
-    for (Feature frml : fargs)
+    for (var frml : fargs)
       {
         check
           (Errors.count() > 0 || frml.state().atLeast(Feature.State.RESOLVED_DECLARATIONS));
@@ -1126,7 +1105,7 @@ public class Call extends Expr
    *
    * @param t the type result type of the called feature, might be open genenric.
    */
-  private void resolveType(Resolution res, Type t, Feature outer)
+  private void resolveType(Resolution res, Type t, AbstractFeature outer)
   {
     boolean open = _select != -1;
     if (open != t.isOpenGeneric())
@@ -1150,11 +1129,11 @@ public class Call extends Expr
       }
     else
       {
-        Type tt = targetTypeOrConstraint();
+        Type tt = targetTypeOrConstraint(res);
         if (!open)
           {
             t = tt.actualType(t);
-            if (calledFeature_.returnType.isConstructorType() && t != Types.resolved.t_void)
+            if (calledFeature_.returnType().isConstructorType() && t != Types.resolved.t_void)
               {  /* specialize t for the target type here */
                 t = new Type(t, t._generics, tt);
               }
@@ -1185,7 +1164,7 @@ public class Call extends Expr
               }
             _select = -1;
           }
-        t = t.resolve(tt.featureOfType());
+        t = t.resolve(res, tt.featureOfType());
       }
     _type = t;
   }
@@ -1224,14 +1203,14 @@ public class Call extends Expr
    */
   private void inferGenericsFromArgs(Resolution res, Feature outer)
   {
-    int sz = calledFeature_.generics.list.size();
+    int sz = calledFeature_.generics().list.size();
     Type   [] found         = new Type   [sz]; // The generics that could be inferred
     boolean[] conflict      = new boolean[sz]; // The generics that had conflicting types
     String [] foundAt       = new String [sz]; // detail message for conflicts giving types and their location
     List<Type> inferredOpen = null;  // if open generics could be inferred, these are the actual open generics
     ListIterator<Expr> aargs = _actuals.listIterator();
     int count = 1; // argument count, for error messages
-    for (Feature frml : calledFeature_.arguments)
+    for (var frml : calledFeature_.arguments())
       {
         check
           (Errors.count() > 0 || frml.state().atLeast(Feature.State.RESOLVED_DECLARATIONS));
@@ -1270,7 +1249,7 @@ public class Call extends Expr
       }
     generics = new List<Type>();
     List<Generic> missing = new List<Generic>();
-    for (Generic g : calledFeature_.generics.list)
+    for (Generic g : calledFeature_.generics().list)
       {
         int i = g.index();
         Type t = found[i];
@@ -1302,7 +1281,7 @@ public class Call extends Expr
         Errors.error(pos,
                      "Failed to infer actual generic parameters",
                      "In call to " + calledFeature_.qualifiedName() + ", no actual generic parameters are given and inference of the generic parameters failed.\n" +
-                     "Expected generic parameters: " + calledFeature_.generics + "\n"+
+                     "Expected generic parameters: " + calledFeature_.generics() + "\n"+
                      "Type inference failed for generic " + (missing.size() > 1 ? "arguments" : "argument") + " " + missing + "\n");
       }
   }
@@ -1370,7 +1349,7 @@ public class Call extends Expr
           }
         else if (aft != null)
           {
-            for (Call p: aft.inherits)
+            for (Call p: aft.inherits())
               {
                 var pt = p.typeOrNull();
                 if (pt != null)
@@ -1395,7 +1374,7 @@ public class Call extends Expr
   {
     Call result = this;
     loadCalledFeature(res, outer);
-    FormalGenerics.resolve(generics, outer);
+    FormalGenerics.resolve(res, generics, outer);
 
     check
       (Errors.count() > 0 || calledFeature_ != null);
@@ -1406,14 +1385,14 @@ public class Call extends Expr
       }
     else
       {
-        if (generics == NO_GENERICS && calledFeature_.generics != FormalGenerics.NONE)
+        if (generics == NO_GENERICS && calledFeature_.generics() != FormalGenerics.NONE)
           {
             inferGenericsFromArgs(res, outer);
           }
-        if (calledFeature_.generics.errorIfSizeOrTypeDoesNotMatch(generics,
-                                                                  pos,
-                                                                  "call",
-                                                                  "Called feature: "+calledFeature_.qualifiedName()+"\n"))
+        if (calledFeature_.generics().errorIfSizeOrTypeDoesNotMatch(generics,
+                                                                    pos,
+                                                                    "call",
+                                                                    "Called feature: "+calledFeature_.qualifiedName()+"\n"))
           {
             Type t = _isTailRecursive ? Types.resolved.t_void // a tail recursive call will not return and execute further
                                       : calledFeature_.resultTypeIfPresent(res, generics);
@@ -1569,7 +1548,7 @@ public class Call extends Expr
             boolean ok = false;
             if (outer != null && outer.isChoice())
               {
-                for (Call p : outer.inherits)
+                for (Call p : outer.inherits())
                   {
                     ok = ok || p == this;
                   }
@@ -1580,12 +1559,12 @@ public class Call extends Expr
                              "Cannot call choice feature",
                              "A choice feature is only used as a type, values are created by assignments only.\n"+
                              "Choice feature that is called: " + calledFeature_.qualifiedName() + "\n" +
-                             "Declared at " + calledFeature_.pos.show());
+                             "Declared at " + calledFeature_.pos().show());
               }
           }
 
         // Check that generics match formal generic constraints
-        var fi = calledFeature_.generics.list.iterator();
+        var fi = calledFeature_.generics().list.iterator();
         var gi = generics.iterator();
         while (fi.hasNext() &&
                gi.hasNext()    ) // NYI: handling of open generic arguments

@@ -33,6 +33,10 @@ import java.nio.charset.StandardCharsets;
 import java.util.TreeMap;
 import java.util.TreeSet;
 
+import dev.flang.air.Clazz;
+import dev.flang.air.Clazzes;
+
+import dev.flang.ast.AbstractFeature; // NYI: remove dependency
 import dev.flang.ast.Assign; // NYI: remove dependency
 import dev.flang.ast.Block; // NYI: remove dependency
 import dev.flang.ast.BoolConst; // NYI: remove dependency
@@ -53,8 +57,6 @@ import dev.flang.ast.Tag; // NYI: remove dependency
 import dev.flang.ast.Types; // NYI: remove dependency
 import dev.flang.ast.Unbox; // NYI: remove dependency
 
-import dev.flang.ir.Clazz;
-import dev.flang.ir.Clazzes;
 import dev.flang.ir.IR;
 
 import dev.flang.util.ANY;
@@ -378,7 +380,7 @@ public class FUIR extends IR
     else
       {
         var ff = cc.feature();
-        switch (ff.impl.kind_)
+        switch (ff.implKind())
           {
           case Routine    :
           case RoutineDef : return FeatureKind.Routine;
@@ -388,7 +390,7 @@ public class FUIR extends IR
           case FieldInit  : return FeatureKind.Field;
           case Intrinsic  : return FeatureKind.Intrinsic;
           case Abstract   : return FeatureKind.Abstract;
-          default: throw new Error ("Unexpected feature impl kind: "+ff.impl.kind_);
+          default: throw new Error ("Unexpected feature impl kind: "+ff.implKind());
           }
       }
   }
@@ -702,9 +704,9 @@ public class FUIR extends IR
    *
    * @param ff a routine or constructor feature.
    */
-  private void addCode(Clazz cc, List<Object> code, Feature ff)
+  private void addCode(Clazz cc, List<Object> code, AbstractFeature ff)
   {
-    for (Call p: ff.inherits)
+    for (Call p: ff.inherits())
       {
         /*
 NYI: Any side-effects in p.target or p._actuals will be executed twice, once for
@@ -730,7 +732,7 @@ hw25 is
         */
 
         var pf = p.calledFeature();
-        var or = cc._inner.get(pf.outerRef_);
+        var or = cc._inner.get(pf.outerRef());
         toStack(code, p.target);
         if (or != null && !or.resultClazz().isUnitType())
           {
@@ -744,11 +746,11 @@ hw25 is
             code.add(or);  // field clazz means assignment to field
           }
         check
-          (p._actuals.size() == p.calledFeature().arguments.size());
+          (p._actuals.size() == p.calledFeature().arguments().size());
         for (var i = 0; i < p._actuals.size(); i++)
           {
             var a = p._actuals.get(i);
-            var f = pf.arguments.get(i);
+            var f = pf.arguments().get(i);
             toStack(code, a);
             code.add(ExprKind.Current);
             // Field clazz means assign value to that field
@@ -756,7 +758,7 @@ hw25 is
           }
         addCode(cc, code, p.calledFeature());
       }
-    toStack(code, ff.impl._code);
+    toStack(code, ff.code());
   }
 
 
@@ -831,7 +833,7 @@ hw25 is
 
     var cc = _clazzIds.get(cl);
     var ff = cc.feature();
-    var ccontract = ff.contract;
+    var ccontract = ff.contract();
     var cond = (ccontract != null && ck == ContractKind.Pre  ? ccontract.req :
                 ccontract != null && ck == ContractKind.Post ? ccontract.ens : null);
     // NYI: PERFORMANCE: Always iterating the conditions results in performance
@@ -1111,7 +1113,7 @@ hw25 is
     var outerClazz = _clazzIds.get(cl);
     var s =  _codeIds.get(c).get(ix);
     Clazz tclazz;
-    Feature f;
+    AbstractFeature f;
 
     if (s instanceof Call call)
       {
