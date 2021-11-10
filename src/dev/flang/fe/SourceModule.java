@@ -58,6 +58,7 @@ import dev.flang.ast.Type;
 import dev.flang.ast.Types;
 
 import dev.flang.mir.MIR;
+import dev.flang.mir.MirModule;
 
 import dev.flang.parser.Parser;
 
@@ -73,7 +74,7 @@ import dev.flang.util.SourcePosition;
  *
  * @author Fridtjof Siebert (siebert@tokiwa.software)
  */
-public class SourceModule extends Module implements SrcModule
+public class SourceModule extends Module implements SrcModule, MirModule
 {
 
 
@@ -172,6 +173,13 @@ public class SourceModule extends Module implements SrcModule
 
   Resolution _res;
 
+
+  /**
+   * List of all features declared in this module.
+   */
+  List<Feature> _features = new List<>();
+
+
   /*--------------------------  constructors  ---------------------------*/
 
 
@@ -230,20 +238,24 @@ public class SourceModule extends Module implements SrcModule
 
 
   /**
+   * Add given feature to the features declared in this SrcModule.
+   */
+  public void add(Feature f)
+  {
+    if (!f.isUniverse())
+      {
+        _features.add(f);
+      }
+  }
+
+
+  /**
    * Create the module intermediate representation for this module.
    */
-  void createMIR0()
+  void createMIR0(Feature universe)
   {
     /* create the universe */
-    if (_dependsOn.length > 0)
-      {
-        _universe = ((SourceModule)_dependsOn[0])._universe;
-        _universe.resetState();   // NYI: HACK: universe is currently resolved twice, once as part of stdlib, and then as part of another module
-      }
-    else
-      {
-        _universe = Feature.createUniverse();
-      }
+    _universe = universe;
     check
       (_universe != null);
 
@@ -289,21 +301,17 @@ public class SourceModule extends Module implements SrcModule
           {
             FeErrors.mainFeatureMustNotHaveArguments(main);
           }
-        if (main.isField())
+        switch (main.kind())
           {
-            FeErrors.mainFeatureMustNotBeField(main);
-          }
-        if (main.isAbstract())
-          {
-            FeErrors.mainFeatureMustNotBeAbstract(main);
-          }
-        if (main.implKind() == Impl.Kind.Intrinsic)
-          {
-            FeErrors.mainFeatureMustNotBeIntrinsic(main);
-          }
-        if (!main.generics().list.isEmpty())
-          {
-            FeErrors.mainFeatureMustNotHaveTypeArguments(main);
+          case Field    : FeErrors.mainFeatureMustNotBeField    (main); break;
+          case Abstract : FeErrors.mainFeatureMustNotBeAbstract (main); break;
+          case Intrinsic: FeErrors.mainFeatureMustNotBeIntrinsic(main); break;
+          case Choice   : FeErrors.mainFeatureMustNotBeChoice   (main); break;
+          case Routine:
+            if (!main.generics().list.isEmpty())
+              {
+                FeErrors.mainFeatureMustNotHaveTypeArguments(main);
+              }
           }
       }
     var result = new MIR(_universe, main, this);
@@ -689,6 +697,7 @@ public class SourceModule extends Module implements SrcModule
       }
   }
 
+
   /**
    * Get direct redefininitions of given Feature as seen by this module.
    * Result is never null.
@@ -831,8 +840,8 @@ public class SourceModule extends Module implements SrcModule
     var existing = df.get(fn);
     if (existing != null)
       {
-        if (f       .implKind() == Impl.Kind.FieldDef &&
-            existing.implKind() == Impl.Kind.FieldDef    )
+        if (f                  .implKind() == Impl.Kind.FieldDef &&
+            ((Feature)existing).implKind() == Impl.Kind.FieldDef    ) // NYI: Cast!
           {
             var existingFields = FeatureName.getAll(df, fn.baseName(), 0);
             fn = FeatureName.get(fn.baseName(), 0, existingFields.size());
@@ -1091,7 +1100,7 @@ public class SourceModule extends Module implements SrcModule
           }
       }
 
-    if (f.returnType().isConstructorType())
+    if (f.returnType().isConstructorType() && f.isRoutine())
       {
         var cod = f.code();
         var rt = cod.type();

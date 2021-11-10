@@ -29,7 +29,6 @@ package dev.flang.mir;
 import dev.flang.ast.AbstractFeature;  // NYI: Remove dependency!
 import dev.flang.ast.Assign;  // NYI: Remove dependency!
 import dev.flang.ast.Call;  // NYI: Remove dependency!
-import dev.flang.ast.SrcModule;  // NYI: Remove dependency!
 
 import dev.flang.ir.IR;
 
@@ -61,7 +60,7 @@ public class MIR extends IR
   final AbstractFeature _main;
   final AbstractFeature _universe;
 
-  final SrcModule _mod;
+  public final MirModule _module;
 
 
   /**
@@ -73,11 +72,11 @@ public class MIR extends IR
   /*--------------------------  constructors  ---------------------------*/
 
 
-  public MIR(AbstractFeature universe, AbstractFeature main, SrcModule mod)
+  public MIR(AbstractFeature universe, AbstractFeature main, MirModule module)
   {
     _universe = universe;
     _main = main;
-    _mod = mod;
+    _module = module;
     addFeatures();
   }
 
@@ -113,7 +112,7 @@ public class MIR extends IR
   private void addFeatures(AbstractFeature f)
   {
     _featureIds.add(f);
-    for (var i : _mod.declaredFeatures(f).values())
+    for (var i : _module.declaredFeatures(f).values())
       {
         addFeatures(i);
       }
@@ -272,16 +271,15 @@ hw25 is
   {
     var ff = _featureIds.get(f);
 
-    return ff.isChoice()
-      ? FeatureKind.Choice
-      : switch (ff.implKind())
-        {
-        case Routine, RoutineDef                     -> FeatureKind.Routine;
-        case Field, FieldDef, FieldActual, FieldInit -> FeatureKind.Field;
-        case Intrinsic                               -> FeatureKind.Intrinsic;
-        case Abstract                                -> FeatureKind.Abstract;
-        default -> throw new Error ("Unexpected feature impl kind: "+ff.implKind());
-        };
+    return switch (ff.kind())
+      {
+      case Routine   -> FeatureKind.Routine;
+      case Field     -> FeatureKind.Field;
+      case Intrinsic -> FeatureKind.Intrinsic;
+      case Abstract  -> FeatureKind.Abstract;
+      case Choice    -> FeatureKind.Choice;
+      default        -> throw new Error ("Unexpected feature impl kind: " + ff.kind());
+      };
   }
 
 
@@ -377,7 +375,7 @@ hw25 is
   public int featureDeclaredCount(int f)
   {
     var ff = _featureIds.get(f);
-    return _mod.declaredFeatures(ff).size();
+    return _module.declaredFeatures(ff).size();
   }
 
 
@@ -397,7 +395,7 @@ hw25 is
 
     var ff = _featureIds.get(f);
     // NYI: Quadratic performance in case we iterate over all declared features.
-    for (var df : _mod.declaredFeatures(ff).values())
+    for (var df : _module.declaredFeatures(ff).values())
       {
         if (i == 0)
           return _featureIds.get(df);
