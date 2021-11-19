@@ -241,13 +241,21 @@ public class Assign extends ANY implements Stmnt
         _assignedField = f;
         _target        = fo.target(_pos, res, outer);
       }
-    if      (f == Types.f_ERROR         ) { check(Errors.count() > 0); /* ignore */ }
-    else if (!f.isField()               ) { AstErrors.assignmentToNonField    (this, f, outer); }
-    else if (!_indexVarAllowed &&
-             f.isIndexVarUpdatedByLoop()) { AstErrors.assignmentToIndexVar    (this, f, outer); }
+    if      (f == Types.f_ERROR          ) { check(Errors.count() > 0); /* ignore */ }
+    else if (!f.isField()                ) { AstErrors.assignmentToNonField    (this, f, outer); }
+    else if (!_indexVarAllowed       &&
+             f instanceof Feature ff &&
+             ff.isIndexVarUpdatedByLoop()) { AstErrors.assignmentToIndexVar    (this, f, outer); }
     else if (f == f.outer().resultField())
       {
-        f.outer().foundAssignmentToResult();
+        if (f.outer() instanceof Feature fo)
+          {
+            fo.foundAssignmentToResult();
+          }
+        else
+          {
+            throw new Error("NYI: Assignement to result defined in library feature not handled well yet!");
+          }
       }
   }
 
@@ -308,7 +316,7 @@ public class Assign extends ANY implements Stmnt
     var f = _assignedField;
     if (f != Types.f_ERROR)
       {
-        Type frmlT = f.resultType();
+        var frmlT = f.resultType();
 
         check
           (Errors.count() > 0 || frmlT != Types.t_ERROR);

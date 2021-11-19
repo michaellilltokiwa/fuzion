@@ -45,6 +45,7 @@ import dev.flang.air.Clazz;
 import dev.flang.air.Clazzes;
 
 import dev.flang.ast.AbstractFeature; // NYI: remove dependency! Use dev.flang.fuir instead.
+import dev.flang.ast.AbstractType; // NYI: remove dependency! Use dev.flang.fuir instead.
 import dev.flang.ast.Assign; // NYI: remove dependency! Use dev.flang.fuir instead.
 import dev.flang.ast.Block; // NYI: remove dependency! Use dev.flang.fuir instead.
 import dev.flang.ast.BoolConst; // NYI: remove dependency! Use dev.flang.fuir instead.
@@ -64,7 +65,6 @@ import dev.flang.ast.Old; // NYI: remove dependency! Use dev.flang.fuir instead.
 import dev.flang.ast.Stmnt; // NYI: remove dependency! Use dev.flang.fuir instead.
 import dev.flang.ast.StrConst; // NYI: remove dependency! Use dev.flang.fuir instead.
 import dev.flang.ast.Tag; // NYI: remove dependency! Use dev.flang.fuir instead.
-import dev.flang.ast.Type; // NYI: remove dependency! Use dev.flang.fuir instead.
 import dev.flang.ast.Types; // NYI: remove dependency! Use dev.flang.fuir instead.
 import dev.flang.ast.Unbox; // NYI: remove dependency! Use dev.flang.fuir instead.
 import dev.flang.ast.Universe; // NYI: remove dependency! Use dev.flang.fuir instead.
@@ -208,7 +208,10 @@ public class Interpreter extends ANY
                 db = new DynamicBinding(cl);
                 cl._dynamicBinding = db;
               }
-            db.add(this, e.getKey(), e.getValue(), cl);
+            if (e.getValue() instanceof Clazz innerClazz)
+              {
+                db.add(this, e.getKey(), innerClazz, cl);
+              }
           }
       }
 
@@ -318,7 +321,7 @@ public class Interpreter extends ANY
         Value v    = execute(a._value   , staticClazz, cur);
         Value thiz = execute(a._target, staticClazz, cur);
         Clazz sClazz = staticClazz.getRuntimeClazz(a.tid_ + 0);
-        setField(a._assignedField, sClazz, thiz, v);
+        setField(a._assignedField, -1, sClazz, thiz, v);
         result = Value.NO_VALUE;
       }
 
@@ -411,7 +414,7 @@ public class Interpreter extends ANY
                   {
                     Value v = tag < 0 ? refVal
                                       : getChoiceVal(sf, staticSubjectClazz, sub, tag);
-                    setField(c.field, staticClazz, cur, v);
+                    setField(c.field, -1, staticClazz, cur, v);
                     matches = true;
                   }
               }
@@ -499,7 +502,7 @@ public class Interpreter extends ANY
                     Value v = getField(f, vc, val);
                     // NYI: Check that this works well for internal fields such as choice tags.
                     // System.out.println("Box "+vc+" => "+rc+" copying "+f.qualifiedName()+" "+v);
-                    setField(f, rc, result, v);
+                    setField(f, -1, rc, result, v);
                   }
               }
             if (vc.isChoice())
@@ -582,15 +585,15 @@ public class Interpreter extends ANY
         var sa = new Instance(sac);
         int l = i._elements.size();
         var arrayData = Intrinsics.sysArrayAlloc(l, sac);
-        setField(Types.resolved.f_sys_array_data  , sac, sa, arrayData);
-        setField(Types.resolved.f_sys_array_length, sac, sa, new i32Value(l));
+        setField(Types.resolved.f_sys_array_data  , -1, sac, sa, arrayData);
+        setField(Types.resolved.f_sys_array_length, -1, sac, sa, new i32Value(l));
         for (int x = 0; x < l; x++)
           {
             var v = execute(i._elements.get(x), staticClazz, cur);
             Intrinsics.sysArraySetEl(arrayData, x, v, sac);
           }
         result = new Instance(ac);
-        setField(Types.resolved.f_array_internalArray, ac, result, sa);
+        setField(Types.resolved.f_array_internalArray, -1, ac, result, sa);
       }
 
     else
@@ -639,10 +642,10 @@ public class Interpreter extends ANY
     var saCl = Clazzes.constStringBytesArray;
     Instance sa = new Instance(saCl);
     byte[] bytes = str.getBytes(StandardCharsets.UTF_8);
-    setField(Types.resolved.f_sys_array_length, saCl, sa, new i32Value(bytes.length));
+    setField(Types.resolved.f_sys_array_length, -1, saCl, sa, new i32Value(bytes.length));
     var arrayData = new ArrayData(bytes);
-    setField(Types.resolved.f_sys_array_data, saCl, sa, arrayData);
-    setField(Types.resolved.f_array_internalArray, cl, result, sa);
+    setField(Types.resolved.f_sys_array_data, -1, saCl, sa, arrayData);
+    setField(Types.resolved.f_array_internalArray, -1, cl, result, sa);
 
     return result;
   }
@@ -682,7 +685,7 @@ public class Interpreter extends ANY
        outerClazz == Clazzes.ref_f32.getIfCreated() ||
        outerClazz == Clazzes.ref_f64.getIfCreated()) &&
       /* NYI: somewhat ugly way to access "val" field, should better have Clazzes.ref_i32_val.getIfCreate() etc. */
-      innerClazz.feature() == outerClazz.feature().get(outerClazz._res, "val");
+      innerClazz.feature().sameAs(outerClazz.feature().get(outerClazz._res, "val"));
 
     if (dynamic && !builtInVal)
       {
@@ -726,12 +729,12 @@ public class Interpreter extends ANY
                 }
               else
                 {
-                  Clazz fclazz = outerClazz.clazzForField(f);
+                  Clazz fclazz = outerClazz.clazzForFieldX(f, innerClazz._select);
                   if (outerClazz.isRef())
                     {
                       result = (args) ->
                         {
-                          LValue slot = fieldSlot(f, outerClazz, fclazz, args.get(0));
+                          LValue slot = fieldSlot(f, -1, outerClazz, fclazz, args.get(0));
                           return loadField(f, fclazz, slot);
                         };
                     }
@@ -744,7 +747,7 @@ public class Interpreter extends ANY
                           {
                             if (off < 0)
                               {
-                                off = Layout.get(outerClazz).offset(f);
+                                off = Layout.get(outerClazz).offset(innerClazz);
                               }
                             var slot = args.get(0).at(fclazz, off);
                             return loadField(f, fclazz, slot);
@@ -753,7 +756,7 @@ public class Interpreter extends ANY
                     }
                   else
                     {
-                      var off = Layout.get(outerClazz).offset(f);
+                      var off = Layout.get(outerClazz).offset(innerClazz);
                       result = (args) ->
                         {
                           var slot = args.get(0).at(fclazz, off);
@@ -817,7 +820,8 @@ public class Interpreter extends ANY
             int si = 0;
             while (aix < args.size())
               {
-                setField(a.select(si),
+                setField(a,
+                         si,
                          staticClazz,
                          cur,
                          args    .get(aix));
@@ -828,6 +832,7 @@ public class Interpreter extends ANY
         else
           {
             setField(a,
+                     -1,
                      staticClazz,
                      cur,
                      args    .get(aix));
@@ -899,8 +904,8 @@ public class Interpreter extends ANY
     // NYI: Also check postconditions for all features this redefines!
     _callStackFrames.pop();
 
-    return thiz.returnType().isConstructorType() ? cur
-                                                 : getField(thiz.resultField(), staticClazz, cur);
+    return thiz.isConstructor() ? cur
+                                : getField(thiz.resultField(), staticClazz, cur);
   }
 
 
@@ -925,7 +930,7 @@ public class Interpreter extends ANY
   private static void setChoiceField(AbstractFeature thiz,
                                      Clazz choiceClazz,
                                      LValue choice,
-                                     Type staticTypeOfValue,
+                                     AbstractType staticTypeOfValue,
                                      Value v)
   {
     if (PRECONDITIONS) require
@@ -948,10 +953,10 @@ public class Interpreter extends ANY
       }
     else
       { // store tag and value separately
-        setField(thiz.choiceTag(), choiceClazz, choice, new i32Value(tag));
+        setField(thiz.choiceTag(), -1, choiceClazz, choice, new i32Value(tag));
       }
     check
-      (vclazz._type.isAssignableFrom(staticTypeOfValue));
+      (vclazz._type.isAssignableFrom(staticTypeOfValue.astType()));
     setFieldSlot(thiz, vclazz, valSlot, v);
   }
 
@@ -1104,6 +1109,11 @@ public class Interpreter extends ANY
   /**
    * Create an LValue that refers to the slot that contains this field.
    *
+   * @param thiz the field to access.
+   *
+   * @param select in case thiz is a field of open generic type, this selects
+   * the actual field. -1 otherwise.
+   *
    * @param staticClazz is the static type of the clazz that contains the
    * this field
    *
@@ -1114,7 +1124,7 @@ public class Interpreter extends ANY
    *
    * @return an LValue that refers directly to the memory for the field.
    */
-  private static LValue fieldSlot(AbstractFeature thiz, Clazz staticClazz, Clazz fclazz, Value curValue)
+  private static LValue fieldSlot(AbstractFeature thiz, int select, Clazz staticClazz, Clazz fclazz, Value curValue)
   {
     int off;
     var clazz = staticClazz;
@@ -1124,7 +1134,7 @@ public class Interpreter extends ANY
                                                    : curValue;
         clazz = ((Instance) curValue).clazz();
       }
-    off = Layout.get(clazz).offset(thiz);
+    off = Layout.get(clazz).offset0(thiz, select);
 
     // NYI: check if this is a can be enabled or removed:
     //
@@ -1259,8 +1269,8 @@ public class Interpreter extends ANY
       }
     else
       {
-        Clazz  fclazz = staticClazz.clazzForField(thiz);
-        LValue slot   = fieldSlot(thiz, staticClazz, fclazz, curValue);
+        Clazz  fclazz = staticClazz.clazzForFieldX(thiz, -1);
+        LValue slot   = fieldSlot(thiz, -1, staticClazz, fclazz, curValue);
         result = loadField(thiz, fclazz, slot);
       }
 
@@ -1306,11 +1316,14 @@ public class Interpreter extends ANY
    * @param staticClazz is the static type of the clazz that contains the
    * written field
    *
+   * @param select in case thiz is a field of open generic type, this selects
+   * the actual field. -1 otherwise.
+   *
    * @param curValue the Instance or LValue of that contains the written field
    *
    * @param v the value to be stored in the field
    */
-  public static void setField(AbstractFeature thiz, Clazz staticClazz, Value curValue, Value v)
+  public static void setField(AbstractFeature thiz, int select, Clazz staticClazz, Value curValue, Value v)
   {
     if (PRECONDITIONS) require
       (thiz.isField(),
@@ -1319,8 +1332,8 @@ public class Interpreter extends ANY
 
     if (Clazzes.isUsed(thiz, staticClazz))
       {
-        Clazz  fclazz = staticClazz.clazzForField(thiz);
-        LValue slot   = fieldSlot(thiz, staticClazz, fclazz, curValue);
+        Clazz  fclazz = staticClazz.clazzForFieldX(thiz, select);
+        LValue slot   = fieldSlot(thiz, select, staticClazz, fclazz, curValue);
         setFieldSlot(thiz, fclazz, slot, v);
       }
   }
@@ -1339,7 +1352,7 @@ public class Interpreter extends ANY
     var or = thiz.outerRef();
     if (or != null && Clazzes.isUsedAtAll(or))
       {
-        setField(or, staticClazz, cur, outer);
+        setField(or, -1, staticClazz, cur, outer);
       }
   }
 

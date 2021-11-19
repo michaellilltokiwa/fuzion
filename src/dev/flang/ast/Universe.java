@@ -28,6 +28,7 @@ package dev.flang.ast;
 
 import java.util.Iterator;
 
+import dev.flang.util.FuzionConstants;
 import dev.flang.util.SourcePosition;
 
 
@@ -63,7 +64,7 @@ public class Universe extends Expr
    *
    * @return this Expr's type or null if not known.
    */
-  public Type typeOrNull()
+  public AbstractType typeOrNull()
   {
     return Types.resolved.universe.thisType();
   }
@@ -92,7 +93,7 @@ public class Universe extends Expr
    */
   public String toString()
   {
-    return Feature.UNIVERSE_NAME;
+    return FuzionConstants.UNIVERSE_NAME;
   }
 
 }

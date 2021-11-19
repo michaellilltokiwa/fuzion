@@ -20,51 +20,27 @@ Fuzion language implementation.  If not, see <https://www.gnu.org/licenses/>.
  *
  * Tokiwa Software GmbH, Germany
  *
- * Source of interface MirModule
+ * Source of emi, YesNo
  *
  *---------------------------------------------------------------------*/
 
-package dev.flang.mir;
-
-import java.nio.ByteBuffer;
-
-import java.util.Set;
-import java.util.SortedMap;
-
-import dev.flang.ast.AbstractFeature;  // NYI: Remove dependency!
-import dev.flang.ast.FeatureName;  // NYI: Remove dependency!
+package dev.flang.util;
 
 
 /**
- * MirModule provides callbacks from the MIR to data structures in the current
- * module, in particular to sets of features.
+ * YesNo is a simple enum yes, no, dontKnow, to be used for on-demand
+ * initialization of expensive to calculate booleans.
  *
  * @author Fridtjof Siebert (siebert@tokiwa.software)
  */
-public interface MirModule
+public enum YesNo
 {
 
-  /**
-   * The binary data from this module's .mir file.
-   */
-  ByteBuffer data();
-
-
-  /**
-   * Get declared features for given outer Feature as seen by this module.
-   * Result is never null.
-   */
-  SortedMap<FeatureName, AbstractFeature>declaredFeatures(AbstractFeature outer);
-
-
-  /**
-   * Get direct redefininitions of given Feature as seen by this module.
-   * Result is never null.
-   *
-   * @param f the original feature
-   */
-  Set<AbstractFeature> redefinitions(AbstractFeature f);
+  yes,
+  no,
+  dontKnow
 
 }
 
-/* end of file */
+
+/* end-of-file */

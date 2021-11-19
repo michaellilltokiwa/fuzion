@@ -29,6 +29,7 @@ package dev.flang.me;
 import dev.flang.air.AIR;
 
 import dev.flang.ast.AbstractFeature; // NYI: remove dependency!
+import dev.flang.ast.AbstractType; // NYI: remove dependency!
 import dev.flang.ast.Call; // NYI: remove dependency!
 import dev.flang.ast.Feature; // NYI: remove dependency!
 import dev.flang.ast.FeatureVisitor; // NYI: remove dependency!
@@ -37,7 +38,6 @@ import dev.flang.ast.Match; // NYI: remove dependency!
 import dev.flang.ast.Resolution; // NYI: remove dependency!
 import dev.flang.ast.Stmnt; // NYI: remove dependency!
 import dev.flang.ast.Tag; // NYI: remove dependency!
-import dev.flang.ast.Type; // NYI: remove dependency!
 import dev.flang.ast.Types; // NYI: remove dependency!
 
 import dev.flang.mir.MIR;
@@ -140,6 +140,7 @@ public class MiddleEnd extends ANY
     markUsed(((Feature)universe /* NYI: Cast! */).get(_res, "bool").get(_res, tag) , SourcePosition.builtIn);
     markUsed(((Feature)universe /* NYI: Cast! */).get(_res, "conststring")   , SourcePosition.builtIn);
     markUsed(((Feature)universe /* NYI: Cast! */).get(_res, "conststring").get(_res, "isEmpty"), SourcePosition.builtIn);  // NYI: check why this is not found automatically
+    markUsed(((Feature)universe /* NYI: Cast! */).get(_res, "conststring").get(_res, "asString"), SourcePosition.builtIn);  // NYI: check why this is not found automatically
     markUsed(Types.resolved.f_sys_array_data              , SourcePosition.builtIn);
     markUsed(Types.resolved.f_sys_array_length            , SourcePosition.builtIn);
     markUsed(((Feature)universe /* NYI: Cast! */).get(_res, "unit")          , SourcePosition.builtIn);
@@ -174,17 +175,16 @@ public class MiddleEnd extends ANY
    * @param usedAt the position this feature was used at, for creating usefule
    * error messages
    */
-  void markUsed(AbstractFeature af, boolean dynamically, SourcePosition usedAt)
+  void markUsed(AbstractFeature f, boolean dynamically, SourcePosition usedAt)
   {
-    var f = (Feature) af;  /* NYI: Cast! */
     if (dynamically)
       {
-        Clazzes.setCalledDynamically0(af);
+        Clazzes.setCalledDynamically0(f);
       }
     if (!Clazzes.isUsedAtAll(f))
       {
         Clazzes.addUsedFeature(f, usedAt);
-        if (f.state() != Feature.State.ERROR)
+        if (!(f instanceof Feature ff) || ff.state() == Feature.State.RESOLVED)
           {
             scheduleForFindUsedFeatures(f);
           }
@@ -226,13 +226,6 @@ public class MiddleEnd extends ANY
     for (var fa : f.arguments())
       {
         markUsed(fa, f.pos());
-        if (fa.isOpenGenericField())
-          {
-            for (var i = 0; i<fa.selectSize(); i++)
-              {
-                markUsed(fa.select(i), f.pos());
-              }
-          }
       }
     for (var p: f.inherits())
       {
@@ -259,12 +252,12 @@ public class MiddleEnd extends ANY
   /**
    * Mark all features used within this type as used.
    */
-  void findUsedFeatures(Type t, SourcePosition pos)
+  void findUsedFeatures(AbstractType t, SourcePosition pos)
   {
     if (!t.isGenericArgument())
       {
         markUsed(t.featureOfType(), pos);
-        for (var tg : t._generics)
+        for (var tg : t.generics())
           {
             findUsedFeatures(tg, pos);
           }
@@ -284,12 +277,12 @@ public class MiddleEnd extends ANY
     if (cf != null)
       {
         markUsed(cf, c.isDynamic(), c.pos());
-        for (Type t : c.generics)
+        for (var t : c.generics)
           {
             if (!t.isGenericArgument())
               {
                 AbstractFeature f = t.featureOfType();
-                markUsed(f, t.pos);  // NYI: needed? If the actual generic type is not called anywhere, maybe it can go
+                markUsed(f, t.pos());  // NYI: needed? If the actual generic type is not called anywhere, maybe it can go
               }
           }
       }

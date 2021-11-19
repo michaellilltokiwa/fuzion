@@ -27,9 +27,12 @@ Fuzion language implementation.  If not, see <https://www.gnu.org/licenses/>.
 package dev.flang.fe;
 
 import java.nio.file.Path;
+import java.nio.ByteBuffer;
 
 import java.util.Set;
 import java.util.SortedMap;
+import java.util.TreeMap;
+import java.util.TreeSet;
 
 import dev.flang.ast.AbstractFeature;
 import dev.flang.ast.Feature;
@@ -66,6 +69,24 @@ public class LibraryModule extends Module
   public final SourceModule _srcModule;
 
 
+  /**
+   * The module binary data, contents of .mir file.
+   */
+  final ByteBuffer _data;
+
+
+  /**
+   * The module intermediate representation for this module.
+   */
+  final MIR _mir;
+
+
+  /**
+   * Map from offset in _data to LibraryFeatures for features in this module.
+   */
+  TreeMap<Integer, LibraryFeature> _libraryFeatures = new TreeMap<>();
+
+
   /*--------------------------  constructors  ---------------------------*/
 
 
@@ -77,8 +98,9 @@ public class LibraryModule extends Module
     super(dependsOn);
 
     _options = options;
-    _srcModule = new SourceModule(options, sourceDirs, inputFile, defaultMain, dependsOn);
-    _srcModule.createMIR0(universe);
+    _srcModule = new SourceModule(options, sourceDirs, inputFile, defaultMain, dependsOn, universe);
+    _mir = _srcModule.createMIR();
+    _data = _mir._module.data();
   }
 
 
@@ -86,11 +108,20 @@ public class LibraryModule extends Module
 
 
   /**
+   * The module binary data, contents of .mir file.
+   */
+  public ByteBuffer data()
+  {
+    return _data;
+  }
+
+
+  /**
    * Create the module intermediate representation for this module.
    */
   public MIR createMIR()
   {
-    return _srcModule.createMIR();
+    return _mir;
   }
 
 
@@ -102,7 +133,57 @@ public class LibraryModule extends Module
    */
   SortedMap<FeatureName, AbstractFeature>declaredFeaturesOrNull(AbstractFeature outer)
   {
-    return _srcModule.declaredFeaturesOrNull(outer);
+    var sdf = _srcModule.declaredFeaturesOrNull(outer.astFeature());
+    return sdf == null ? null : libraryFeatures(sdf);
+  }
+
+
+  /**
+   * Helper method for declaredFeaturesOrNull and
+   * declaredOrInheritedFeaturesOrNull: Wrap ast.Feature into LibraryFeature.
+   */
+  private SortedMap<FeatureName, AbstractFeature> libraryFeatures(SortedMap<FeatureName, AbstractFeature> from)
+  {
+    SortedMap<FeatureName, AbstractFeature> result = new TreeMap<>();
+    for (var e : from.entrySet())
+      {
+        result.put(e.getKey(), libraryFeature(e.getValue()));
+      }
+    return result;
+  }
+
+
+  /**
+   * Wrap given Feature into a LibraryFeature unless it is a LibraryFeature
+   * already.  In case f was wrapped before, returns the original wrapper.
+   */
+  LibraryFeature libraryFeature(AbstractFeature f)
+  {
+    return (LibraryFeature) (
+      f instanceof LibraryFeature                               ? f                    :
+      f instanceof Feature astF && astF._libraryFeature != null ? astF._libraryFeature
+                                                                : libraryFeature(_srcModule.data(f)._mirOffset, (Feature) f));
+  }
+
+
+  /**
+   * Get or create LibraryFeature at given offset
+   *
+   * @param offset the offset in data()
+   *
+   * @param from the original AST Feature. NYI: Remove!
+   *
+   * @return the LibraryFeature declared at offset in this module.
+   */
+  LibraryFeature libraryFeature(int offset, Feature from)
+  {
+    var result = _libraryFeatures.get(offset);
+    if (result == null)
+      {
+        result = new LibraryFeature(this, offset, from);
+        _libraryFeatures.put(offset, result);
+      }
+    return result;
   }
 
 
@@ -115,7 +196,8 @@ public class LibraryModule extends Module
    */
   SortedMap<FeatureName, AbstractFeature>declaredOrInheritedFeaturesOrNull(AbstractFeature outer)
   {
-    return _srcModule.declaredOrInheritedFeaturesOrNull(outer);
+    var sdif = _srcModule.declaredOrInheritedFeaturesOrNull(outer.astFeature());
+    return sdif == null ? null : libraryFeatures(sdif);
   }
 
 
@@ -127,7 +209,89 @@ public class LibraryModule extends Module
    */
   Set<AbstractFeature>redefinitionsOrNull(AbstractFeature f)
   {
-    return _srcModule.redefinitionsOrNull(f);
+    Set<AbstractFeature> result = null;
+    var rfs = _srcModule.redefinitionsOrNull(f.astFeature());
+    if (rfs != null)
+      {
+        result = new TreeSet<>();
+        for (var e : rfs)
+          {
+            result.add(libraryFeature(e));
+          }
+      }
+    return result;
+  }
+
+
+  /*---------------------  accessing mir file data  ---------------------*/
+
+
+  int featureKindPos(int at)
+  {
+    return at;
+  }
+  int featureKind(int at)
+  {
+    var ko = data().get(featureKindPos(at));
+    return ko;
+  }
+  int featureNamePos(int at)
+  {
+    var i = featureKindPos(at) + 1;
+    return i;
+  }
+  int featureNameLength(int at)
+  {
+    var i = featureNamePos(at);
+    var l = data().getInt(i);
+    return l;
+  }
+  byte[] featureName(int at)
+  {
+    var i = featureNamePos(at);
+    var d = data();
+    var l = d.getInt(i); i = i + 4;
+    var b = new byte[l];
+    d.get(i, b);
+    return b;
+  }
+  int featureArgCountPos(int at)
+  {
+    var i = featureNamePos(at);
+    var l = featureNameLength(at);
+    return i + 4 + l;
+  }
+  int featureArgCount(int at)
+  {
+    return data().getInt(featureArgCountPos(at));
+  }
+  int featureIdPos(int at)
+  {
+    var i = featureArgCountPos(at);
+    return i + 4;
+  }
+  int featureId(int at)
+  {
+    return data().getInt(featureIdPos(at));
+  }
+  int featureInnerSizePos(int at)
+  {
+    var i = featureIdPos(at);
+    return i + 4;
+  }
+  int featureInnerSize(int at)
+  {
+    return data().getInt(featureInnerSizePos(at));
+  }
+  int featureInnerPos(int at)
+  {
+    var i = featureInnerSizePos(at);
+    return i + 4;
+  }
+  int nextFeaturePos(int at)
+  {
+    at = featureInnerPos(at) + featureInnerSize(at);
+    return at;
   }
 
 

@@ -389,9 +389,9 @@ public class FUIR extends IR
   {
     var cc = _clazzIds.get(cl);
     var res = cc.feature().featureName().baseName();
-    if (!cc._type._generics.isEmpty())
+    if (!cc._type.generics().isEmpty())
       {
-        res = res + cc._type._generics.toString("<",",",">");
+        res = res + cc._type.generics().toString("<",",",">");
       }
     return res;
   }
@@ -722,7 +722,7 @@ hw25 is
         */
 
         var pf = p.calledFeature();
-        var or = cc._inner.get(pf.outerRef());
+        var or = (Clazz) cc._inner.get(pf.outerRef());  // NYI: ugly cast
         toStack(code, p.target);
         if (or != null && !or.resultClazz().isUnitType())
           {
@@ -938,7 +938,7 @@ hw25 is
     if (result == null)
       {
         Errors.fatal((e instanceof Stmnt s) ? s.pos() :
-                     (e instanceof Clazz z) ? z._type.pos : null,
+                     (e instanceof Clazz z) ? z._type.pos() : null,
                      "Stmnt not supported in FUIR.codeAt", "Statement class: " + e.getClass());
         result = ExprKind.Current; // keep javac from complaining.
       }
@@ -1128,7 +1128,7 @@ hw25 is
     var innerClazzes = new List<Clazz>();
     for (var clz : tclazz.heirs())
       {
-        var in = clz._inner.get(f);
+        var in = (Clazz) clz._inner.get(f);  // NYI: cast would fail for open generic field
         if (in != null && clazzNeedsCode(in))
           {
             innerClazzes.add(clz);

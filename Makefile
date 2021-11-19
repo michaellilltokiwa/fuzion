@@ -46,12 +46,14 @@ JAVA_FILES_UTIL = \
           $(SRC)/dev/flang/util/SourcePosition.java \
           $(SRC)/dev/flang/util/Terminal.java \
           $(SRC)/dev/flang/util/UnicodeData.java \
+          $(SRC)/dev/flang/util/YesNo.java \
 
 JAVA_FILES_UTIL_UNICODE = \
           $(SRC)/dev/flang/util/unicode/ParseUnicodeData.java \
 
 JAVA_FILES_AST = \
           $(SRC)/dev/flang/ast/AbstractFeature.java \
+          $(SRC)/dev/flang/ast/AbstractType.java \
           $(SRC)/dev/flang/ast/Assign.java \
           $(SRC)/dev/flang/ast/AstErrors.java \
           $(SRC)/dev/flang/ast/Block.java \
@@ -118,6 +120,7 @@ JAVA_FILES_FE = \
           $(SRC)/dev/flang/fe/FeErrors.java \
           $(SRC)/dev/flang/fe/FrontEnd.java \
           $(SRC)/dev/flang/fe/FrontEndOptions.java \
+          $(SRC)/dev/flang/fe/LibraryFeature.java \
           $(SRC)/dev/flang/fe/LibraryModule.java \
           $(SRC)/dev/flang/fe/Module.java \
           $(SRC)/dev/flang/fe/SourceModule.java \
@@ -310,7 +313,7 @@ $(CLASS_FILES_OPT): $(JAVA_FILES_OPT) $(CLASS_FILES_AIR) $(CLASS_FILES_FUIR)
 	$(JAVAC) -cp $(CLASSES_DIR) -d $(CLASSES_DIR) $(JAVA_FILES_OPT)
 	touch $@
 
-$(CLASS_FILES_BE_INTERPRETER): $(JAVA_FILES_BE_INTERPRETER) $(CLASS_FILES_FUIR) $(CLASS_FILES_AST)  # NYI: remove dependency on $(CLASS_FILES_AST), replace by $(CLASS_FILES_FUIR)
+$(CLASS_FILES_BE_INTERPRETER): $(JAVA_FILES_BE_INTERPRETER) $(CLASS_FILES_FUIR) $(CLASS_FILES_AIR) $(CLASS_FILES_AST)  # NYI: remove dependency on $(CLASS_FILES_AST), replace by $(CLASS_FILES_FUIR)
 	mkdir -p $(CLASSES_DIR)
 	$(JAVAC) -cp $(CLASSES_DIR) -d $(CLASSES_DIR) $(JAVA_FILES_BE_INTERPRETER)
 	touch $@
