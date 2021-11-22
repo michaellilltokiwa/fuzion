@@ -104,7 +104,7 @@ public class Types extends ANY
   public static Type t_ERROR = new Type(ERROR_NAME);
 
   /* artificial feature used when feature is not known due to compilation error */
-  public static Feature f_ERROR = new Feature(true);
+  public static final Feature f_ERROR = new Feature(true);
 
   public static class Resolved
   {
@@ -279,7 +279,6 @@ public class Types extends ANY
     t_ADDRESS = new Type(ADDRESS_NAME);
     t_UNDEFINED = new Type(UNDEFINED_NAME);
     t_ERROR = new Type(ERROR_NAME);
-    f_ERROR = new Feature(true);
   }
 
 }
