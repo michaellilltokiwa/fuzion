@@ -26,9 +26,12 @@ Fuzion language implementation.  If not, see <https://www.gnu.org/licenses/>.
 
 package dev.flang.ast;
 
+import java.util.Arrays;
 import java.util.Collection;
+import java.util.TreeSet;
 
 import dev.flang.util.ANY;
+import dev.flang.util.Errors;
 import dev.flang.util.FuzionConstants;
 import dev.flang.util.List;
 import dev.flang.util.SourcePosition;
@@ -355,6 +358,302 @@ public abstract class AbstractFeature extends ANY implements Comparable<Abstract
   public abstract boolean isThisRef();
 
 
+  /**
+   * true iff this feature as a result field. This is the case if the returnType
+   * is not a constructortype (self, value, single) and this is not a field.
+   *
+   * @return true iff this has a result field.
+   */
+  public boolean hasResultField()
+  {
+    return isRoutine() && !isConstructor();
+  }
+
+
+  /**
+   * For a feature with given FeatureName fn that is directly inherited from
+   * this through inheritance call p to heir, this determines the actual
+   * FeatureName as seen in the heir feature.
+   *
+   * The reasons for a feature name to change during inheritance are
+   *
+   * - actual generic arguments to open generic parameters change the argument
+   *   count.
+   *
+   * - explicit renaming during inheritance
+   *
+   * @param module the main SrcModule
+   *
+   * @param f a feature that is declared in or inherted by this feature
+   *
+   * @param fn a feature name within this feature
+   *
+   * @param p an inheritance call in heir inheriting from this
+   *
+   * @param the heir that contains the inheritance call p
+   *
+   * @return the new feature name as seen within heir.
+   */
+  public FeatureName handDown(SrcModule module, AbstractFeature f, FeatureName fn, Call p, AbstractFeature heir)
+  {
+    if (PRECONDITIONS) require
+      (module.declaredOrInheritedFeatures(this).get(fn).sameAs(f),
+       this != heir);
+
+    if (f.outer().sameAs(p.calledFeature())) // NYI: currently does not support inheriting open generic over several levels
+      {
+        fn = f.effectiveName(p.generics);
+      }
+
+    return fn;
+  }
+
+
+  /**
+   * Determine the actual types of an array of types in this feature after it
+   * was inherited by heir. The types may change on the way due to formal
+   * generics being replaced by actual generic arguments on the way.
+   *
+   * Due to open generics, even the number of types may change through
+   * inheritance.
+   *
+   * @param a an array of types to be handed down
+   *
+   * @param heir a feature that inhertis from outer()
+   *
+   * @return the types from the argument array a has seen this within
+   * heir. Their number might have changed due to open generics.
+   */
+  public AbstractType[] handDown(Resolution res, AbstractType[] a, AbstractFeature heir)  // NYI: This does not distinguish different inheritance chains yet
+  {
+    if (PRECONDITIONS) require
+      (heir != null,
+       state().atLeast(Feature.State.RESOLVED_TYPES));
+
+    if (heir != Types.f_ERROR)
+      {
+        for (Call c : heir.findInheritanceChain(outer()))
+          {
+            for (int i = 0; i < a.length; i++)
+              {
+                var ti = a[i];
+                if (ti.isOpenGeneric())
+                  {
+                    var frmlTs = ti.genericArgument().replaceOpen(c.generics);
+                    a = Arrays.copyOf(a, a.length - 1 + frmlTs.size());
+                    for (var tg : frmlTs)
+                      {
+                        check
+                          (tg == Types.intern(tg));
+                        a[i] = tg.astType();
+                        i++;
+                      }
+                    i = i - 1;
+                  }
+                else
+                  {
+                    FormalGenerics.resolve(res, c.generics, heir);
+                    ti = ti.actualType(c.calledFeature(), c.generics);
+                    a[i] = Types.intern(ti);
+                  }
+              }
+          }
+      }
+    return a;
+  }
+
+
+  /**
+   * Find the chain of inheritance calls from this to its parent f.
+   *
+   * NYI: Repeated inheritance handling is still missing, there might be several
+   * different inheritance chains, need to check if they lead to the same result
+   * (wrt generic arguments) or renaminging/selection of the preferred
+   * implementation.
+   *
+   * @param ancestor the ancestor feature this inherits from
+   *
+   * @return The inheritance chain from the inheritance call to ancestor at the
+   * first index down to the last inheritance call within this.  Empty list in
+   * case this == ancestor, null in case this does not inherit from ancestor.
+   */
+  public List<Call> tryFindInheritanceChain(AbstractFeature ancestor)
+  {
+    List<Call> result;
+    if (this.sameAs(ancestor))
+      {
+        result = new List<Call>();
+      }
+    else
+      {
+        result = null;
+        for (Call c : inherits())
+          {
+            result = c.calledFeature().tryFindInheritanceChain(ancestor);
+            if (result != null)
+              {
+                result.add(c);
+                break;
+              }
+          }
+      }
+    return result;
+  }
+
+
+  /**
+   * Find the chain of inheritance calls from this to its parent f.
+   *
+   * NYI: Repeated inheritance handling is still missing, there might be several
+   * different inheritance chains, need to check if they lead to the same result
+   * (wrt generic arguments) or renaminging/selection of the preferred
+   * implementation.
+   *
+   * @param ancestor the ancestor feature this inherits from
+   *
+   * @return The inheritance chain from the inheritance call to ancestor at the
+   * first index down to the last inheritance call within this.  Empty list in
+   * case this == ancestor, never null.
+   */
+  public List<Call> findInheritanceChain(AbstractFeature ancestor)
+  {
+    if (PRECONDITIONS) require
+      (ancestor != null);
+
+    List<Call> result = tryFindInheritanceChain(ancestor);
+
+    if (POSTCONDITIONS) ensure
+      (this == Types.f_ERROR || ancestor == Types.f_ERROR || Errors.count() > 0 || result != null);
+
+    return result;
+  }
+
+
+  /**
+   * Check if this is equal to or inherits from parent
+   *
+   * @param parent a loaded feature
+   *
+   * @return true iff this is a heir of parent.
+   */
+  public boolean inheritsFrom(AbstractFeature parent)
+  {
+    if (PRECONDITIONS) require
+                         (state().atLeast(Feature.State.LOADED),
+       parent != null && parent.state().atLeast(Feature.State.LOADED));
+
+    if (this.sameAs(parent))
+      {
+        return true;
+      }
+    else
+      {
+        for (Call p : inherits())
+          {
+            if (p.calledFeature().inheritsFrom(parent))
+              {
+                return true;
+              }
+          }
+      }
+    return false;
+  }
+
+
+  /**
+   * Does this Feature have an outer ref field, i.e., is outerRef() != null?
+   */
+  public boolean hasOuterRef()
+  {
+    return !isField() && !isChoice() && !isUniverse() && (this != Types.f_ERROR);
+  }
+
+
+  /**
+   * Is this a field of open generic type?
+   */
+  public boolean isOpenGenericField()
+  {
+    return isField() && resultType().isOpenGeneric();
+  }
+
+
+  public void visitCode(FeatureVisitor fv)
+  {
+    for (Call c: inherits())
+      {
+        var nc = c.visit(fv, (Feature) astFeature());
+        check
+          (c == nc); // NYI: This will fail when doing funny stuff like inherit from bool.infix &&, need to check and handle explicitly
+      }
+    if (contract() != null)
+      {
+        contract().visit(fv, (Feature) astFeature());
+      }
+    if (isRoutine())
+      {
+        code().visit(fv, (Feature) astFeature());
+      }
+  }
+
+
+  /**
+   * Determine the formal argument types of this feature.
+   *
+   * @return a new array containing this feature's formal argument types.
+   */
+  public AbstractType[] argTypes()
+  {
+    int argnum = 0;
+    var result = new AbstractType[arguments().size()];
+    for (var frml : arguments())
+      {
+        check
+          (Errors.count() > 0 || frml.state().atLeast(Feature.State.RESOLVED_DECLARATIONS));
+
+        var frmlT = frml.resultType();
+        check(frmlT == Types.intern(frmlT));
+        result[argnum] = frmlT;
+        argnum++;
+      }
+
+    if (POSTCONDITIONS) ensure
+      (result != null);
+
+    return result;
+  }
+
+
+  /**
+   * allInnerAndInheritedFeatures returns a complete set of inner features, used
+   * by Clazz.layout and Clazz.hasState.
+   *
+   * @return
+   */
+  public Collection<AbstractFeature> allInnerAndInheritedFeatures(SrcModule mod)
+  {
+    if (PRECONDITIONS) require
+                         (state().atLeast(Feature.State.RESOLVED));
+
+    TreeSet<AbstractFeature> result = new TreeSet<>();
+
+    result.addAll(mod.declaredFeatures(this).values());
+    for (Call p : inherits())
+      {
+        var cf = p.calledFeature();
+        check
+          (Errors.count() > 0 || cf != null);
+
+        if (cf != null)
+          {
+            result.addAll(cf.allInnerAndInheritedFeatures(mod));
+          }
+      }
+
+    return result;
+  }
+
+
   public abstract FeatureName featureName();
   public abstract SourcePosition pos();
   public abstract List<AbstractType> choiceGenerics();
@@ -364,24 +663,13 @@ public abstract class AbstractFeature extends ANY implements Comparable<Abstract
   public abstract AbstractFeature outer();
   public abstract AbstractType thisType();
   public abstract List<AbstractFeature> arguments();
-  public abstract FeatureName handDown(Resolution res, AbstractFeature f, FeatureName fn, Call p, AbstractFeature heir);
-  public abstract AbstractType[] handDown(Resolution res, AbstractType[] a, AbstractFeature heir);
   public abstract AbstractType resultType();
-  public abstract boolean inheritsFrom(AbstractFeature parent);
-  public abstract List<Call> tryFindInheritanceChain(AbstractFeature ancestor);
-  public abstract List<Call> findInheritanceChain(AbstractFeature ancestor);
   public abstract AbstractFeature resultField();
-  public abstract Collection<AbstractFeature> allInnerAndInheritedFeatures(Resolution res);
   public abstract AbstractFeature outerRef();
-  public abstract AbstractFeature get(Resolution res, String qname);
-  public abstract AbstractType[] argTypes();
+  public abstract AbstractFeature get(String name);
 
   // following are used in IR/Clazzes middle end or later only:
-  public abstract AbstractFeature outerRefOrNull();
-  public abstract void visit(FeatureVisitor v);
-  public abstract boolean isOpenGenericField();
-  public abstract int depth();
-  public abstract Feature choiceTag();
+  public abstract AbstractFeature choiceTag();
 
   public abstract Impl.Kind implKind();  // NYI: remove, used only in Clazz.java for some obscure case
   public abstract Expr initialValue();   // NYI: remove, used only in Clazz.java for some obscure case

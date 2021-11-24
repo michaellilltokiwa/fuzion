@@ -41,9 +41,10 @@ import dev.flang.ast.FeatureVisitor;
 import dev.flang.ast.FormalGenerics;
 import dev.flang.ast.Generic;
 import dev.flang.ast.Impl;
-import dev.flang.ast.Resolution;
 import dev.flang.ast.ReturnType;
+import dev.flang.ast.SrcModule;
 
+import dev.flang.util.Errors;
 import dev.flang.util.FuzionConstants;
 import dev.flang.util.List;
 import dev.flang.util.SourcePosition;
@@ -229,6 +230,7 @@ public class LibraryFeature extends AbstractFeature
     return result;
   }
 
+
   /**
    * The formal arguments of this feature
    */
@@ -249,6 +251,112 @@ public class LibraryFeature extends AbstractFeature
     return _arguments;
   }
 
+
+  /**
+   * The result field declared automatically in case hasResultField().
+   *
+   * @return the result or null if this does not have a result field.
+   */
+  public AbstractFeature resultField()
+  {
+    AbstractFeature result = null;
+    if (hasResultField())
+      {
+        var i = _libModule.featureInnerPos(_index);
+        var n = _libModule.featureArgCount(_index);
+        var c = 0;
+        while (c < n)
+          {
+            c++;
+            i = _libModule.nextFeaturePos(i);
+          }
+        result = _libModule.libraryFeature(i, (Feature) _from.resultField());
+      }
+
+    check
+      (hasResultField() == (result != null));
+
+    return result;
+  }
+
+
+  /**
+   * The outer ref field field in case hasOuterRef().
+   *
+   * @return the outer ref or null if this does not have an outer ref.
+   */
+  public AbstractFeature outerRef()
+  {
+    AbstractFeature result = null;
+    if (hasOuterRef())
+      {
+        var i = _libModule.featureInnerPos(_index);
+        var n = _libModule.featureArgCount(_index) + (hasResultField() ? 1 : 0);
+        var c = 0;
+        while (c < n)
+          {
+            c++;
+            i = _libModule.nextFeaturePos(i);
+          }
+        result = _libModule.libraryFeature(i, (Feature) _from.outerRef());
+      }
+
+    check
+      (hasOuterRef() == (result != null));
+
+    return result;
+  }
+
+  /**
+   * For choice feature (i.e., isChoice() holds): The tag field that holds in
+   * i32 that identifies the index of the actual generic argument to choice that
+   * is represented.
+   *
+   * @return the choice tag or null if this !isChoice().
+   */
+  public AbstractFeature choiceTag()
+  {
+    AbstractFeature result = null;
+    if (isChoice())
+      {
+        var i = _libModule.featureInnerPos(_index);
+        result = _libModule.libraryFeature(i, (Feature) _from.choiceTag());
+      }
+
+    check
+      (isChoice() == (result != null));
+
+    return result;
+  }
+
+
+  /**
+   * Get inner feature with given name.
+   *
+   * @param name the name of the feature within this.
+   *
+   * @return the found feature or null in case of an error.
+   */
+  public AbstractFeature get(String name)
+  {
+    var sz = _libModule.featureInnerSize(_index);
+    var i = _libModule.featureInnerPos(_index);
+    var e = i + sz;
+    while  (i < e)
+      {
+        var r = _libModule.libraryFeature(i, _libModule._srcModule.featureFromOffset(i));
+        var rn = r.featureName();
+        if (rn.baseName().equals(name) && rn.argCount() == 0)
+          {
+            return r;
+          }
+        i = _libModule.nextFeaturePos(i);
+      }
+    Errors.fatal("Could not find feature '"+name+"' in "+this);
+    throw new Error("not reachable");
+  }
+
+
   public FeatureName featureName()
   {
     return _featureName;
@@ -259,25 +367,9 @@ public class LibraryFeature extends AbstractFeature
   public Generic getGeneric(String name) { return _from.getGeneric(name); }
   public List<Call> inherits() { return _from.inherits(); }
   public AbstractType thisType() { return _from.thisType(); }
-  public FeatureName handDown(Resolution res, AbstractFeature f, FeatureName fn, Call p, AbstractFeature heir) { return _from.handDown(res, f, fn, p, heir); }
-  public AbstractType[] handDown(Resolution res, AbstractType[] a, AbstractFeature heir) { return _from.handDown(res, a, heir); }
   public AbstractType resultType() { return _from.resultType(); }
-  public boolean inheritsFrom(AbstractFeature parent) { return _from.inheritsFrom(parent); }
-  public List<Call> tryFindInheritanceChain(AbstractFeature ancestor) { return _from.tryFindInheritanceChain(ancestor); }
-  public List<Call> findInheritanceChain(AbstractFeature ancestor) { return _from.findInheritanceChain(ancestor); }
-  public AbstractFeature resultField() { return _from.resultField(); }
-  public Collection<AbstractFeature> allInnerAndInheritedFeatures(Resolution res) { return _from.allInnerAndInheritedFeatures(res); }
-  public AbstractFeature outerRef() { return _from.outerRef(); }
-  public AbstractFeature get(Resolution res, String qname) { return _from.get(res, qname); }
-  public AbstractType[] argTypes() { return _from.argTypes(); }
 
   // following are used in IR/Clazzes middle end or later only:
-  public AbstractFeature outerRefOrNull() { return _from.outerRefOrNull(); }
-  public void visit(FeatureVisitor v) { _from.visit(v); }
-  public boolean isOpenGenericField() { return _from.isOpenGenericField(); }
-  public int depth() { return _from.depth(); }
-  public Feature choiceTag() { return _from.choiceTag(); }
-
   public Impl.Kind implKind() { return _from.implKind(); }      // NYI: remove, used only in Clazz.java for some obscure case
   public Expr initialValue() { return _from.initialValue(); }   // NYI: remove, used only in Clazz.java for some obscure case
 

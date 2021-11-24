@@ -35,7 +35,7 @@ import dev.flang.ast.Feature; // NYI: remove dependency!
 import dev.flang.ast.FeatureVisitor; // NYI: remove dependency!
 import dev.flang.ast.Impl; // NYI: remove dependency!
 import dev.flang.ast.Match; // NYI: remove dependency!
-import dev.flang.ast.Resolution; // NYI: remove dependency!
+import dev.flang.ast.SrcModule; // NYI: remove dependency!
 import dev.flang.ast.Stmnt; // NYI: remove dependency!
 import dev.flang.ast.Tag; // NYI: remove dependency!
 import dev.flang.ast.Types; // NYI: remove dependency!
@@ -80,17 +80,14 @@ public class MiddleEnd extends ANY
   final List<AbstractFeature> _forFindingUsedFeatures = new List<>();
 
 
-  final Resolution _res;
-
   /*--------------------------  constructors  ---------------------------*/
 
 
-  public MiddleEnd(FuzionOptions options, MIR mir, Resolution res)
+  public MiddleEnd(FuzionOptions options, MIR mir, SrcModule mod)
   {
     _options = options;
     _mir = mir;
-    _res = res;
-    Clazz._res = res; // NYI: Bad hack!
+    Clazz._module = mod; // NYI: Bad hack!
   }
 
 
@@ -129,22 +126,22 @@ public class MiddleEnd extends ANY
   void markInternallyUsed() {
     var tag = FuzionConstants.CHOICE_TAG_NAME;
     var universe = _mir.universe();
-    markUsed(((Feature)universe /* NYI: Cast! */).get(_res, "i8" ,1).get(_res, "val"), SourcePosition.builtIn);
-    markUsed(((Feature)universe /* NYI: Cast! */).get(_res, "i16",1).get(_res, "val"), SourcePosition.builtIn);
-    markUsed(((Feature)universe /* NYI: Cast! */).get(_res, "i32",1).get(_res, "val"), SourcePosition.builtIn);
-    markUsed(((Feature)universe /* NYI: Cast! */).get(_res, "i64",1).get(_res, "val"), SourcePosition.builtIn);
-    markUsed(((Feature)universe /* NYI: Cast! */).get(_res, "u8" ,1).get(_res, "val"), SourcePosition.builtIn);
-    markUsed(((Feature)universe /* NYI: Cast! */).get(_res, "u16",1).get(_res, "val"), SourcePosition.builtIn);
-    markUsed(((Feature)universe /* NYI: Cast! */).get(_res, "u32",1).get(_res, "val"), SourcePosition.builtIn);
-    markUsed(((Feature)universe /* NYI: Cast! */).get(_res, "u64",1).get(_res, "val"), SourcePosition.builtIn);
-    markUsed(((Feature)universe /* NYI: Cast! */).get(_res, "bool").get(_res, tag) , SourcePosition.builtIn);
-    markUsed(((Feature)universe /* NYI: Cast! */).get(_res, "conststring")   , SourcePosition.builtIn);
-    markUsed(((Feature)universe /* NYI: Cast! */).get(_res, "conststring").get(_res, "isEmpty"), SourcePosition.builtIn);  // NYI: check why this is not found automatically
-    markUsed(((Feature)universe /* NYI: Cast! */).get(_res, "conststring").get(_res, "asString"), SourcePosition.builtIn);  // NYI: check why this is not found automatically
+    markUsed(((Feature)universe /* NYI: Cast! */).get("i8" ,1).get("val"), SourcePosition.builtIn);
+    markUsed(((Feature)universe /* NYI: Cast! */).get("i16",1).get("val"), SourcePosition.builtIn);
+    markUsed(((Feature)universe /* NYI: Cast! */).get("i32",1).get("val"), SourcePosition.builtIn);
+    markUsed(((Feature)universe /* NYI: Cast! */).get("i64",1).get("val"), SourcePosition.builtIn);
+    markUsed(((Feature)universe /* NYI: Cast! */).get("u8" ,1).get("val"), SourcePosition.builtIn);
+    markUsed(((Feature)universe /* NYI: Cast! */).get("u16",1).get("val"), SourcePosition.builtIn);
+    markUsed(((Feature)universe /* NYI: Cast! */).get("u32",1).get("val"), SourcePosition.builtIn);
+    markUsed(((Feature)universe /* NYI: Cast! */).get("u64",1).get("val"), SourcePosition.builtIn);
+    markUsed(((Feature)universe /* NYI: Cast! */).get("bool").get(tag) , SourcePosition.builtIn);
+    markUsed(((Feature)universe /* NYI: Cast! */).get("conststring")   , SourcePosition.builtIn);
+    markUsed(((Feature)universe /* NYI: Cast! */).get("conststring").get("isEmpty"), SourcePosition.builtIn);  // NYI: check why this is not found automatically
+    markUsed(((Feature)universe /* NYI: Cast! */).get("conststring").get("asString"), SourcePosition.builtIn);  // NYI: check why this is not found automatically
     markUsed(Types.resolved.f_sys_array_data              , SourcePosition.builtIn);
     markUsed(Types.resolved.f_sys_array_length            , SourcePosition.builtIn);
-    markUsed(((Feature)universe /* NYI: Cast! */).get(_res, "unit")          , SourcePosition.builtIn);
-    markUsed(((Feature)universe /* NYI: Cast! */).get(_res, "void")          , SourcePosition.builtIn);
+    markUsed(((Feature)universe /* NYI: Cast! */).get("unit")          , SourcePosition.builtIn);
+    markUsed(((Feature)universe /* NYI: Cast! */).get("void")          , SourcePosition.builtIn);
   }
 
 
@@ -205,9 +202,9 @@ public class MiddleEnd extends ANY
                   }
               }
           }
-        if (f.isIntrinsic() && f.outerRefOrNull() != null)
+        if (f.isIntrinsic() && f.outerRef() != null)
           {
-            markUsed(f.outerRefOrNull(), false, usedAt);
+            markUsed(f.outerRef(), false, usedAt);
           }
         for (AbstractFeature rf : _mir._module.redefinitions(f))
           {
@@ -237,14 +234,15 @@ public class MiddleEnd extends ANY
         markUsed(f.choiceTag(), f.pos());
       }
 
-    f.visit(new FeatureVisitor() {
+    var fv = new FeatureVisitor() {
         // it does not seem to be necessary to mark all features in types as used:
         // public Type  action(Type    t, Feature outer) { t.findUsedFeatures(res, pos); return t; }
         public Call  action(Call    c, Feature outer) { findUsedFeatures(c); return c; }
         //        public Stmnt action(Feature f, Feature outer) { markUsed(res, pos);      return f; } // NYI: this seems wrong ("f." missing) or unnecessary
         public void  action(Match   m, Feature outer) { findUsedFeatures(m);           }
         public void  action(Tag     t, Feature outer) { findUsedFeatures(t._taggedType, t.pos()); }
-      });
+      };
+    f.visitCode(fv);
   }
 
 

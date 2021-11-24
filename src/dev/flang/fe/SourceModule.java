@@ -295,7 +295,7 @@ public class SourceModule extends Module implements SrcModule, MirModule
   {
     var d = _main == null
       ? _universe
-      : _universe.get(_res, _main);
+      : _universe.get(_main);
 
     if (false)  // NYI: Eventually, we might want to stop here in case of errors. This is disabled just to check the robustness of the next steps
       {
@@ -725,7 +725,7 @@ public class SourceModule extends Module implements SrcModule, MirModule
                         check
                           (cf != outer);
 
-                        var newfn = cf.handDown(_res, f, fn, p, outer);
+                        var newfn = cf.handDown(this, f, fn, p, outer);
                         addInheritedFeature(outer, p.pos(), newfn, f);
                       }
                   }
@@ -739,7 +739,7 @@ public class SourceModule extends Module implements SrcModule, MirModule
                     check
                       (cf != outer);
 
-                    var newfn = cf.handDown(_res, f, fn, p, outer);
+                    var newfn = cf.handDown(this, f, fn, p, outer);
                     addInheritedFeature(outer, p.pos(), newfn, f);
                   }
               }
@@ -1231,17 +1231,38 @@ public class SourceModule extends Module implements SrcModule, MirModule
     else
       {
         // the first inner features written out will be the formal arguments,
-        // followed by all other inner features in (alphabetical?) order.
+        // followed by the result field (iff f.hasResultField()), followed by
+        // all other inner features in (alphabetical?) order.
         var innerFeatures = new List<AbstractFeature>();
-        var args = new TreeSet<AbstractFeature>();
+        var added = new TreeSet<AbstractFeature>();
         for (var a : f.arguments())
           {
             innerFeatures.add(a);
-            args.add(a);
+            added.add(a);
+          }
+        if (f.hasResultField())
+          {
+            var r = f.resultField();
+            innerFeatures.add(r);
+            added.add(r);
+          }
+        if (f.hasOuterRef())
+          {
+            var or = f.outerRef();
+            innerFeatures.add(or);
+            added.add(or);
+          }
+        if (f.isChoice())
+          {
+            check
+              (Errors.count() > 0 || added.isEmpty()); // a choice has no arguments, no result and no outer ref.
+            var ct = f.choiceTag();
+            innerFeatures.add(ct);
+            added.add(ct);
           }
         for (var i : m.values())
           {
-            if (!args.contains(i))
+            if (!added.contains(i))
               {
                 innerFeatures.add(i);
               }
@@ -1271,6 +1292,7 @@ public class SourceModule extends Module implements SrcModule, MirModule
           }
       }
   }
+
 
   /**
    * Collect the binary data for given feature.
