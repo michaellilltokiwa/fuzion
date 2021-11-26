@@ -26,6 +26,7 @@ Fuzion language implementation.  If not, see <https://www.gnu.org/licenses/>.
 
 package dev.flang.fe;
 
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.nio.ByteBuffer;
 
@@ -40,6 +41,7 @@ import dev.flang.ast.FeatureName;
 
 import dev.flang.mir.MIR;
 
+import dev.flang.util.FuzionConstants;
 import dev.flang.util.SourceDir;
 
 
@@ -274,10 +276,39 @@ public class LibraryModule extends Module
   {
     return data().getInt(featureIdPos(at));
   }
+  int featureResultTypePos(int at)
+  {
+    var i = featureIdPos(at) + 4;
+    if ((featureKind(at) & FuzionConstants.MIR_FILE_KIND_HAS_TYPE_PAREMETERS) != 0)
+      {
+        var d = data();
+        var n = d.getInt(i);
+        i = i + 4 + 1;
+        while (n > 0)
+          {
+            var l = d.getInt(i);
+            i = i + 4 + l;
+            n--;
+          }
+      }
+    return i;
+  }
+  boolean featureHasResultType(int at)
+  {
+    var k = featureKind(at) & FuzionConstants.MIR_FILE_KIND_MASK;
+    return
+      (k != FuzionConstants.MIR_FILE_KIND_CONSTRUCTOR_REF   &&
+       k != FuzionConstants.MIR_FILE_KIND_CONSTRUCTOR_VALUE &&
+       k != AbstractFeature.Kind.Choice.ordinal());
+  }
   int featureInnerSizePos(int at)
   {
-    var i = featureIdPos(at);
-    return i + 4;
+    var i = featureResultTypePos(at);
+    if (featureHasResultType(at))
+      {
+        i = nextTypePos(i);
+      }
+    return i;
   }
   int featureInnerSize(int at)
   {
@@ -290,8 +321,69 @@ public class LibraryModule extends Module
   }
   int nextFeaturePos(int at)
   {
-    at = featureInnerPos(at) + featureInnerSize(at);
-    return at;
+    var next = featureInnerPos(at) + featureInnerSize(at);
+    return next;
+  }
+  int nextTypePos(int at)
+  {
+    var k = data().getInt(at);
+    at = at + 4;
+    if (k == -1)
+      {
+        return at + 4;
+      }
+    else
+      {
+        int f = data().getInt(at);
+        at = at + 4;
+        int n = k;
+        for (var i = 0; i<n; i++)
+          {
+            at = nextTypePos(at);
+          }
+        return at;
+      }
+  }
+
+
+  int typeKind(int at)
+  {
+    return data().getInt(at);
+  }
+  int typeGenericPos(int at)
+  {
+    if (PRECONDITIONS) require
+      (typeKind(at) == -1);
+
+    return at+4;
+  }
+  int typeGeneric(int at)
+  {
+    if (PRECONDITIONS) require
+      (typeKind(at) == -1);
+
+    return data().getInt(typeGenericPos(at));
+  }
+  int typeFeaturePos(int at)
+  {
+    if (PRECONDITIONS) require
+      (typeKind(at) >= 0);
+
+    return at+4;
+  }
+  int typeFeature(int at)
+  {
+    if (PRECONDITIONS) require
+      (typeKind(at) >= 0);
+
+    return data().getInt(typeFeaturePos(at));
+  }
+  int typeActualGenericsPos(int at)
+  {
+    if (PRECONDITIONS) require
+      (typeKind(at) >= 0);
+
+    return typeFeaturePos(at) + 4;
   }
 
 

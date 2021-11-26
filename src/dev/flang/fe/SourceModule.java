@@ -26,14 +26,10 @@ Fuzion language implementation.  If not, see <https://www.gnu.org/licenses/>.
 
 package dev.flang.fe;
 
-import java.io.ByteArrayOutputStream;
-import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 
 import java.nio.ByteBuffer;
-
-import java.nio.charset.StandardCharsets;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -47,6 +43,7 @@ import java.util.TreeMap;
 import java.util.TreeSet;
 
 import dev.flang.ast.AbstractFeature;
+import dev.flang.ast.AbstractType;
 import dev.flang.ast.AstErrors;
 import dev.flang.ast.Assign;
 import dev.flang.ast.Block;
@@ -155,7 +152,7 @@ public class SourceModule extends Module implements SrcModule, MirModule
    * The universe is the implicit root of all features that
    * themeselves do not have their own root.
    */
-  private Feature _universe;
+  final Feature _universe;
 
 
   /**
@@ -1170,158 +1167,11 @@ public class SourceModule extends Module implements SrcModule, MirModule
 
 
   /**
-   * Helper class that wraps ByteArrayOutputStream to make field count
-   * accessible.
-   */
-  static class BAOutputStream extends ByteArrayOutputStream
-  {
-    public int count() { return this.count; }
-  }
-
-  /**
-   * Helper class that wraps DataOutputStream to provide the current offset and
-   * create a ByteBuffer.
-   */
-  static class DOutputStream extends DataOutputStream
-  {
-    DOutputStream()
-    {
-      super(new BAOutputStream());
-    }
-    int offset()
-    {
-      return ((BAOutputStream)out).count();
-    }
-    ByteBuffer buffer()
-    {
-      return ByteBuffer.wrap(((BAOutputStream)out).toByteArray());
-    }
-  }
-
-
-  /**
    * Create a ByteBuffer containing the .mir file binary data for this module.
    */
   public ByteBuffer data()
   {
-    var o = new DOutputStream();
-    try
-      {
-        o.write(FuzionConstants.MIR_FILE_MAGIC);
-        collectData(true, o, _universe);
-      }
-    catch (IOException io)
-      {
-        throw new Error(io);  // NYI: proper error handling
-      }
-    return o.buffer();
-  }
-
-
-  /**
-   * Collect the binary data for features declared within given feature.
-   */
-  void collectData(boolean real, DOutputStream o, Feature f) throws IOException
-  {
-    var m = declaredFeaturesOrNull(f);
-    if (m == null)
-      {
-        o.writeInt(0);
-      }
-    else
-      {
-        // the first inner features written out will be the formal arguments,
-        // followed by the result field (iff f.hasResultField()), followed by
-        // all other inner features in (alphabetical?) order.
-        var innerFeatures = new List<AbstractFeature>();
-        var added = new TreeSet<AbstractFeature>();
-        for (var a : f.arguments())
-          {
-            innerFeatures.add(a);
-            added.add(a);
-          }
-        if (f.hasResultField())
-          {
-            var r = f.resultField();
-            innerFeatures.add(r);
-            added.add(r);
-          }
-        if (f.hasOuterRef())
-          {
-            var or = f.outerRef();
-            innerFeatures.add(or);
-            added.add(or);
-          }
-        if (f.isChoice())
-          {
-            check
-              (Errors.count() > 0 || added.isEmpty()); // a choice has no arguments, no result and no outer ref.
-            var ct = f.choiceTag();
-            innerFeatures.add(ct);
-            added.add(ct);
-          }
-        for (var i : m.values())
-          {
-            if (!added.contains(i))
-              {
-                innerFeatures.add(i);
-              }
-          }
-
-        // NYI: Calling collectFeatures twice here results in performance that
-        // is quadratic in the nesting level of the features:
-
-        // determine the size
-        var dummy = new DOutputStream();
-        collectFeatures(false, dummy, innerFeatures);
-        var sz = dummy.offset();
-        o.writeInt(sz);
-
-        // write the actual data
-        collectFeatures(real, o, innerFeatures);
-      }
-  }
-
-  void collectFeatures(boolean real, DOutputStream o, List<AbstractFeature> fs) throws IOException
-  {
-    for (var df : fs)
-      {
-        if (df instanceof Feature dff)
-          {
-            collectFeature(real, o, dff);
-          }
-      }
-  }
-
-
-  /**
-   * Collect the binary data for given feature.
-   */
-  void collectFeature(boolean real, DOutputStream o, Feature f) throws IOException
-  {
-    var ix = o.offset();
-    var k =
-      !f.isConstructor() ? f.kind().ordinal() :
-      f.isThisRef()      ? FuzionConstants.MIR_FILE_KIND_CONSTRUCTOR_REF
-                         : FuzionConstants.MIR_FILE_KIND_CONSTRUCTOR_VALUE;
-    check
-      (k >= 0,
-       f.isConstructor() || k < FuzionConstants.MIR_FILE_KIND_CONSTRUCTOR_VALUE);
-    var n = f.featureName();
-    var utf8Name = n.baseName().getBytes(StandardCharsets.UTF_8);
-    o.write(k);
-    o.writeInt(utf8Name.length);             // NYI: use better integer encoding
-    o.write(utf8Name);                       // NYI: internal names (outer refs, statement results) are too long and waste memory
-    o.writeInt(f.featureName().argCount());  // NYI: use better integer encoding
-    o.writeInt(f.featureName()._id);         // NYI: id /= 0 only if argCount = 0, so join these two values.
-    check
-      (f.arguments().size() == f.featureName().argCount());
-    collectData(real, o, f);
-    if (real)
-      {
-        data(f)._mirOffset = ix;
-        _offsetToAstFeature.put(ix, f);
-      }
+    return new LibraryOut(this).buffer();
   }
 
 
@@ -1331,6 +1181,18 @@ public class SourceModule extends Module implements SrcModule, MirModule
    * NYI: Remove once ASTFeatures are no longer needed.
    */
   TreeMap<Integer, Feature> _offsetToAstFeature = new TreeMap<>();
+
+
+  /**
+   * Record offset ix for feature f.
+   *
+   * NYI: Remove once ASTFeatures are no longer needed.
+   */
+  void registerOffset(Feature f, int ix)
+  {
+    data(f)._mirOffset = ix;
+    _offsetToAstFeature.put(ix, f);
+  }
 
 
   /**

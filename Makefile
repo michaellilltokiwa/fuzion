@@ -33,6 +33,7 @@ CLASSES_DIR = $(BUILD_DIR)/classes
 JAVA_FILES_UTIL = \
           $(SRC)/dev/flang/util/ANY.java \
           $(SRC)/dev/flang/util/Callable.java \
+          $(SRC)/dev/flang/util/DataOut.java \
           $(SRC)/dev/flang/util/Errors.java \
           $(SRC)/dev/flang/util/FuzionOptions.java \
           $(SRC)/dev/flang/util/FuzionConstants.java \
@@ -122,6 +123,8 @@ JAVA_FILES_FE = \
           $(SRC)/dev/flang/fe/FrontEndOptions.java \
           $(SRC)/dev/flang/fe/LibraryFeature.java \
           $(SRC)/dev/flang/fe/LibraryModule.java \
+          $(SRC)/dev/flang/fe/LibraryOut.java \
+          $(SRC)/dev/flang/fe/LibraryType.java \
           $(SRC)/dev/flang/fe/Module.java \
           $(SRC)/dev/flang/fe/SourceModule.java \
 

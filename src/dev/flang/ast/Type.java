@@ -70,7 +70,7 @@ public class Type extends AbstractType implements Comparable<Type>
    * Is this type explicitly a reference or a value type, or whatever the
    * underlying feature is?
    */
-  enum RefOrVal
+  public enum RefOrVal
   {
     Ref,
     Value,
@@ -162,7 +162,7 @@ public class Type extends AbstractType implements Comparable<Type>
    * generics is a pre-requisite to resolving types.
    */
   Generic generic;
-  Generic generic() { return generic; }
+  public Generic generic() { return generic; }
 
 
   /**
@@ -170,12 +170,13 @@ public class Type extends AbstractType implements Comparable<Type>
    * replaceGeneric or resolve is called.
    */
   boolean checkedForGeneric = false;
+  boolean checkedForGeneric() { return checkedForGeneric; }
 
 
   /**
    * Cached result of dependsOnGenerics().
    */
-  YesNo dependsOnGenerics = YesNo.dontKnow;
+  public YesNo dependsOnGenerics = YesNo.dontKnow;
 
 
   /**
@@ -552,7 +553,7 @@ public class Type extends AbstractType implements Comparable<Type>
    * Does this type (or its outer type) depend on generics. If not, actualType()
    * will not need to do anything on this.
    */
-  boolean dependsOnGenerics()
+  public boolean dependsOnGenerics()
   {
     YesNo result = dependsOnGenerics;
 
@@ -769,29 +770,6 @@ public class Type extends AbstractType implements Comparable<Type>
 
 
   /**
-   * True iff this is not generic and neither its outer type nor actual generics
-   * are generic up to the point this type is shown in the source (i.e., the
-   * surrounding feature that contains this type declaration may be generic).
-   */
-  public boolean isFreeFromFormalGenericsInSource()
-  {
-    check
-      (checkedForGeneric);
-
-    boolean result =
-      outerMostInSource() || _outer.isFreeFromFormalGenericsInSource();
-    if (!this._generics.isEmpty())
-      {
-        for (var t : this._generics)
-          {
-            result = result && t.isFreeFromFormalGenericsInSource();
-          }
-      }
-    return result;
-  }
-
-
-  /**
    * True iff this is not generic nad neither its outer type nor actual generics
    * are generic.
    *
@@ -995,7 +973,7 @@ public class Type extends AbstractType implements Comparable<Type>
    * For a resolved type, check if it is a choice type and if so, return the
    * list of choices. Otherwise, return null.
    */
-  List<AbstractType> choiceGenerics()
+  public List<AbstractType> choiceGenerics()
   {
     if (PRECONDITIONS) require
       (isGenericArgument() || feature != null);  // type must be resolved
@@ -1112,48 +1090,6 @@ public class Type extends AbstractType implements Comparable<Type>
     if (POSTCONDITIONS) ensure
       (result != null);
 
-    return result;
-  }
-
-
-  /**
-   * is this a formal generic argument that is open, i.e., the last argument in
-   * a formal generic arguments list and followed by ... as A in
-   * Funtion<R,A...>.
-   *
-   * This type needs very special treatment, it is allowed only as an argument
-   * type of the last argument in an abstract feature declaration.  When
-   * replacing generics by actual generics arguments, this gets replaced by a
-   * (possibly empty) list of actual types.
-   *
-   * @return true iff this is an open generic
-   */
-  public boolean isOpenGeneric()
-  {
-    if (PRECONDITIONS) require
-      (checkedForGeneric);
-
-    return isGenericArgument() && genericArgument().isOpen();
-  }
-
-
-  /**
-   * Check if this.isOpenGeneric(). If so, create a compile-time error.
-   *
-   * @return true iff !isOpenGeneric()
-   */
-  public boolean ensureNotOpen()
-  {
-    boolean result = true;
-
-    if (PRECONDITIONS) require
-      (checkedForGeneric);
-
-    if (isOpenGeneric())
-      {
-        AstErrors.illegalUseOfOpenFormalGeneric(pos, generic);
-        result = false;
-      }
     return result;
   }
 
@@ -1349,15 +1285,6 @@ public class Type extends AbstractType implements Comparable<Type>
 
 
   /**
-   * Check if this is a choice type.
-   */
-  public boolean isChoice()
-  {
-    return feature != null && feature.choiceGenerics() != null;
-  }
-
-
-  /**
    * Helper for isAssignableFrom: check if this is a choice type and actual is
    * assignable to one of the generic arguments to this choice.
    *
@@ -1394,24 +1321,11 @@ public class Type extends AbstractType implements Comparable<Type>
    * be or depend on generic parameters.
    *
    * @param actual the actual type.
-   */
-  public boolean isAssignableFrom(AbstractType actual)
-  {
-    return isAssignableFrom(actual, null);
-  }
-
-
-  /**
-   * Check if a value of static type actual can be assigned to a field of static
-   * type this.  This performs static type checking, i.e., the types may still
-   * be or depend on generic parameters.
-   *
-   * @param actual the actual type.
    *
    * @param assignableTo in case we want to show all types actual is assignable
    * to in an error message, this collects the types converted to strings.
    */
-  boolean isAssignableFrom(AbstractType actual, Set<String> assignableTo)
+  public boolean isAssignableFrom(AbstractType actual, Set<String> assignableTo)
   {
     if (PRECONDITIONS) require
       (Types.intern(this  ) == this,
@@ -1470,7 +1384,7 @@ public class Type extends AbstractType implements Comparable<Type>
    *
    * @param actual the actual type.
    */
-  boolean constraintAssignableFrom(AbstractType actual)
+  public boolean constraintAssignableFrom(AbstractType actual)
   {
     if (PRECONDITIONS) require
       (Types.intern(this  ) == this,
@@ -1554,46 +1468,6 @@ public class Type extends AbstractType implements Comparable<Type>
       (!result || Errors.count() > 0);
 
     return result;
-  }
-
-
-  /**
-   * Check if a value of static type actual can be assigned to a field of static
-   * type this.  This performs static type checking, i.e., the types may still
-   * be or depend on generic parameters.
-   *
-   * In case any of the types involved are or contain t_ERROR, this returns
-   * true. This is convenient to avoid the creation of follow-up errors in this
-   * case.
-   *
-   * @param actual the actual type.
-   */
-  public boolean isAssignableFromOrContainsError(AbstractType actual)
-  {
-    return
-      containsError() || actual.containsError() || isAssignableFrom(actual);
-  }
-
-
-  /**
-   * Check if given value can be assigned to this static type.  In addition to
-   * isAssignableFromOrContainsError, this checks if 'expr' is not '<xyz>.this'
-   * (Current or an outer ref) that might be a value type that is a heir of this
-   * type.
-   *
-   * @param expr the expression to be assigned to a variable of this type.
-   *
-   * @return true iff the assignment is ok.
-   */
-  public boolean isAssignableFrom(Expr expr)
-  {
-    var actlT = expr.type();
-
-    check
-      (actlT == Types.intern(actlT));
-
-    return isAssignableFromOrContainsError(actlT) &&
-      (!expr.isCallToOuterRef() && !(expr instanceof Current) || actlT.isRef() || actlT.isChoice());
   }
 
 

@@ -43,6 +43,8 @@ import dev.flang.ast.Generic;
 import dev.flang.ast.Impl;
 import dev.flang.ast.ReturnType;
 import dev.flang.ast.SrcModule;
+import dev.flang.ast.Type;
+import dev.flang.ast.Types;
 
 import dev.flang.util.Errors;
 import dev.flang.util.FuzionConstants;
@@ -105,6 +107,10 @@ public class LibraryFeature extends AbstractFeature
    */
   List<AbstractFeature> _arguments = null;
 
+  /**
+   * cached result of thisType()
+   */
+  private AbstractType _thisType;
 
   /*--------------------------  constructors  ---------------------------*/
 
@@ -121,7 +127,7 @@ public class LibraryFeature extends AbstractFeature
       (from._libraryFeature == null);
     from._libraryFeature = this;
 
-    _kind = lib.featureKind(index);
+    _kind = lib.featureKind(index) & FuzionConstants.MIR_FILE_KIND_MASK;
     var bytes = lib.featureName(index);
     var ac = lib.featureArgCount(index);
     var id = lib.featureId(index);
@@ -357,6 +363,64 @@ public class LibraryFeature extends AbstractFeature
   }
 
 
+  /**
+   * thisType returns the type of this feature's frame object.  This type exists
+   * even for features the do not have a frame such as abstracts, intrinsics,
+   * choice or field.
+   *
+   * @return this feature's frame object
+   */
+  public AbstractType thisType()
+  {
+    if (PRECONDITIONS) require
+      (isRoutine() || isAbstract() || isIntrinsic() || isChoice() || isField());
+
+    AbstractType result = _thisType;
+    if (result == null)
+      {
+        // NYI: Remove creation of ast.Type here:
+        result = new Type(pos(), featureName().baseName(), generics().asActuals(), null, this, Type.RefOrVal.LikeUnderlyingFeature);
+
+        result = new LibraryType(_libModule, pos(), this, result);
+        _thisType = result;
+      }
+
+    if (POSTCONDITIONS) ensure
+      (result != null,
+       Errors.count() > 0 || result.isRef() == isThisRef(),
+       // does not hold if feature is declared repeatedly
+       Errors.count() > 0 || result.featureOfType().sameAs(this),
+       true || // this condition is very expensive to check and obviously true:
+       result.astType() == Types.intern(result.astType())
+       );
+
+    return result;
+  }
+
+
+  /**
+   * resultType returns the result type of this feature using.
+   *
+   * @return the result type. Never null.
+   */
+  public AbstractType resultType()
+  {
+    if (isConstructor())
+      {
+        return thisType();
+      }
+    else if (isChoice())
+      {
+        return Types.resolved.t_void;
+      }
+    else
+      {
+        var from = _from.resultType();
+        return new LibraryType(_libModule, from.pos(), _libModule.featureResultTypePos(_index), from);
+      }
+  }
+
+
   public FeatureName featureName()
   {
     return _featureName;
@@ -366,8 +430,6 @@ public class LibraryFeature extends AbstractFeature
   public FormalGenerics generics() { return _from.generics(); }
   public Generic getGeneric(String name) { return _from.getGeneric(name); }
   public List<Call> inherits() { return _from.inherits(); }
-  public AbstractType thisType() { return _from.thisType(); }
-  public AbstractType resultType() { return _from.resultType(); }
 
   // following are used in IR/Clazzes middle end or later only:
   public Impl.Kind implKind() { return _from.implKind(); }      // NYI: remove, used only in Clazz.java for some obscure case
