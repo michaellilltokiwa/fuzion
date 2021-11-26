@@ -177,22 +177,13 @@ public class LibraryType extends AbstractType
   }
 
 
-  public AbstractType actualType(AbstractType t) { return _from.actualType(t); }
-  public AbstractType actualType(AbstractFeature f, List<AbstractType> actualGenerics) { return _from.actualType(f, actualGenerics); }
   public AbstractType asRef() { return _from.asRef(); }
   public AbstractType asValue() { return _from.asValue(); }
   public boolean isRef() { return _from.isRef(); }
-  public List<AbstractType> replaceGenerics(List<AbstractType> generics) { return _from.replaceGenerics(generics); }
   public boolean isAssignableFrom(AbstractType actual, Set<String> assignableTo) { return _from.isAssignableFrom(actual, assignableTo); }
   public int compareToIgnoreOuter(Type other) { return _from.compareToIgnoreOuter(other); }
-  public boolean isFreeFromFormalGenerics() { return _from.isFreeFromFormalGenerics(); }
   public AbstractType outer() { return _from.outer(); }
-  public boolean outerMostInSource() { return _from.outerMostInSource(); }
-  public boolean dependsOnGenerics() { return _from.dependsOnGenerics(); }
-  public Generic generic() { return _from.generic(); }
   public Generic genericArgument() { return _from.genericArgument(); }
-  public List<AbstractType> choiceGenerics() { return _from.choiceGenerics(); }
-  public boolean constraintAssignableFrom(AbstractType actual) { return _from.constraintAssignableFrom(actual); }
 
   public Type astType() { return _from; }
 
