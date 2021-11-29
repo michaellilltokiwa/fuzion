@@ -2445,8 +2445,7 @@ block       : BRACEL stmnts BRACER
   /**
    * Parse stmnts
    *
-stmnts      :
-            | s=stmnt semiOrFlatLF l=stmnts (semiOrFlatLF | )
+stmnts      : s=stmnt semiOrFlatLF l=stmnts semiOrFlatLF
             ;
    */
   List<Stmnt> stmnts()
