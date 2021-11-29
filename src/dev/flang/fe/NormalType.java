@@ -20,7 +20,7 @@ Fuzion language implementation.  If not, see <https://www.gnu.org/licenses/>.
  *
  * Tokiwa Software GmbH, Germany
  *
- * Source of class LibraryType
+ * Source of class NormalType
  *
  *---------------------------------------------------------------------*/
 
@@ -30,10 +30,8 @@ import java.util.Set;
 
 import dev.flang.ast.AbstractFeature;
 import dev.flang.ast.AbstractType;
-import dev.flang.ast.Expr;
 import dev.flang.ast.Feature;
 import dev.flang.ast.Generic;
-import dev.flang.ast.Type;
 
 import dev.flang.util.List;
 
@@ -41,12 +39,11 @@ import dev.flang.util.SourcePosition;
 
 
 /**
- * A LibraryType represents a Fuzion type loaded from a precompiled Fuzion
- * module file .fum.
+ * A NormalType is a LibraryType that is not a type parameter.
  *
  * @author Fridtjof Siebert (siebert@tokiwa.software)
  */
-public abstract class LibraryType extends AbstractType
+public class NormalType extends LibraryType
 {
 
 
@@ -54,59 +51,89 @@ public abstract class LibraryType extends AbstractType
 
 
   /**
-   * The library this come from.
+   * For a type that is not a generic argument, this is the feature the type is
+   * based on.
    */
-  public final LibraryModule _libModule;
+  AbstractFeature _feature;
 
 
   /**
-   * Position in _libModule that declares this type. Maybe -1 for
-   * _feature.thisType().
+   * Is this explicitly a ref type even if _feature is a value type?
    */
-  public final int _at;
-
-  /**
-   * The soucecode position of this type, used for error messages.
-   */
-  public final SourcePosition _pos;
+  boolean _makeRef;
 
 
   /**
-   * NYI: For now, this is just a wrapper around an AST type. This should be
-   * removed once all data is obtained from _libModule;
+   * For a type that is not a generic argument, this is the list of actual
+   * generics.
    */
-  private final Type _from;
+  List<AbstractType> _generics;
+
+
+  AbstractType _outer;
 
 
   /*--------------------------  constructors  ---------------------------*/
 
 
   /**
-   * Constructor to set common fields.
+   * Constructor for a plain Type from a given feature that does not have any
+   * actual generics.
    */
-  LibraryType(LibraryModule mod, int at, SourcePosition pos, AbstractType from /* NYI: to be removed */)
+  NormalType(LibraryModule mod,
+             int at,
+             SourcePosition pos,
+             AbstractFeature feature,
+             boolean makeRef,
+             List<AbstractType> generics,
+             AbstractType outer,
+             AbstractType from)
   {
-    this._libModule = mod;
-    this._at = at;
-    this._pos = pos;
-    this._from = from.astType();
+    super(mod, at, pos, from);
+
+    this._feature = feature;
+    this._makeRef = makeRef;
+    this._generics = generics;
+    this._outer = outer;
   }
 
 
   /*-----------------------------  methods  -----------------------------*/
 
 
-  public SourcePosition pos()
+  public AbstractFeature featureOfType()
   {
-    return _pos;
+    return _feature;
+  }
+
+  public boolean isGenericArgument()
+  {
+    return false;
+  }
+
+  public List<AbstractType> generics()
+  {
+    return _generics;
+  }
+
+  public Generic genericArgument()
+  {
+    throw new Error("genericArgument() is not defined for NormalType");
   }
 
 
-  public AbstractType asRef() { return _from.asRef(); }
-  public AbstractType asValue() { return _from.asValue(); }
-  public int compareToIgnoreOuter(Type other) { return _from.compareToIgnoreOuter(other); }
+  /**
+   * A normal type may be an explicit ref type.
+   */
+  public boolean isRef()
+  {
+    return _makeRef || _feature.isThisRef();
+  }
 
-  public Type astType() { return _from; }
+  public AbstractType outer()
+  {
+    return _outer;
+  }
 
 }
 

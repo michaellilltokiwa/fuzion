@@ -37,6 +37,7 @@ import dev.flang.ast.AbstractType;
 import dev.flang.ast.Feature;
 import dev.flang.ast.FormalGenerics;
 import dev.flang.ast.Generic;
+import dev.flang.ast.Types;
 
 import dev.flang.util.DataOut;
 import dev.flang.util.Errors;
@@ -255,7 +256,7 @@ class LibraryOut extends DataOut
         check
           (f.generics().list.size() > 0);
         writeInt(f.generics().list.size());
-        write(f.generics().isOpen() ? 1 : 0);
+        writeBool(f.generics().isOpen());
         for (var g : f.generics().list)
           {
             _offsetsForGeneric.put(g, offset());
@@ -285,27 +286,56 @@ class LibraryOut extends DataOut
    *   +--------+--------+---------------+-----------------------------------------------+
    *   | true   | 1      | int           | the kind of this type tk                      |
    *   +--------+--------+---------------+-----------------------------------------------+
+   *   | tk==-3 | 1      | unit          | type of universe                              |
+   *   +--------+--------+---------------+-----------------------------------------------+
+   *   | tk==-2 | 1      | int           | index of type                                 |
+   *   +--------+--------+---------------+-----------------------------------------------+
    *   | tk==-1 | 1      | int           | index of generic argument                     |
    *   +--------+--------+---------------+-----------------------------------------------+
    *   | tk>=0  | 1      | int           | index of feature of type                      |
    *   |        +--------+---------------+-----------------------------------------------+
+   *   |        | 1      | bool          | isRef                                         |
+   *   |        +--------+---------------+-----------------------------------------------+
    *   |        | tk     | Type          | actual generics                               |
+   *   |        +--------+---------------+-----------------------------------------------+
+   *   |        | 1      | Type          | outer type                                    |
    *   +--------+--------+---------------+-----------------------------------------------+
    */
   void type(AbstractType t)
   {
-    if (t.isGenericArgument())
+    var off = offset(t);
+    if (off >= 0)
       {
-        writeInt(-1);
-        writeOffset(t.genericArgument());
+        writeInt(-2);     // NYI: optimization: maybe write just one integer, e.g., -index-2
+        writeInt(off);
+      }
+    else if (t == Types.resolved.universe.thisType())
+      {
+        writeInt(-3);
       }
     else
       {
-        writeInt(t.generics().size());
-        writeOffset(t.featureOfType());
-        for (var gt : t.generics())
+        addOffset(t, offset());
+        if (t.isGenericArgument())
           {
-            type(gt);
+            check
+              (!t.isRef());
+            writeInt(-1);
+            writeOffset(t.genericArgument());
+          }
+        else
+          {
+            boolean makeRef = t.isRef() && !t.featureOfType().isThisRef();
+            check // there is no explicit value type at this phase:
+              (makeRef || t.isRef() == t.featureOfType().isThisRef());
+            writeInt(t.generics().size());
+            writeOffset(t.featureOfType());
+            writeBool(makeRef);
+            for (var gt : t.generics())
+              {
+                type(gt);
+              }
+            type(t.outer());
           }
       }
   }
@@ -348,6 +378,12 @@ class LibraryOut extends DataOut
    * Feature offsets in this file
    */
   Map<AbstractFeature, Integer> _offsetsForFeature = new TreeMap<>();
+
+
+  /**
+   * Type offsets in this file
+   */
+  Map<AbstractType, Integer> _offsetsForType = new TreeMap<>();
 
 
   /**
@@ -404,6 +440,32 @@ class LibraryOut extends DataOut
           (o != null);
         writeIntAt(at, o);
       }
+  }
+
+
+  /**
+   * Record offset as the offset of type t.
+   *
+   * @param t a type that was or will be written out
+   *
+   * @param offset of t in the offset in the .fum/MIR file
+   */
+  void addOffset(AbstractType t, int offset)
+  {
+    if (PRECONDITIONS) require
+      (offset(t) == -1);
+
+    _offsetsForType.put(t, offset);
+  }
+
+
+  /**
+   * Get the offset that was previously recored for type t, or -1 if no offset
+   * was record (i.e., t has not been written yet).
+   */
+  int offset(AbstractType t)
+  {
+    return _offsetsForType.getOrDefault(t, -1);
   }
 
 }

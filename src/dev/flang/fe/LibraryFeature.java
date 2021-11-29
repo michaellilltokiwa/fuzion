@@ -229,7 +229,7 @@ public class LibraryFeature extends AbstractFeature
                   (o != null);
                 var inner = _libModule.featureInnerSizePos(i);
                 result = findOuter(o, inner);
-                i = _libModule.nextFeaturePos(i);
+                i = _libModule.featureNextPos(i);
               }
           }
       }
@@ -251,7 +251,7 @@ public class LibraryFeature extends AbstractFeature
           {
             var a = _libModule.libraryFeature(i, (Feature) _from.arguments().get(_arguments.size()).astFeature());
             _arguments.add(a);
-            i = _libModule.nextFeaturePos(i);
+            i = _libModule.featureNextPos(i);
           }
       }
     return _arguments;
@@ -274,7 +274,7 @@ public class LibraryFeature extends AbstractFeature
         while (c < n)
           {
             c++;
-            i = _libModule.nextFeaturePos(i);
+            i = _libModule.featureNextPos(i);
           }
         result = _libModule.libraryFeature(i, (Feature) _from.resultField());
       }
@@ -302,7 +302,7 @@ public class LibraryFeature extends AbstractFeature
         while (c < n)
           {
             c++;
-            i = _libModule.nextFeaturePos(i);
+            i = _libModule.featureNextPos(i);
           }
         result = _libModule.libraryFeature(i, (Feature) _from.outerRef());
       }
@@ -356,7 +356,7 @@ public class LibraryFeature extends AbstractFeature
           {
             return r;
           }
-        i = _libModule.nextFeaturePos(i);
+        i = _libModule.featureNextPos(i);
       }
     Errors.fatal("Could not find feature '"+name+"' in "+this);
     throw new Error("not reachable");
@@ -381,7 +381,7 @@ public class LibraryFeature extends AbstractFeature
         // NYI: Remove creation of ast.Type here:
         result = new Type(pos(), featureName().baseName(), generics().asActuals(), null, this, Type.RefOrVal.LikeUnderlyingFeature);
 
-        result = new LibraryType(_libModule, pos(), this, result);
+        result = new NormalType(_libModule, -1, pos(), this, false, Type.NONE, result.outer(), result);
         _thisType = result;
       }
 
@@ -416,7 +416,7 @@ public class LibraryFeature extends AbstractFeature
     else
       {
         var from = _from.resultType();
-        return new LibraryType(_libModule, from.pos(), _libModule.featureResultTypePos(_index), from);
+        return _libModule.type(_libModule.featureResultTypePos(_index), from.pos(), from);
       }
   }
 
