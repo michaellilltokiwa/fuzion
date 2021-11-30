@@ -46,13 +46,15 @@ public class Lexer extends SourceFile
 {
 
 /* NYI move these rules somewhere appropriate
+WHITESPACE      : (' ' | '\t')+
+                ;
 COLON           : ':'
                 ;
-IDENT           : 'IDENT_NYI'
+IDENT           : [a-zA-Z]+                        // NYI
                 ;
 QUESTION        : '?'
                 ;
-STRING          : 'STRING_NYI'
+STRING          : '"' ( IDENT | WHITESPACE )+ '"'        // NYI
                 ;
 STAR            : '*'
                 ;
@@ -1085,11 +1087,11 @@ NUM_LITERAL : [0-9]+
    *
 LITERAL     : DIGITS_W_DOT EXPONENT
             ;
-EXPONENT    : "E" PLUSMINUS DIGITS
+fragment EXPONENT    : "E" PLUSMINUS DIGITS
             | "P" PLUSMINUS DIGITS
             |
             ;
-PLUSMINUS   : "+"
+fragment PLUSMINUS   : "+"
             | "-"
             |
             ;
@@ -1352,17 +1354,17 @@ DIGITS_W_DOT: DIGITS
             | "0" "d" DEC_DIGIT_ DEC_DIGITS_ DEC_TAIL
             | "0" "x" HEX_DIGIT_ HEX_DIGITS_ HEX_TAIL
             ;
-UNDERSCORE  : "_"
+fragment UNDERSCORE  : "_"
             |
             ;
 BIN_DIGIT   : "0" | "1"
             ;
 BIN_DIGIT_  : UNDERSCORE BIN_DIGIT
             ;
-BIN_DIGITS_ : BIN_DIGIT_ BIN_DIGITS_
+fragment BIN_DIGITS_ : BIN_DIGIT_ BIN_DIGITS_
             |
             ;
-BIN_DIGITS  : BIN_DIGIT BIN_DIGITS
+fragment BIN_DIGITS  : BIN_DIGIT BIN_DIGITS
             |
             ;
 BIN_TAIL    : "." BIN_DIGITS
@@ -1371,10 +1373,10 @@ OCT_DIGIT   : "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7"
             ;
 OCT_DIGIT_  : UNDERSCORE OCT_DIGIT
             ;
-OCT_DIGITS_ : OCT_DIGIT_ OCT_DIGITS_
+fragment OCT_DIGITS_ : OCT_DIGIT_ OCT_DIGITS_
             |
             ;
-OCT_DIGITS  : OCT_DIGIT OCT_DIGITS
+fragment OCT_DIGITS  : OCT_DIGIT OCT_DIGITS
             |
             ;
 OCT_TAIL    : "." OCT_DIGITS
@@ -1383,10 +1385,10 @@ DEC_DIGIT   : "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9"
             ;
 DEC_DIGIT_  : UNDERSCORE DEC_DIGIT
             ;
-DEC_DIGITS_ : DEC_DIGIT_ DEC_DIGITS_
+fragment DEC_DIGITS_ : DEC_DIGIT_ DEC_DIGITS_
             |
             ;
-DEC_DIGITS  : DEC_DIGIT DEC_DIGITS
+fragment DEC_DIGITS  : DEC_DIGIT DEC_DIGITS
             |
             ;
 DEC_TAIL    : "." DEC_DIGITS
@@ -1397,10 +1399,10 @@ HEX_DIGIT   : "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9"
             ;
 HEX_DIGIT_  : UNDERSCORE HEX_DIGIT
             ;
-HEX_DIGITS_ : HEX_DIGIT_ HEX_DIGITS_
+fragment HEX_DIGITS_ : HEX_DIGIT_ HEX_DIGITS_
             |
             ;
-HEX_DIGITS  : HEX_DIGIT HEX_DIGITS
+fragment HEX_DIGITS  : HEX_DIGIT HEX_DIGITS
             |
             ;
 HEX_TAIL    : "." HEX_DIGITS

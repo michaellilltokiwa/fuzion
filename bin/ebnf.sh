@@ -50,15 +50,16 @@ SCRIPTPATH="$(dirname "$(readlink -f "$0")")"
 cd $SCRIPTPATH/..
 
 #
-EBNF_LEXER=$(pcregrep -M "^[a-zA-Z0-9_]+[ ]*:(\n|.)*?( ;)" ./src/dev/flang/parser/Lexer.java)
-EBNF_PARSER=$(pcregrep -M "^[a-zA-Z0-9_]+[ ]*:(\n|.)*?( ;)" ./src/dev/flang/parser/Parser.java)
+EBNF_LEXER=$(pcregrep -M "^(fragment[ ])*[a-zA-Z0-9_]+[ ]*:(\n|.)*?( ;)" ./src/dev/flang/parser/Lexer.java)
+EBNF_PARSER=$(pcregrep -M "^(fragment[ ])*[a-zA-Z0-9_]+[ ]*:(\n|.)*?( ;)" ./src/dev/flang/parser/Parser.java)
 
 # header
 EBNF="grammar Fuzion;${NEW_LINE}${NEW_LINE}"
 # combine parser and lexer
-EBNF="${EBNF}${EBNF_LEXER}${NEW_LINE}${EBNF_PARSER}"
+EBNF="${EBNF}${EBNF_PARSER}${NEW_LINE}${EBNF_LEXER}"
 # replace " by '
 EBNF=$(sed 's/"/\x27/g' <<< "$EBNF")
+EBNF=$(sed 's/\x27\x27\x27/\x27"\x27/g' <<< "$EBNF")
 
 echo "$EBNF"
 
@@ -69,9 +70,30 @@ echo "$EBNF" > $TMP/fuzion_grammar/Fuzion.g4
 # NYI add option -Werror
 antlr4 -long-messages -o $TMP/fuzion_grammar $TMP/fuzion_grammar/Fuzion.g4
 antlr4_rc=$?
-rm -rf $TMP
 
-if [ ! $antlr4_rc -eq 0 ]; then
-  echo "antlr4 failed parsing grammar"
+# test generated parser with grun
+which /usr/share/antlr4/grun > /dev/null
+if [ ! $? -eq 0 ]; then
+  echo "grun not found. omitting..."
+  rm -rf $TMP
+  exit 0
+fi
+
+export CLASSPATH=".:/usr/share/java/antlr4-runtime.jar"
+
+cp "$SCRIPTPATH/../examples/helloWorld/HelloWorld.fz" $TMP/fuzion_grammar/
+cd $TMP/fuzion_grammar
+javac *.java
+
+# grun GrammarName startRuleName -options FileName
+echo "### grun -trace: " 1>&2
+/usr/share/antlr4/grun Fuzion unit -trace HelloWorld.fz 1>&2
+echo "### grun -tree: " 1>&2
+/usr/share/antlr4/grun Fuzion unit -tree HelloWorld.fz 1>&2
+
+if [ ! $? -eq 0 ]; then
+  echo "grun failed..."
   exit 1
 fi
+
+rm -rf $TMP

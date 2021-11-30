@@ -242,6 +242,7 @@ routine     : visibility
               returnType
               inherits
               contract
+              WHITESPACE
               implRout
             ;
 field       : visibility
@@ -3255,7 +3256,7 @@ condList    : cond ( COMMA condList
 implRout    : block
             | "is" "abstract"
             | "is" "intrinsic"
-            | "is" block
+            | "is" block*
             | ARROW e=block
             ;
    */
