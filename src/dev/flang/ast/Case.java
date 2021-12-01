@@ -198,7 +198,7 @@ public class Case extends ANY
         var i = types.listIterator();
         while (i.hasNext())
           {
-            i.set(i.next().astType().visit(v, outer));
+            i.set(i.next().visit(v, outer));
           }
       }
     code = code.visit(v, outer);
@@ -261,16 +261,16 @@ public class Case extends ANY
    * that have already beend found.  This is updated and used to report an error
    * in case there are repeated matches.
    */
-  Type resolveType(Resolution res, AbstractType t, List<AbstractType> cgs, Feature outer, SourcePosition[] matched)
+  AbstractType resolveType(Resolution res, AbstractType t, List<AbstractType> cgs, Feature outer, SourcePosition[] matched)
   {
     var original_t = t;
     List<AbstractType> matches = new List<>();
     int i = 0;
-    t.astType().resolveFeature(res, outer);
+    t.resolveFeature(res, outer);
     var inferGenerics = !t.isGenericArgument() && t.generics().isEmpty() && t.featureOfType().generics() != FormalGenerics.NONE;
     if (!inferGenerics)
       {
-        t = t.astType().resolve(res, outer);
+        t = t.resolve(res, outer);
       }
     for (var cg : cgs)
       {
@@ -307,7 +307,7 @@ public class Case extends ANY
             AstErrors.matchCaseMatchesSeveral(pos, original_t, cgs, matches);
           }
       }
-    return t.astType();
+    return t;
   }
 
 

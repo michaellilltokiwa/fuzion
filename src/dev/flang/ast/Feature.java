@@ -489,7 +489,7 @@ public class Feature extends AbstractFeature implements Stmnt
     this(pos,
          v,
          0,
-         t == null ? NoType.INSTANCE : new FunctionReturnType(t.astType()), /* NYI: try to avoid creation of ReturnType here, set actualtype directly? */
+         t == null ? NoType.INSTANCE : new FunctionReturnType(t), /* NYI: try to avoid creation of ReturnType here, set actualtype directly? */
          new List<String>(qname),
          FormalGenerics.NONE,
          new List<Feature>(),
@@ -528,7 +528,7 @@ public class Feature extends AbstractFeature implements Stmnt
     this(pos,
          v,
          m,
-         new FunctionReturnType(t.astType()), /* NYI: try to avoid creation of ReturnType here, set actualtype directly? */
+         new FunctionReturnType(t), /* NYI: try to avoid creation of ReturnType here, set actualtype directly? */
          new List<String>(n),
          FormalGenerics.NONE,
          new List<Feature>(),
@@ -625,7 +625,7 @@ public class Feature extends AbstractFeature implements Stmnt
     this._visibility = v;
     this._modifiers  = m;
     this._returnType = r;
-    this._posOfReturnType = r == NoType.INSTANCE || r.isConstructorType() ? pos : r.functionReturnType().pos;
+    this._posOfReturnType = r == NoType.INSTANCE || r.isConstructorType() ? pos : r.functionReturnType().pos();
     String n = qname.getLast();
     if (n.equals("_"))
       {
@@ -1246,9 +1246,9 @@ public class Feature extends AbstractFeature implements Stmnt
 
   static FeatureVisitor findGenerics = new FeatureVisitor()
     {
-      public Function action(Function f, Feature outer) { f.findGenerics(this, outer); return f; }
-      public This     action(This     t, Feature outer) { t.findGenerics(      outer); return t; }
-      public Type     action(Type     t, Feature outer) { t.findGenerics(      outer); return t; }
+      public Function     action(Function     f, Feature outer) { f.findGenerics(this, outer); return f; }
+      public This         action(This         t, Feature outer) { t.findGenerics(      outer); return t; }
+      public AbstractType action(AbstractType t, Feature outer) { t.findGenerics(      outer); return t; }
     };
 
   /*
@@ -1303,15 +1303,15 @@ public class Feature extends AbstractFeature implements Stmnt
       {
         res = r;
       }
-    public void     action(Assign      a, Feature outer) {        a.resolveTypes(res, outer); }
-    public Call     action(Call        c, Feature outer) { return c.resolveTypes(res, outer); }
-    public Stmnt    action(Destructure d, Feature outer) { return d.resolveTypes(res, outer); }
-    public Stmnt    action(Feature     f, Feature outer) { return f.resolveTypes(res, outer); }
-    public Function action(Function    f, Feature outer) {        f.resolveTypes(res, outer); return f; }
-    public void     action(Generic     g, Feature outer) {        g.resolveTypes(res, outer); }
-    public void     action(Match       m, Feature outer) {        m.resolveTypes(res, outer); }
-    public Expr     action(This        t, Feature outer) { return t.resolveTypes(res, outer); }
-    public Type     action(Type        t, Feature outer) { return t.resolve(res, outer); }
+    public void         action(Assign       a, Feature outer) {        a.resolveTypes(res, outer); }
+    public Call         action(Call         c, Feature outer) { return c.resolveTypes(res, outer); }
+    public Stmnt        action(Destructure  d, Feature outer) { return d.resolveTypes(res, outer); }
+    public Stmnt        action(Feature      f, Feature outer) { return f.resolveTypes(res, outer); }
+    public Function     action(Function     f, Feature outer) {        f.resolveTypes(res, outer); return f; }
+    public void         action(Generic      g, Feature outer) {        g.resolveTypes(res, outer); }
+    public void         action(Match        m, Feature outer) {        m.resolveTypes(res, outer); }
+    public Expr         action(This         t, Feature outer) { return t.resolveTypes(res, outer); }
+    public AbstractType action(AbstractType t, Feature outer) { return t.resolve     (res, outer); }
 
     /**
      * visitActuals delays type resolution for actual arguments within a feature
@@ -1349,7 +1349,7 @@ public class Feature extends AbstractFeature implements Stmnt
         if (hasThisType())
           {
             var tt = thisType();
-            thisType_ = tt instanceof Type ttt ? ttt.resolve(res, this) : tt;
+            thisType_ = tt.resolve(res, this);
           }
 
         if ((_impl.kind_ == Impl.Kind.FieldActual) && (_impl._initialValue.typeOrNull() == null))
@@ -1587,7 +1587,7 @@ public class Feature extends AbstractFeature implements Stmnt
           }
       }
 
-    thisType().astType().checkChoice(_pos);
+    thisType().checkChoice(_pos);
 
     checkNoClosureAccesses(res, _pos);
     for (Call p : _inherits)

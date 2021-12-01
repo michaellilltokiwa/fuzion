@@ -75,7 +75,7 @@ public abstract class LibraryType extends AbstractType
    * NYI: For now, this is just a wrapper around an AST type. This should be
    * removed once all data is obtained from _libModule;
    */
-  private final Type _from;
+  protected final AbstractType _from;
 
 
   /*--------------------------  constructors  ---------------------------*/
@@ -102,11 +102,7 @@ public abstract class LibraryType extends AbstractType
   }
 
 
-  public AbstractType asRef() { return _from.asRef(); }
-  public AbstractType asValue() { return _from.asValue(); }
-  public int compareToIgnoreOuter(Type other) { return _from.compareToIgnoreOuter(other); }
-
-  public Type astType() { return _from; }
+  public AbstractType astType() { return _from; }
 
 }
 

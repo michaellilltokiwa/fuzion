@@ -58,6 +58,60 @@ public abstract class AbstractType extends ANY
 
 
   /**
+   * setOuter
+   *
+   * @param t
+   */
+  void setOuter(Type t)
+  {
+    throw new Error("AbstractType.setOuter() should only be called on dev.flang.ast.Type");
+  }
+
+
+  /**
+   * Find all the types used in this that refer to formal generic arguments of
+   * this or any of this' outer classes.
+   *
+   * This is only needed for ast.Type, for fe.LibraryType
+   * this is a NOP.
+   *
+   * @param feat the root feature that contains this type.
+   */
+  void findGenerics(AbstractFeature outerfeat)
+  {
+  }
+
+
+  /**
+   * resolve this type. This is only needed for ast.Type, for fe.LibraryType
+   * this is a NOP.
+   *
+   * @param feat the outer feature that this type is declared in, used
+   * for resolution of generic parameters etc.
+   */
+  AbstractType resolve(Resolution res, AbstractFeature outerfeat)
+  {
+    return this;
+  }
+
+
+  /**
+   * For a Type that is not a generic argument, resolve the feature of that
+   * type.  Unlike Type.resolve(), this does not check the generic arguments, so
+   * this can be used for type inferencing for the actual generics as in a match
+   * case.
+   *
+   * This is only needed for ast.Type, for fe.LibraryType this is a NOP.
+   *
+   * @param feat the outer feature that this type is declared in, used
+   * for resolution of generic parameters etc.
+   */
+  void resolveFeature(Resolution res, AbstractFeature outerfeat)
+  {
+  }
+
+
+  /**
    * This is used only during early phases of the front end before types where
    * checked if they are or contains generics.
    */
@@ -488,6 +542,7 @@ public abstract class AbstractType extends ANY
        Errors.count() > 0 || !t.isOpenGeneric(),
        featureOfType().generics().sizeMatches(generics()));
 
+    t = t.astType();
     var result = t;
     if (result.dependsOnGenerics())
       {
@@ -557,10 +612,179 @@ public abstract class AbstractType extends ANY
               {
                 hasError = hasError || (t == Types.t_ERROR);
               }
-            result = hasError ? Types.t_ERROR : new Type(result.astType(), g2, o2 == null ? null : o2.astType());
+            result = hasError ? Types.t_ERROR : new Type((Type) result.astType(), g2, o2);
           }
       }
     return result.astType(); // NYI: remove .astType(), needed only because isAssignableFrom is not correct yet.
+  }
+
+
+  /**
+   * Check that in case this is a choice type, it is valid, i.e., it is a value
+   * type and the generic arguments to the choice are different.  Create compile
+   * time errore in case this is not the case.
+   */
+  void checkChoice(SourcePosition pos)
+  {
+    var g = choiceGenerics();
+    if (g != null)
+      {
+        if (isRef())
+          {
+            AstErrors.refToChoice(pos);
+          }
+
+        int i1 = 0;
+        for (var t1 : g)
+          {
+            t1 = Types.intern(t1);
+            int i2 = 0;
+            for (var t2 : g)
+              {
+                t2 = Types.intern(t2);
+                if (i1 < i2)
+                  {
+                    if ((t1 == t2 ||
+                         !t1.isGenericArgument() &&
+                         !t2.isGenericArgument() &&
+                         (t1.isAssignableFrom(t2.astType()) ||
+                          t2.isAssignableFrom(t1.astType())    )) &&
+                        t1 != Types.t_ERROR &&
+                        t2 != Types.t_ERROR)
+                      {
+                        AstErrors.genericsMustBeDisjoint(pos, t1, t2);
+                      }
+                  }
+                i2++;
+              }
+            i1++;
+          }
+      }
+  }
+
+  public AbstractType visit(FeatureVisitor v, Feature outerfeat)
+  {
+    throw new Error("AbstractType.visit not implemented by "+getClass());
+  }
+
+
+  /**
+   * isFunType checks if this is a function type, e.g., "fun (int x,y) String".
+   *
+   * @return true iff this is a fun type
+   */
+  boolean isFunType()
+  {
+    return
+      !isGenericArgument() &&
+      featureOfType() == Types.resolved.f_function;
+  }
+
+
+  /**
+   * Find a type that is assignable from values of two types, this and t. If no
+   * such type exists, return Types.resovled.t_unit.
+   *
+   * @param that another type or null
+   *
+   * @return a type that is assignable both from this and that, or null if none
+   * exists.
+   */
+  AbstractType union(AbstractType that)
+  {
+    AbstractType result =
+      this == Types.t_ERROR               ? Types.t_ERROR     :
+      that == Types.t_ERROR               ? Types.t_ERROR     :
+      this == Types.t_UNDEFINED           ? Types.t_UNDEFINED :
+      that == Types.t_UNDEFINED           ? Types.t_UNDEFINED :
+      this == Types.resolved.t_void       ? that              :
+      that == Types.resolved.t_void       ? this              :
+      this.isAssignableFrom(that)         ? this :
+      that.isAssignableFrom(this)         ? that :
+      this.isAssignableFrom(that.asRef()) ? this :
+      that.isAssignableFrom(this.asRef()) ? that : Types.t_UNDEFINED;
+
+    if (POSTCONDITIONS) ensure
+      (result == Types.t_UNDEFINED ||
+       result == Types.t_ERROR     ||
+       this == Types.resolved.t_void && result == that ||
+       that == Types.resolved.t_void && result == this ||
+       (result.isAssignableFrom(this) || result.isAssignableFrom(this.asRef()) &&
+        result.isAssignableFrom(that) || result.isAssignableFrom(that.asRef())    ));
+
+    return result;
+  }
+
+
+  /**
+   * Compare this to other ignoring the outer type. This is used for created in
+   * clazzes when the outer clazz is known.
+   */
+  public int compareToIgnoreOuter(AbstractType other)
+  {
+    if (PRECONDITIONS) require
+      (checkedForGeneric(),
+       other != null,
+       other.checkedForGeneric());
+
+    int result = 0;
+
+    if (this != other)
+      {
+        result =
+          isGenericArgument() &&  other.isGenericArgument() ?  0 :
+          isGenericArgument() && !other.isGenericArgument() ? -1 :
+          !isGenericArgument() && other.isGenericArgument() ? +1 : featureOfType().compareTo(other.featureOfType());
+        if (!isGenericArgument())
+          {
+            if (result == 0)
+              {
+                if (generics().size() != other.generics().size())  // this may happen for open generics lists
+                  {
+                    result = generics().size() < other.generics().size() ? -1 : +1;
+                  }
+                else
+                  {
+                    var tg = generics().iterator();
+                    var og = other.generics().iterator();
+                    while (tg.hasNext() && result == 0)
+                      {
+                        var tgt = (Type) Types.intern(tg.next()).astType();
+                        var ogt = (Type) Types.intern(og.next()).astType();
+                        result = tgt.compareTo(ogt);
+                      }
+                  }
+              }
+          }
+        if (result == 0)
+          {
+            result = name().compareTo(other.name());
+          }
+        if (result == 0)
+          {
+            if (isRef() ^ other.isRef())
+              {
+                result = isRef() ? -1 : 1;
+              }
+          }
+        if (isGenericArgument())
+          {
+            if (result == 0)
+              {
+                result = genericArgument().feature().compareTo(other.genericArgument().feature());
+                if (result == 0)
+                  {
+                    result = genericArgument()._name.compareTo(other.genericArgument()._name); // NYI: compare generic, not generic.name!
+                  }
+              }
+          }
+      }
+    return result;
+  }
+
+  String name()
+  {
+    return isGenericArgument() ? genericArgument().name() : featureOfType().featureName().baseName();
   }
 
 
@@ -570,12 +794,11 @@ public abstract class AbstractType extends ANY
   public abstract boolean isRef();
   public abstract SourcePosition pos();
   public abstract List<AbstractType> generics();
-  public abstract int compareToIgnoreOuter(Type other);
   public abstract boolean isGenericArgument();
   public abstract AbstractType outer();
   public abstract Generic genericArgument();
 
-  public Type astType() { return (Type) this; }
+  public AbstractType astType() { return this; }
 }
 
 /* end of file */
