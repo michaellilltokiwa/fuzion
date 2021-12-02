@@ -44,7 +44,7 @@ import dev.flang.util.SourcePosition;
  *
  * @author Fridtjof Siebert (siebert@tokiwa.software)
  */
-public class Type extends AbstractType implements Comparable<Type>
+public class Type extends AbstractType
 {
 
   //  static int counter;  {counter++; if ((counter&(counter-1))==0) { System.out.println("######################"+counter+" "+this.getClass()); if(false)Thread.dumpStack(); } }
@@ -391,6 +391,27 @@ public class Type extends AbstractType implements Comparable<Type>
 
 
   /*-----------------------------  methods  -----------------------------*/
+
+
+  /**
+   * For a type that is not a type parameter, create a new variant using given
+   * actual generics and outer type.
+   *
+   * @param g2 the new actual generics to be used
+   *
+   * @param o2 the new outer type to be used (which may also differ in its
+   * actual generics).
+   *
+   * @return a new type with same featureOfType(), but using g2/o2 as generics
+   * and outer type.
+   */
+  public AbstractType actualType(List<AbstractType> g2, AbstractType o2)
+  {
+    if (PRECONDITIONS) require
+      (!isGenericArgument());
+
+    return new Type(this, g2, o2);
+  }
 
 
   /**
@@ -815,47 +836,6 @@ public class Type extends AbstractType implements Comparable<Type>
     return result;
   }
 
-
-  /**
-   * Compare this to other for creating unique types.
-   */
-  public int compareTo(Type other)
-  {
-    if (PRECONDITIONS) require
-      (checkedForGeneric,
-       other != null,
-       other.checkedForGeneric,
-       getClass() == Type.class,
-       other.getClass() == Type.class,
-                     isGenericArgument() == (              feature == null),
-       ((Type)other).isGenericArgument() == (((Type)other).feature == null));
-
-    int result = compareToIgnoreOuter(other);
-    if (result == 0 && generic == null)
-      {
-        var to = (Type) this .outerInterned();
-        var oo = (Type) other.outerInterned();
-        result =
-          (to == null && oo == null) ?  0 :
-          (to == null && oo != null) ? -1 :
-          (to != null && oo == null) ? +1 : to.compareTo(oo);
-      }
-    return result;
-  }
-
-
-  /**
-   * Get an interned version of outer() or null if none.
-   */
-  AbstractType outerInterned()
-  {
-    var result = outer();
-    if (result != null)
-      {
-        result = Types.intern(result);
-      }
-    return result;
-  }
 
   /**
    * outer type, after type resolution. This provides the whole chain of types

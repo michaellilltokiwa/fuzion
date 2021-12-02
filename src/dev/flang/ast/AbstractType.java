@@ -41,7 +41,7 @@ import dev.flang.util.YesNo;
  *
  * @author Fridtjof Siebert (siebert@tokiwa.software)
  */
-public abstract class AbstractType extends ANY
+public abstract class AbstractType extends ANY implements Comparable<AbstractType>
 {
 
 
@@ -542,7 +542,6 @@ public abstract class AbstractType extends ANY
        Errors.count() > 0 || !t.isOpenGeneric(),
        featureOfType().generics().sizeMatches(generics()));
 
-    t = t.astType();
     var result = t;
     if (result.dependsOnGenerics())
       {
@@ -604,18 +603,38 @@ public abstract class AbstractType extends ANY
         var g2 = actualTypes(f, result.generics(), actualGenerics);
         var o2 = (result.outer() == null) ? null : result.outer().actualType(f, actualGenerics);
         if (g2 != result.generics() ||
-            o2 != result.outer()    ||
-            o2 != null && o2.astType() != result.outer().astType() /* NYI: remove this line as soon as astType is gone */ )
+            o2 != result.outer()       )
           {
             var hasError = o2 == Types.t_ERROR;
             for (var t : g2)
               {
                 hasError = hasError || (t == Types.t_ERROR);
               }
-            result = hasError ? Types.t_ERROR : new Type((Type) result.astType(), g2, o2);
+            result = hasError ? Types.t_ERROR : result.actualType(g2, o2);
           }
       }
     return result.astType(); // NYI: remove .astType(), needed only because isAssignableFrom is not correct yet.
+  }
+
+
+  /**
+   * For a type that is not a type parameter, create a new variant using given
+   * actual generics and outer type.
+   *
+   * @param g2 the new actual generics to be used
+   *
+   * @param o2 the new outer type to be used (which may also differ in its
+   * actual generics).
+   *
+   * @return a new type with same featureOfType(), but using g2/o2 as generics
+   * and outer type.
+   */
+  public AbstractType actualType(List<AbstractType> g2, AbstractType o2)
+  {
+    if (PRECONDITIONS) require
+      (!isGenericArgument());
+
+    throw new Error("actualType not supported for "+getClass());
   }
 
 
@@ -647,8 +666,8 @@ public abstract class AbstractType extends ANY
                     if ((t1 == t2 ||
                          !t1.isGenericArgument() &&
                          !t2.isGenericArgument() &&
-                         (t1.isAssignableFrom(t2.astType()) ||
-                          t2.isAssignableFrom(t1.astType())    )) &&
+                         (t1.isAssignableFrom(t2) ||
+                          t2.isAssignableFrom(t1)    )) &&
                         t1 != Types.t_ERROR &&
                         t2 != Types.t_ERROR)
                       {
@@ -717,6 +736,30 @@ public abstract class AbstractType extends ANY
 
 
   /**
+   * Compare this to other for creating unique types.
+   */
+  public int compareTo(AbstractType other)
+  {
+    if (PRECONDITIONS) require
+      (checkedForGeneric(),
+       other != null,
+       other.checkedForGeneric());
+
+    int result = compareToIgnoreOuter(other);
+    if (result == 0 && !isGenericArgument())
+      {
+        var to = this .outer();
+        var oo = other.outer();
+        result =
+          (to == null && oo == null) ?  0 :
+          (to == null && oo != null) ? -1 :
+          (to != null && oo == null) ? +1 : Types.intern(to).compareTo(Types.intern(oo));
+      }
+    return result;
+  }
+
+
+  /**
    * Compare this to other ignoring the outer type. This is used for created in
    * clazzes when the outer clazz is known.
    */
@@ -749,8 +792,8 @@ public abstract class AbstractType extends ANY
                     var og = other.generics().iterator();
                     while (tg.hasNext() && result == 0)
                       {
-                        var tgt = (Type) Types.intern(tg.next()).astType();
-                        var ogt = (Type) Types.intern(og.next()).astType();
+                        var tgt = tg.next();
+                        var ogt = og.next();
                         result = tgt.compareTo(ogt);
                       }
                   }
