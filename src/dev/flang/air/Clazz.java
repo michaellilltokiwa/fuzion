@@ -1235,7 +1235,7 @@ public class Clazz extends ANY implements Comparable<Clazz>
   void findAllClassesWhenCalled()
   {
     var f = feature();
-    new FindClassesVisitor().visitAncestors((Feature) f); // NYI: Cast!
+    new FindClassesVisitor().visitAncestors(f);
     for (AbstractFeature ff: f.allInnerAndInheritedFeatures(_module))
       {
         if (Clazzes.isUsed(ff, this) &&
@@ -1681,7 +1681,7 @@ public class Clazz extends ANY implements Comparable<Clazz>
     if (PRECONDITIONS) require
       ((outer != null) != (target != null));
 
-    if (f.outerRef() == cf)
+    if (f.outerRef().sameAs(cf))
       { // a "normal" outer ref for the outer clazz surrounding this instance or
         // (if in recursion) an inherited outer ref referring to the target of
         // the inherits call

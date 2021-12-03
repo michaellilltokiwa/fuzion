@@ -97,6 +97,12 @@ public class LibraryFeature extends AbstractFeature
 
 
   /**
+   * cached result of generics():
+   */
+  private FormalGenerics _generics;
+
+
+  /**
    * cached result of outer()
    */
   AbstractFeature _outer = null;
@@ -392,7 +398,7 @@ public class LibraryFeature extends AbstractFeature
         // NYI: Remove creation of ast.Type here:
         result = new Type(pos(), featureName().baseName(), generics().asActuals(), null, this, Type.RefOrVal.LikeUnderlyingFeature);
 
-        result = new NormalType(_libModule, -1, pos(), this, false, Type.NONE, result.outer(), result);
+        result = new NormalType(_libModule, -1, pos(), this, false, generics().asActuals(), result.outer(), result);
         _thisType = result;
       }
 
@@ -432,27 +438,68 @@ public class LibraryFeature extends AbstractFeature
   }
 
 
+  /**
+   * The formal generic arguments of this feature
+   */
+  public FormalGenerics generics()
+  {
+    var result = _generics;
+    if (result == null)
+      {
+        if ((_libModule.featureKind(_index) & FuzionConstants.MIR_FILE_KIND_HAS_TYPE_PAREMETERS) == 0)
+          {
+            result = FormalGenerics.NONE;
+          }
+        else if (_libModule.USE_FUM)
+          {
+            var tai = _libModule.featureTypeArgsPos(_index);
+            var list = new List<Generic>();
+            var n = _libModule.typeArgsCount(tai);
+            var isOpen = _libModule.typeArgsOpen(tai);
+            var tali = _libModule.typeArgsListPos(tai);
+            var i = 0;
+            while (i > n)
+              {
+                var gn = _libModule.typeArgName(tali);
+                var gp = pos(); // NYI: pos of generic
+                var g = new Generic(gp, i, gn);
+                // NYI: Missing generic constraint!
+                list.add(g);
+                tali = _libModule.typeArgNextPos(tali);
+                i++;
+              }
+            result = new FormalGenerics(list, isOpen, this);
+          }
+        else
+          {
+            result = _from.generics();
+          }
+        _generics = result;
+      }
+    return result;
+  }
+
+
   public FeatureName featureName()
   {
     return _featureName;
   }
   public SourcePosition pos() { return _from.pos(); }
-  public List<AbstractType> choiceGenerics() { return _from.choiceGenerics(); }
-  public FormalGenerics generics() { return _from.generics(); }
-  public Generic getGeneric(String name) { return _from.getGeneric(name); }
-  public List<Call> inherits() { return _from.inherits(); }
+  public List<AbstractType> choiceGenerics() { if (_libModule.USE_FUM) { check(false); return null; } else { return _from.choiceGenerics(); } }
+  public Generic getGeneric(String name) { if (_libModule.USE_FUM) { check(false); return null; } else { return _from.getGeneric(name); } }
+  public List<Call> inherits() { if (_libModule.USE_FUM) { check(false); return null; } else { return _from.inherits(); } }
 
   // following are used in IR/Clazzes middle end or later only:
-  public Impl.Kind implKind() { return _from.implKind(); }      // NYI: remove, used only in Clazz.java for some obscure case
-  public Expr initialValue() { return _from.initialValue(); }   // NYI: remove, used only in Clazz.java for some obscure case
+  public Impl.Kind implKind() { if (_libModule.USE_FUM) { check(false); return _from.implKind(); } else { return _from.implKind(); } }      // NYI: remove, used only in Clazz.java for some obscure case
+  public Expr initialValue() { if (_libModule.USE_FUM) { check(false); return null; } else { return _from.initialValue(); } }   // NYI: remove, used only in Clazz.java for some obscure case
 
   // following used in MIR or later
-  public Expr code() { return _from.code(); }
+  public Expr code() { if (_libModule.USE_FUM) { check(false); return null; } else { return _from.code(); } }
 
   // in FUIR or later
-  public Contract contract() { return _from.contract(); }
+  public Contract contract() { if (_libModule.USE_FUM) { check(false); return null; } else { return _from.contract(); } }
 
-  public AbstractFeature astFeature() { return _from; }
+  public AbstractFeature astFeature() { return _libModule.USE_FUM ? this : _from; }
 
 }
 

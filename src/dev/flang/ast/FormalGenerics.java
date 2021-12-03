@@ -77,7 +77,7 @@ public class FormalGenerics extends ANY
   /**
    * The Feature that contains this formal generics declaration.
    */
-  private Feature _feature = null;
+  private AbstractFeature _feature = null;
 
   /*--------------------------  constructors  ---------------------------*/
 
@@ -115,13 +115,33 @@ public class FormalGenerics extends ANY
   }
 
 
+  /**
+   * Constructor for a FormalGenerics instance
+   *
+   * @param l the list of formal generics. May not be empty.
+   *
+   * @param open true iff the list is open, i.e., followed by an ellipsis.
+   */
+  public FormalGenerics(List<Generic> l,
+                        boolean open,
+                        AbstractFeature f)
+  {
+    this(l, open);
+
+    if (PRECONDITIONS) require
+      (l.size() > 0);
+
+    setFeature(f);
+  }
+
+
   /*-----------------------------  methods  -----------------------------*/
 
 
   /**
    * Stores a reference to the surrounding feature in this  FormalGenerics instance.
    */
-  void setFeature(Feature feature)
+  void setFeature(AbstractFeature feature)
   {
     if (PRECONDITIONS) require
       (this._feature == null);
@@ -142,7 +162,7 @@ public class FormalGenerics extends ANY
    *
    * @return
    */
-  public Feature feature()
+  public AbstractFeature feature()
   {
     return _feature;
   }
