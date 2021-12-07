@@ -181,6 +181,52 @@ public abstract class AbstractFeature extends ANY implements Comparable<Abstract
 
 
   /**
+   * Is this a choice feature, i.e., does it directly inherit from choice? If
+   * so, return the actual generic parameters passed to the choice.
+   *
+   * @return null if this is not a choice feature, the actual generic
+   * parameters, i.e, the actual choice types, otherwise.
+   */
+  public List<AbstractType> choiceGenerics()
+  {
+    if (PRECONDITIONS) require
+      (state().atLeast(Feature.State.RESOLVING_TYPES));
+
+    List<AbstractType> result;
+
+    if (this == Types.f_ERROR)
+      {
+        result = null;
+      }
+    else if (this == Types.resolved.f_choice)
+      {
+        result = generics().asActuals();
+      }
+    else
+      {
+        result = null;
+        Call lastP = null;
+        for (Call p: inherits())
+          {
+            check
+              (Errors.count() > 0 || p.calledFeature() != null);
+
+            if (p.calledFeature().sameAs(Types.resolved.f_choice))
+              {
+                if (lastP != null)
+                  {
+                    AstErrors.repeatedInheritanceOfChoice(p.pos, lastP.pos);
+                  }
+                lastP = p;
+                result = p.generics;
+              }
+          }
+      }
+    return result;
+  }
+
+
+  /**
    * Check if this features argument list contains arguments of open generic
    * type. If this is the case, then the argCount of the feature name may change
    * when inherited.
@@ -216,6 +262,26 @@ public abstract class AbstractFeature extends ANY implements Comparable<Abstract
           }
         o = o.outer();
       }
+    return result;
+  }
+
+
+  /**
+   * Find formal generic argument of this feature with given name.
+   *
+   * @param name the name of a formal generic argument.
+   *
+   * @return null if name is not the name of a formal generic argument
+   * of this. Otherwise, a reference to the formal generic argument.
+   */
+  public Generic getGeneric(String name)
+  {
+    Generic result = generics().get(name);
+
+    if (POSTCONDITIONS) ensure
+      ((result == null) || (result._name.equals(name) && (result.feature().sameAs(this))));
+    // result == null ==> for all g in generics: !g.name.equals(name)
+
     return result;
   }
 
@@ -660,9 +726,7 @@ public abstract class AbstractFeature extends ANY implements Comparable<Abstract
 
   public abstract FeatureName featureName();
   public abstract SourcePosition pos();
-  public abstract List<AbstractType> choiceGenerics();
   public abstract FormalGenerics generics();
-  public abstract Generic getGeneric(String name);
   public abstract List<Call> inherits();
   public abstract AbstractFeature outer();
   public abstract AbstractType thisType();

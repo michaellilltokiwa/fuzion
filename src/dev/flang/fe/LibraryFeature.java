@@ -461,8 +461,9 @@ public class LibraryFeature extends AbstractFeature
             while (i > n)
               {
                 var gn = _libModule.typeArgName(tali);
-                var gp = pos(); // NYI: pos of generic
-                var g = new Generic(gp, i, gn);
+                var gp = _from.generics().list.get(i)._pos; // NYI: pos of generic
+                var gc = _libModule.typeArgConstraint(tali, gp, _from.generics().list.get(i).constraint());
+                var g = new Generic(gp, i, gn, gc);
                 // NYI: Missing generic constraint!
                 list.add(g);
                 tali = _libModule.typeArgNextPos(tali);
@@ -485,8 +486,6 @@ public class LibraryFeature extends AbstractFeature
     return _featureName;
   }
   public SourcePosition pos() { return _from.pos(); }
-  public List<AbstractType> choiceGenerics() { if (_libModule.USE_FUM) { check(false); return null; } else { return _from.choiceGenerics(); } }
-  public Generic getGeneric(String name) { if (_libModule.USE_FUM) { check(false); return null; } else { return _from.getGeneric(name); } }
   public List<Call> inherits() { if (_libModule.USE_FUM) { check(false); return null; } else { return _from.inherits(); } }
 
   // following are used in IR/Clazzes middle end or later only:

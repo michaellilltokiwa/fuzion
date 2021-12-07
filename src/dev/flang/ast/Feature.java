@@ -960,52 +960,6 @@ public class Feature extends AbstractFeature implements Stmnt
 
 
   /**
-   * Is this a choice feature, i.e., does it directly inherit from choice? If
-   * so, return the actual generic parameters passed to the choice.
-   *
-   * @return null if this is not a choice feature, the actual generic
-   * parameters, i.e, the actual choice types, otherwise.
-   */
-  public List<AbstractType> choiceGenerics()
-  {
-    if (PRECONDITIONS) require
-      (_state.atLeast(State.RESOLVING_TYPES));
-
-    List<AbstractType> result;
-
-    if (this == Types.f_ERROR)
-      {
-        result = null;
-      }
-    else if (this == Types.resolved.f_choice)
-      {
-        result = _generics.asActuals();
-      }
-    else
-      {
-        result = null;
-        Call lastP = null;
-        for (Call p: _inherits)
-          {
-            check
-              (Errors.count() > 0 || p.calledFeature() != null);
-
-            if (p.calledFeature().sameAs(Types.resolved.f_choice))
-              {
-                if (lastP != null)
-                  {
-                    AstErrors.repeatedInheritanceOfChoice(p.pos, lastP.pos);
-                  }
-                lastP = p;
-                result = p.generics;
-              }
-          }
-      }
-    return result;
-  }
-
-
-  /**
    * In case a cycle in choice generic arguments is detected, this function is
    * used to erase the generics altogether to avoid later problems when
    * traversing types.
@@ -2637,26 +2591,6 @@ public class Feature extends AbstractFeature implements Stmnt
   public boolean isOuterRef()
   {
     return false;
-  }
-
-
-  /**
-   * Find formal generic argument of this feature with given name.
-   *
-   * @param name the name of a formal generic argument.
-   *
-   * @return null if name is not the name of a formal generic argument
-   * of this. Otherwise, a reference to the formal generic argument.
-   */
-  public Generic getGeneric(String name)
-  {
-    Generic result = _generics.get(name);
-
-    if (POSTCONDITIONS) ensure
-      ((result == null) || (result._name.equals(name) && (result.feature() == this)));
-    // result == null ==> for all g in generics: !g.name.equals(name)
-
-    return result;
   }
 
 }
