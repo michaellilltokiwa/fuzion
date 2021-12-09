@@ -43,6 +43,8 @@ import dev.flang.ast.Generic;
 import dev.flang.ast.Type;
 import dev.flang.ast.Types;
 
+import dev.flang.ir.IR;
+
 import dev.flang.mir.MIR;
 
 import dev.flang.util.FuzionConstants;
@@ -427,6 +429,9 @@ public class LibraryModule extends Module
    *   | hasRT  | 1      | Type          | optional result type,                         |
    *   |        |        |               | hasRT = !isConstructor && !isChoice           |
    *   +--------+--------+---------------+-----------------------------------------------+
+   *   | isRou- | 1      | Code          | Feature code                                  |
+   *   | tine   |        |               |                                               |
+   *   +--------+--------+---------------+-----------------------------------------------+
    *   |        | 1      | InnerFeatures | inner features of this feature                |
    *   +--------+--------+---------------+-----------------------------------------------+
    */
@@ -439,6 +444,32 @@ public class LibraryModule extends Module
   {
     var ko = data().get(featureKindPos(at));
     return ko;
+  }
+  AbstractFeature.Kind featureKindEnum(int at)
+  {
+    var k = featureKind(at) & FuzionConstants.MIR_FILE_KIND_MASK;
+    return featureIsConstructor(at)
+      ? AbstractFeature.Kind.Routine
+      : AbstractFeature.Kind.from(k);
+  }
+  boolean featureIsConstructor(int at)
+  {
+    var k = featureKind(at) & FuzionConstants.MIR_FILE_KIND_MASK;
+    return switch (k)
+      {
+        case FuzionConstants.MIR_FILE_KIND_CONSTRUCTOR_VALUE,
+             FuzionConstants.MIR_FILE_KIND_CONSTRUCTOR_REF -> true;
+        default                                            -> false;
+      };
+  }
+  boolean featureIsRoutine(int at)
+  {
+    return featureKindEnum(at) == AbstractFeature.Kind.Routine;
+  }
+  boolean featureIsThisRef(int at)
+  {
+    var k = featureKind(at) & FuzionConstants.MIR_FILE_KIND_MASK;
+    return k == FuzionConstants.MIR_FILE_KIND_CONSTRUCTOR_REF;
   }
   int featureNamePos(int at)
   {
@@ -509,12 +540,21 @@ public class LibraryModule extends Module
        k != FuzionConstants.MIR_FILE_KIND_CONSTRUCTOR_VALUE &&
        k != AbstractFeature.Kind.Choice.ordinal());
   }
-  int featureInnerSizePos(int at)
+  int featureCodePos(int at)
   {
     var i = featureResultTypePos(at);
     if (featureHasResultType(at))
       {
         i = typeNextPos(i);
+      }
+    return i;
+  }
+  int featureInnerSizePos(int at)
+  {
+    var i = featureCodePos(at);
+    if (featureIsRoutine(at))
+      {
+        i = codeNextPos(i);
       }
     return i;
   }
@@ -782,6 +822,238 @@ public class LibraryModule extends Module
       }
   }
 
+
+  /*
+   *   +---------------------------------------------------------------------------------+
+   *   | Code                                                                            |
+   *   +--------+--------+---------------+-----------------------------------------------+
+   *   | cond.  | repeat | type          | what                                          |
+   *   +--------+--------+---------------+-----------------------------------------------+
+   *   | true   | 1      | int           | sizeof(Expressions)                           |
+   *   |        +--------+---------------+-----------------------------------------------+
+   *   |        | 1      | Expressions   | the actual code                               |
+   *   +--------+--------+---------------+-----------------------------------------------+
+   *
+   *   +---------------------------------------------------------------------------------+
+   *   | Expressions                                                                     |
+   *   +--------+--------+---------------+-----------------------------------------------+
+   *   | cond.  | repeat | type          | what                                          |
+   *   +--------+--------+---------------+-----------------------------------------------+
+   *   | true   | n      | Expression    | the single expressions                        |
+   *   +--------+--------+---------------+-----------------------------------------------+
+   */
+  int codeSizePos(int at)
+  {
+    return at;
+  }
+  int codeSize(int at)
+  {
+    return data().getInt(codeSizePos(at));
+  }
+  int codeExpressionsPos(int at)
+  {
+    return at + 4;
+  }
+  int codeNextPos(int at)
+  {
+    var sz = data().getInt(at);
+    return at + 4 + sz;
+  }
+
+  /*
+   *   +---------------------------------------------------------------------------------+
+   *   | Expression                                                                      |
+   *   +--------+--------+---------------+-----------------------------------------------+
+   *   | cond.  | repeat | type          | what                                          |
+   *   +--------+--------+---------------+-----------------------------------------------+
+   *   | true   | 1      | byte          | ExprKind k                                    |
+   *   +--------+--------+---------------+-----------------------------------------------+
+   *   | k==Add | 1      | Assign        | assignment                                    |
+   *   +--------+--------+---------------+-----------------------------------------------+
+   *   | k==Con | 1      | Constant      | constant                                      |
+   *   +--------+--------+---------------+-----------------------------------------------+
+   */
+  int expressionKindPos(int at)
+  {
+    return at;
+  }
+  int expressionKindRaw(int at)
+  {
+    return data().get(expressionKindPos(at));
+  }
+  IR.ExprKind expressionKind(int at)
+  {
+    return IR.ExprKind.from(expressionKindRaw(at));
+  }
+  int expressionNextPos(int at)
+  {
+    var k = expressionKind(at);
+    var eAt = at + 1;
+    return switch (k)
+      {
+      case Assign  -> eAt;
+      case Unbox   -> eAt;
+      case Box     -> eAt;
+      case Const   -> constNextPos(eAt);
+      case Current -> eAt;
+      case Match   -> matchNextPos(eAt);
+      case Call    -> callNextPos (eAt);
+      case Tag     -> eAt;
+      case Pop     -> eAt;
+      default      -> throw new Error("unexpected expression kind "+k+" at "+at+" in "+this);
+      };
+  }
+
+
+  /*
+   *   +---------------------------------------------------------------------------------+
+   *   | Constant                                                                        |
+   *   +--------+--------+---------------+-----------------------------------------------+
+   *   | cond.  | repeat | type          | what                                          |
+   *   +--------+--------+---------------+-----------------------------------------------+
+   *   | true   | 1      | Type          | type of the constant                          |
+   *   |        |        +---------------+-----------------------------------------------+
+   *   |        |        | length        | data length of the constant                   |
+   *   |        +--------+---------------+-----------------------------------------------+
+   *   |        | length | byte          | data of the constant                          |
+   *   +--------+--------+---------------+-----------------------------------------------+
+   */
+  int constTypePos(int at)
+  {
+    if (PRECONDITIONS) require
+      (expressionKind(at-1) == IR.ExprKind.Const);
+
+    return at;
+  }
+  int constLengthPos(int at)
+  {
+    if (PRECONDITIONS) require
+      (expressionKind(at-1) == IR.ExprKind.Const);
+
+    return typeNextPos(constTypePos(at));
+  }
+  int constLength(int at)
+  {
+    if (PRECONDITIONS) require
+      (expressionKind(at-1) == IR.ExprKind.Const);
+
+    return data().getInt(constLengthPos(at));
+  }
+  int constDataPos(int at)
+  {
+    if (PRECONDITIONS) require
+      (expressionKind(at-1) == IR.ExprKind.Const);
+
+    return constLengthPos(at) + 4;
+  }
+  byte[] constData(int at)
+  {
+    if (PRECONDITIONS) require
+      (expressionKind(at-1) == IR.ExprKind.Const);
+
+    var l = constLength(at);
+    var result = new byte[l];
+    data().get(constDataPos(at), result);
+    return result;
+  }
+  int constNextPos(int at)
+  {
+    if (PRECONDITIONS) require
+      (expressionKind(at-1) == IR.ExprKind.Const);
+
+    return constDataPos(at) + constLength(at);
+  }
+
+
+  /*
+   *   +---------------------------------------------------------------------------------+
+   *   | Call                                                                            |
+   *   +--------+--------+---------------+-----------------------------------------------+
+   *   | cond.  | repeat | type          | what                                          |
+   *   +--------+--------+---------------+-----------------------------------------------+
+   *   | true   | 1      | int           | called feature index                          |
+   *   +--------+--------+---------------+-----------------------------------------------+
+   */
+  int callCalledFeaturePos(int at)
+  {
+    if (PRECONDITIONS) require
+      (expressionKind(at-1) == IR.ExprKind.Call);
+
+    return at;
+  }
+  int callCalledFeature(int at)
+  {
+    if (PRECONDITIONS) require
+      (expressionKind(at-1) == IR.ExprKind.Call);
+
+    return data().getInt(callCalledFeaturePos(at));
+  }
+  int callNextPos(int at)
+  {
+    if (PRECONDITIONS) require
+      (expressionKind(at-1) == IR.ExprKind.Call);
+
+    return callCalledFeaturePos(at) + 4;
+  }
+
+
+  /*
+   *   +---------------------------------------------------------------------------------+
+   *   | Match                                                                           |
+   *   +--------+--------+---------------+-----------------------------------------------+
+   *   | cond.  | repeat | type          | what                                          |
+   *   +--------+--------+---------------+-----------------------------------------------+
+   *   | true   | 1      | int           | number of cases                               |
+   *   |        +--------+---------------+-----------------------------------------------+
+   *   |        | n      | Case          | cases                                         |
+   *   +--------+--------+---------------+-----------------------------------------------+
+   *
+   *   +---------------------------------------------------------------------------------+
+   *   | Case                                                                            |
+   *   +--------+--------+---------------+-----------------------------------------------+
+   *   | cond.  | repeat | type          | what                                          |
+   *   +--------+--------+---------------+-----------------------------------------------+
+   *   | true   | 1      | Code          | code for case                                 |
+   *   +--------+--------+---------------+-----------------------------------------------+
+   */
+  int matchNumberOfCasesPos(int at)
+  {
+    if (PRECONDITIONS) require
+      (expressionKind(at-1) == IR.ExprKind.Match);
+
+    return at;
+  }
+  int matchNumberOfCases(int at)
+  {
+    if (PRECONDITIONS) require
+      (expressionKind(at-1) == IR.ExprKind.Match);
+
+    return data().getInt(matchNumberOfCasesPos(at));
+  }
+  int matchCasesPos(int at)
+  {
+    if (PRECONDITIONS) require
+      (expressionKind(at-1) == IR.ExprKind.Match);
+
+    return matchNumberOfCasesPos(at) + 4;
+  }
+  int matchCaseNextPos(int at)
+  {
+    return codeNextPos(at);
+  }
+  int matchNextPos(int at)
+  {
+    if (PRECONDITIONS) require
+      (expressionKind(at-1) == IR.ExprKind.Match);
+
+    var n = matchNumberOfCases(at);
+    at = matchCasesPos(at);
+    for (var i = 0; i < n; i++)
+      {
+        at = matchCaseNextPos(at);
+      }
+    return at;
+  }
 
   /*-------------------------------  misc  ------------------------------*/
 
