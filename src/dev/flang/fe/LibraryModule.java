@@ -73,6 +73,14 @@ public class LibraryModule extends Module
    */
   static boolean USE_FUM = "true".equals(System.getenv("USE_FUM"));
 
+
+  /**
+   * As long as source position is not part of the .fum/MIR file, use this
+   * constant as a place holder.
+   */
+  static SourcePosition DUMMY_POS = SourcePosition.builtIn;
+
+
   /*----------------------------  variables  ----------------------------*/
 
 
@@ -364,7 +372,7 @@ public class LibraryModule extends Module
               }
             else
               {
-                var feature = libraryFeature(typeFeature(at), (Feature) from.featureOfType().astFeature());
+                var feature = libraryFeature(typeFeature(at), from == null ? null : (Feature) from.featureOfType().astFeature());
                 var makeRef = typeIsRef(at);
                 var generics = Type.NONE;
                 if (k > 0)
@@ -383,7 +391,7 @@ public class LibraryModule extends Module
                   {
                     generics = Type.NONE;
                   }
-                var outer = type(typeOuterPos(at), from.outer().pos(), from.outer());
+                var outer = type(typeOuterPos(at), from == null ? DUMMY_POS : from.outer().pos(), from == null ? null : from.outer());
                 res = new NormalType(this, at, pos, feature, makeRef, generics, outer, from);
               }
             _libraryTypes.put(at, res);
@@ -891,7 +899,7 @@ public class LibraryModule extends Module
     var eAt = at + 1;
     return switch (k)
       {
-      case Assign  -> eAt;
+      case Assign  -> assignNextPos(eAt);
       case Unbox   -> eAt;
       case Box     -> eAt;
       case Const   -> constNextPos(eAt);
@@ -900,9 +908,43 @@ public class LibraryModule extends Module
       case Call    -> callNextPos (eAt);
       case Tag     -> eAt;
       case Pop     -> eAt;
+      case Unit    -> eAt;
       default      -> throw new Error("unexpected expression kind "+k+" at "+at+" in "+this);
       };
   }
+
+
+  /*
+   *   +---------------------------------------------------------------------------------+
+   *   | Assign                                                                          |
+   *   +--------+--------+---------------+-----------------------------------------------+
+   *   | cond.  | repeat | type          | what                                          |
+   *   +--------+--------+---------------+-----------------------------------------------+
+   *   | true   | 1      | int           | assigned field index                          |
+   *   +--------+--------+---------------+-----------------------------------------------+
+   */
+  int assignFieldPos(int at)
+  {
+    if (PRECONDITIONS) require
+      (expressionKind(at-1) == IR.ExprKind.Assign);
+
+    return at;
+  }
+  int assignField(int at)
+  {
+    if (PRECONDITIONS) require
+      (expressionKind(at-1) == IR.ExprKind.Assign);
+
+    return data().getInt(assignFieldPos(at));
+  }
+  int assignNextPos(int at)
+  {
+    if (PRECONDITIONS) require
+      (expressionKind(at-1) == IR.ExprKind.Assign);
+
+    return assignFieldPos(at) + 4;
+  }
+
 
 
   /*
@@ -924,6 +966,13 @@ public class LibraryModule extends Module
       (expressionKind(at-1) == IR.ExprKind.Const);
 
     return at;
+  }
+  AbstractType constType(int at)
+  {
+    if (PRECONDITIONS) require
+      (expressionKind(at-1) == IR.ExprKind.Const);
+
+    return type(constTypePos(at), DUMMY_POS, null);
   }
   int constLengthPos(int at)
   {
@@ -971,7 +1020,17 @@ public class LibraryModule extends Module
    *   +--------+--------+---------------+-----------------------------------------------+
    *   | cond.  | repeat | type          | what                                          |
    *   +--------+--------+---------------+-----------------------------------------------+
-   *   | true   | 1      | int           | called feature index                          |
+   *   | true   | 1      | int           | called feature f index                        |
+   *   +--------+--------+---------------+-----------------------------------------------+
+   *   | hasOpen| 1      | int           | num actual args (TBD: this is redundant,      |
+   *   | ArgList|        |               | should be possible to determine)              |
+   *   +--------+--------+---------------+-----------------------------------------------+
+   *   | cf.gene| 1      | int           | num actual generics n                         |
+   *   | rics.is|        |               |                                               |
+   *   | Open   |        |               |                                               |
+   *   +--------+--------+---------------+-----------------------------------------------+
+   *   |        | n      | Type          | type parameters. if !hasOpen, n is            |
+   *   |        |        |               | f.generics().list.size()                      |
    *   +--------+--------+---------------+-----------------------------------------------+
    */
   int callCalledFeaturePos(int at)
@@ -988,12 +1047,78 @@ public class LibraryModule extends Module
 
     return data().getInt(callCalledFeaturePos(at));
   }
-  int callNextPos(int at)
+  int callNumArgsPos(int at)
   {
     if (PRECONDITIONS) require
       (expressionKind(at-1) == IR.ExprKind.Call);
 
     return callCalledFeaturePos(at) + 4;
+  }
+  int callNumArgsRaw(int at)
+  {
+    if (PRECONDITIONS) require
+      (expressionKind(at-1) == IR.ExprKind.Call,
+       libraryFeature(callCalledFeature(at), null).hasOpenGenericsArgList());
+
+    return data().getInt(callNumArgsPos(at));
+  }
+  int callNumArgs(int at)
+  {
+    if (PRECONDITIONS) require
+      (expressionKind(at-1) == IR.ExprKind.Call);
+
+    var f = libraryFeature(callCalledFeature(at), null);
+    return f.hasOpenGenericsArgList()
+      ? callNumArgsRaw(at)
+      : f.arguments().size();
+  }
+  int callNumTypeParametersPos(int at)
+  {
+    if (PRECONDITIONS) require
+      (expressionKind(at-1) == IR.ExprKind.Call);
+
+    return callNumArgsPos(at) +
+      (libraryFeature(callCalledFeature(at), null).hasOpenGenericsArgList() ? 4 : 0);
+  }
+  int callNumTypeParametersRaw(int at)
+  {
+    if (PRECONDITIONS) require
+      (expressionKind(at-1) == IR.ExprKind.Call,
+       libraryFeature(callCalledFeature(at), null).generics().isOpen());
+
+    return data().getInt(callNumTypeParametersPos(at));
+  }
+  int callNumTypeParameters(int at)
+  {
+    if (PRECONDITIONS) require
+      (expressionKind(at-1) == IR.ExprKind.Call);
+
+    var f = libraryFeature(callCalledFeature(at), null);
+    return f.generics().isOpen()
+      ? callNumTypeParametersRaw(at)
+      : f.generics().list.size();
+  }
+  int callTypeParametersPos(int at)
+  {
+    if (PRECONDITIONS) require
+      (expressionKind(at-1) == IR.ExprKind.Call);
+
+    return callNumTypeParametersPos(at) +
+      (libraryFeature(callCalledFeature(at), null).generics().isOpen() ? 4 : 0);
+  }
+  int callNextPos(int at)
+  {
+    if (PRECONDITIONS) require
+      (expressionKind(at-1) == IR.ExprKind.Call);
+
+    var n = callNumTypeParameters(at);
+    var tat = callTypeParametersPos(at);
+    for (var i = 0; i < n; i++)
+      {
+        tat = typeNextPos(tat);
+      }
+
+    return tat;
   }
 
 

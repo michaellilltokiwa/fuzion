@@ -411,10 +411,20 @@ class LibraryOut extends DataOut
     var codePos = offset();
 
     // write the actual code data
-    expressions(code, false);
+    expressions(code, true);
     writeIntAt(szPos, offset() - codePos);
   }
 
+
+  /**
+   * Collect the binary data for given Expressions.
+   *
+   * @param s the statement to write
+   */
+  void expressions(Stmnt s)
+  {
+    expressions(s, false);
+  }
 
   /**
    * Collect the binary data for given Expressions.
@@ -449,13 +459,23 @@ class LibraryOut extends DataOut
   {
     if (s instanceof Assign a)
       {
-        code(a._value);
-        code(a._target);
+        expressions(a._value);
+        expressions(a._target);
         write(IR.ExprKind.Assign.ordinal());
+  /*
+   *   +---------------------------------------------------------------------------------+
+   *   | Assign                                                                          |
+   *   +--------+--------+---------------+-----------------------------------------------+
+   *   | cond.  | repeat | type          | what                                          |
+   *   +--------+--------+---------------+-----------------------------------------------+
+   *   | true   | 1      | int           | assigned field index                          |
+   *   +--------+--------+---------------+-----------------------------------------------+
+   */
+        writeOffset(a._assignedField);
       }
     else if (s instanceof Unbox u)
       {
-        code(u.adr_);
+        expressions(u.adr_);
         if (u._needed)
           {
             write(IR.ExprKind.Unbox.ordinal());
@@ -463,7 +483,7 @@ class LibraryOut extends DataOut
       }
     else if (s instanceof Box b)
       {
-        code(b._value);
+        expressions(b._value);
         write(IR.ExprKind.Box.ordinal());
       }
     else if (s instanceof Block b)
@@ -471,15 +491,25 @@ class LibraryOut extends DataOut
         int i = 0;
         for (var st : b.statements_)
           {
-            var last = i == b.statements_.size();
-            var dump = !last || dumpResult;
-            expressions(st, dump);
             i++;
+            if (i < b.statements_.size())
+              {
+                expressions(st, true);
+              }
+            else
+              {
+                expressions(st, dumpResult);
+                dumpResult = dumpResult || st instanceof Expr;
+              }
+          }
+        if (!dumpResult)
+          {
+            write(IR.ExprKind.Unit.ordinal());
           }
       }
     else if (s instanceof Constant c)
       {
-
+        write(IR.ExprKind.Const.ordinal());
   /*
    *   +---------------------------------------------------------------------------------+
    *   | Constant                                                                        |
@@ -493,7 +523,6 @@ class LibraryOut extends DataOut
    *   |        | length | byte          | data of the constant                          |
    *   +--------+--------+---------------+-----------------------------------------------+
    */
-        write(IR.ExprKind.Const.ordinal());
         type(c.type());
         var d = c.data();
         writeInt(d.length);
@@ -505,8 +534,9 @@ class LibraryOut extends DataOut
       }
     else if (s instanceof If i)
       {
-        code(i.cond);
+        expressions(i.cond);
         write(IR.ExprKind.Match.ordinal());
+        writeInt(2);
         code(i.block);
         if (i.elseBlock != null)
           {
@@ -523,23 +553,54 @@ class LibraryOut extends DataOut
       }
     else if (s instanceof Call c)
       {
-
+        expressions(c.target);
+        for (var a : c._actuals)
+          {
+            expressions(a);
+          }
+        write(IR.ExprKind.Call.ordinal());
+            if (offset() == 23941) Thread.dumpStack();
   /*
    *   +---------------------------------------------------------------------------------+
    *   | Call                                                                            |
    *   +--------+--------+---------------+-----------------------------------------------+
    *   | cond.  | repeat | type          | what                                          |
    *   +--------+--------+---------------+-----------------------------------------------+
-   *   | true   | 1      | int           | called feature index                          |
+   *   | true   | 1      | int           | called feature f index                        |
+   *   +--------+--------+---------------+-----------------------------------------------+
+   *   | hasOpen| 1      | int           | num actual args (TBD: this is redundant,      |
+   *   | ArgList|        |               | should be possible to determine)              |
+   *   +--------+--------+---------------+-----------------------------------------------+
+   *   | cf.gene| 1      | int           | num actual generics n                         |
+   *   | rics.is|        |               |                                               |
+   *   | Open   |        |               |                                               |
+   *   +--------+--------+---------------+-----------------------------------------------+
+   *   |        | n      | Type          | actual generics. if !hasOpen, n is            |
+   *   |        |        |               | f.generics().list.size()                      |
    *   +--------+--------+---------------+-----------------------------------------------+
    */
-        code(c.target);
-        for (var a : c._actuals)
-          {
-            code(a);
-          }
-        write(IR.ExprKind.Call.ordinal());
         writeOffset(c.calledFeature());
+        int n;
+        var cf = c.calledFeature();
+        if (cf.hasOpenGenericsArgList())
+          {
+            writeInt(c._actuals.size());
+          }
+        if (cf.generics().isOpen())
+          {
+            n = c.generics.size();
+            writeInt(n);
+          }
+        else
+          {
+            n = cf.generics().list.size();
+            check
+              (c.generics.size() == n);
+          }
+        for (int i = 0; i < n; i++)
+          {
+            type(c.generics.get(i));
+          }
         if (dumpResult)
           {
             write(IR.ExprKind.Pop.ordinal());
@@ -547,7 +608,8 @@ class LibraryOut extends DataOut
       }
     else if (s instanceof Match m)
       {
-
+        expressions(m.subject);
+        write(IR.ExprKind.Match.ordinal());
   /*
    *   +---------------------------------------------------------------------------------+
    *   | Match                                                                           |
@@ -567,8 +629,7 @@ class LibraryOut extends DataOut
    *   | true   | 1      | Code          | code for case                                 |
    *   +--------+--------+---------------+-----------------------------------------------+
    */
-        code(m.subject);
-        write(IR.ExprKind.Match.ordinal());
+        writeInt(m.cases.size());
         for (var c : m.cases)
           {
             code(c.code);
@@ -576,7 +637,7 @@ class LibraryOut extends DataOut
       }
     else if (s instanceof Tag t)
       {
-        code(t._value);
+        expressions(t._value);
         write(IR.ExprKind.Tag.ordinal());
       }
     else if (s instanceof Nop)

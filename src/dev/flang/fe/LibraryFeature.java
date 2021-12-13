@@ -29,9 +29,12 @@ package dev.flang.fe;
 import java.nio.charset.StandardCharsets;
 
 import java.util.Collection;
+import java.util.Stack;
 
 import dev.flang.ast.AbstractFeature;
 import dev.flang.ast.AbstractType;
+import dev.flang.ast.Block;
+import dev.flang.ast.BoolConst;
 import dev.flang.ast.Call;
 import dev.flang.ast.Contract;
 import dev.flang.ast.Expr;
@@ -43,6 +46,8 @@ import dev.flang.ast.Generic;
 import dev.flang.ast.Impl;
 import dev.flang.ast.ReturnType;
 import dev.flang.ast.SrcModule;
+import dev.flang.ast.Stmnt;
+import dev.flang.ast.StrConst;
 import dev.flang.ast.Type;
 import dev.flang.ast.Types;
 
@@ -490,7 +495,155 @@ public class LibraryFeature extends AbstractFeature
   public Expr initialValue() { if (_libModule.USE_FUM) { check(false); return null; } else { return _from.initialValue(); } }   // NYI: remove, used only in Clazz.java for some obscure case
 
   // following used in MIR or later
-  public Expr code() { if (_libModule.USE_FUM) { check(false); return null; } else { return _from.code(); } }
+  public Expr code()
+  {
+    if (PRECONDITIONS) require
+      (isRoutine());
+    if (true)
+      {
+        var c = _libModule.featureCodePos(_index);
+        var result = code(c);
+        if (result != null)
+          {
+            return result;
+          }
+      }
+    if (_libModule.USE_FUM)
+      {
+        check(false); return null;
+      }
+    else
+      {
+        return _from.code();
+      }
+  }
+
+  /**
+   * Convert code at given offset in _libModule to an ast.Expr
+   */
+  Expr code(int at)
+  {
+    var s = new Stack<Expr>();
+    code(at, s);
+    check
+      (s.size() == 0);
+    return null;
+  }
+
+
+  /**
+   * Convert code at given offset in _libModule to an ast.Expr
+   */
+  void code(int at, Stack<Expr> s)
+  {
+    var sz = _libModule.codeSize(at);
+    var eat = _libModule.codeExpressionsPos(at);
+    var e = eat;
+    while (e < eat+sz)
+      {
+        var k = _libModule.expressionKind(e);
+        var iat = e + 1;
+        Expr ex = null;
+        switch (k)
+          {
+          case Assign:
+            {
+              var field = _libModule.assignField(iat);
+              var f = _libModule.libraryFeature(field, null);
+              var target = s.pop();
+              var val = s.pop();
+              break;
+            }
+          case Unbox:
+            {
+              var val = s.pop();
+              // NYI: type
+              s.push(null);
+              break;
+            }
+          case Box:
+            {
+              var val = s.pop();
+              // NYI: type
+              s.push(null);
+              break;
+            }
+          case Const:
+            {
+              var t = _libModule.constType(iat);
+              var d = _libModule.constData(iat);
+              Expr r;
+              if (t == Types.resolved.t_bool)
+                {
+                  r = d[0] == 0 ? BoolConst. FALSE : BoolConst.TRUE;
+                }
+              else if (t == Types.resolved.t_string)
+                {
+                  r = new StrConst(pos(), new String(d, StandardCharsets.UTF_8));
+                }
+              else
+                { // NYI: Numeric
+                  r = null;
+                }
+              s.push(r);
+              break;
+            }
+          case Current:
+            {
+              // NYI: type
+              s.push(null);
+              break;
+            }
+          case Match:
+            {
+              var subj = s.pop();
+              var n = _libModule.matchNumberOfCases(iat);
+              var cat = _libModule.matchCasesPos(iat);
+              for (var i = 0; i < n; i++)
+                {
+                  code(cat);
+                  cat = _libModule.matchCaseNextPos(cat);
+                }
+              break;
+            }
+          case Call:
+            {
+              var feat = _libModule.callCalledFeature(iat);
+              var f = _libModule.libraryFeature(feat, null);
+              var na = _libModule.callNumArgs(iat);
+              for (var i = 0; i < na; i++)
+                {
+                  s.pop();
+                }
+              if (!f.outer().isUniverse())
+                {
+                  var target = s.pop();
+                }
+              s.push(null);
+              break;
+            }
+          case Pop:
+            {
+              s.pop();
+              break;
+            }
+          case Tag:
+            {
+              var val = s.pop();
+              // NYI: tag
+              s.push(null);
+              break;
+            }
+          case Unit:
+            {
+              s.push(null);
+              break;
+            }
+          default: throw new Error("Unexpected expression kind: " + k);
+          }
+        e = _libModule.expressionNextPos(e);
+      }
+  }
 
   // in FUIR or later
   public Contract contract() { if (_libModule.USE_FUM) { check(false); return null; } else { return _from.contract(); } }
