@@ -53,6 +53,7 @@ JAVA_FILES_UTIL_UNICODE = \
           $(SRC)/dev/flang/util/unicode/ParseUnicodeData.java \
 
 JAVA_FILES_AST = \
+          $(SRC)/dev/flang/ast/AbstractCall.java \
           $(SRC)/dev/flang/ast/AbstractFeature.java \
           $(SRC)/dev/flang/ast/AbstractType.java \
           $(SRC)/dev/flang/ast/Assign.java \
@@ -123,6 +124,7 @@ JAVA_FILES_FE = \
           $(SRC)/dev/flang/fe/FrontEnd.java \
           $(SRC)/dev/flang/fe/FrontEndOptions.java \
           $(SRC)/dev/flang/fe/GenericType.java \
+          $(SRC)/dev/flang/fe/LibraryCall.java \
           $(SRC)/dev/flang/fe/LibraryFeature.java \
           $(SRC)/dev/flang/fe/LibraryModule.java \
           $(SRC)/dev/flang/fe/LibraryOut.java \

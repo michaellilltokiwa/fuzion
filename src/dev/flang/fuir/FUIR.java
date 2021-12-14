@@ -35,12 +35,12 @@ import java.util.TreeSet;
 import dev.flang.air.Clazz;
 import dev.flang.air.Clazzes;
 
+import dev.flang.ast.AbstractCall; // NYI: remove dependency
 import dev.flang.ast.AbstractFeature; // NYI: remove dependency
 import dev.flang.ast.Assign; // NYI: remove dependency
 import dev.flang.ast.Block; // NYI: remove dependency
 import dev.flang.ast.BoolConst; // NYI: remove dependency
 import dev.flang.ast.Box; // NYI: remove dependency
-import dev.flang.ast.Call; // NYI: remove dependency
 import dev.flang.ast.Constant; // NYI: remove dependency
 import dev.flang.ast.Current; // NYI: remove dependency
 import dev.flang.ast.Expr; // NYI: remove dependency
@@ -696,10 +696,10 @@ public class FUIR extends IR
    */
   private void addCode(Clazz cc, List<Object> code, AbstractFeature ff)
   {
-    for (Call p: ff.inherits())
+    for (var p: ff.inherits())
       {
         /*
-NYI: Any side-effects in p.target or p._actuals will be executed twice, once for
+NYI: Any side-effects in p.target() or p.actuals() will be executed twice, once for
      the precondition and once for the inlinded call! See this example:
 
 hw25 is
@@ -723,7 +723,7 @@ hw25 is
 
         var pf = p.calledFeature();
         var or = (Clazz) cc._inner.get(pf.outerRef());  // NYI: ugly cast
-        toStack(code, p.target);
+        toStack(code, p.target());
         if (or != null && !or.resultClazz().isUnitType())
           {
             if (!or.resultClazz().isRef() &&
@@ -736,10 +736,10 @@ hw25 is
             code.add(or);  // field clazz means assignment to field
           }
         check
-          (p._actuals.size() == p.calledFeature().arguments().size());
-        for (var i = 0; i < p._actuals.size(); i++)
+          (p.actuals().size() == p.calledFeature().arguments().size());
+        for (var i = 0; i < p.actuals().size(); i++)
           {
-            var a = p._actuals.get(i);
+            var a = p.actuals().get(i);
             var f = pf.arguments().get(i);
             toStack(code, a);
             code.add(ExprKind.Current);
@@ -1069,9 +1069,9 @@ hw25 is
     var outerClazz = _clazzIds.get(cl);
     var s = _codeIds.get(c).get(ix);
     Clazz innerClazz =
-      (s instanceof Call   call) ? (Clazz) outerClazz.getRuntimeData(call.sid_ + 0) :
-      (s instanceof Assign a   ) ? (Clazz) outerClazz.getRuntimeData(a   .tid_ + 1) :
-      (s instanceof Clazz  fld ) ? fld :
+      (s instanceof AbstractCall   call) ? (Clazz) outerClazz.getRuntimeData(call.sid_ + 0) :
+      (s instanceof Assign         a   ) ? (Clazz) outerClazz.getRuntimeData(a   .tid_ + 1) :
+      (s instanceof Clazz          fld ) ? fld :
       (Clazz) (Object) new Object() { { if (true) throw new Error("acccessedClazz found unexpected Stmnt."); } } /* Java is ugly... */;
 
     return innerClazz == null ? -1 : _clazzIds.get(innerClazz);
@@ -1105,7 +1105,7 @@ hw25 is
     Clazz tclazz;
     AbstractFeature f;
 
-    if (s instanceof Call call)
+    if (s instanceof AbstractCall call)
       {
         f = call.calledFeature();
         tclazz     = (Clazz) outerClazz.getRuntimeData(call.sid_ + 1);
@@ -1169,10 +1169,10 @@ hw25 is
     var outerClazz = _clazzIds.get(cl);
     var s = _codeIds.get(c).get(ix);
     var res =
-      (s instanceof Assign ass ) ? ((Clazz) outerClazz.getRuntimeData(ass.tid_)).isRef() : // NYI: This should be the same as assignedField._outer
-      (s instanceof Clazz  arg ) ? outerClazz.isRef() && !arg.feature().isOuterRef() : // assignment to arg field in inherits call (dynamic if outerlClazz is ref)
+      (s instanceof Assign         ass ) ? ((Clazz) outerClazz.getRuntimeData(ass.tid_)).isRef() : // NYI: This should be the same as assignedField._outer
+      (s instanceof Clazz          arg ) ? outerClazz.isRef() && !arg.feature().isOuterRef() : // assignment to arg field in inherits call (dynamic if outerlClazz is ref)
                                                                                        // or to outer ref field (not dynamic)
-      (s instanceof Call   call) ? call.isDynamic() && ((Clazz) outerClazz.getRuntimeData(call.sid_ + 1)).isRef() :
+      (s instanceof AbstractCall   call) ? call.isDynamic() && ((Clazz) outerClazz.getRuntimeData(call.sid_ + 1)).isRef() :
       new Object() { { if (true) throw new Error("acccessIsDynamic found unexpected Stmnt."); } } == null /* Java is ugly... */;
 
     return res;
@@ -1205,8 +1205,8 @@ hw25 is
        codeAt(c, ix) == ExprKind.Call);
 
     var outerClazz = _clazzIds.get(cl);
-    var call = (Call) _codeIds.get(c).get(ix);
-    return call.isInheritanceCall_;
+    var call = (AbstractCall) _codeIds.get(c).get(ix);
+    return call.isInheritanceCall();
   }
 
 
@@ -1232,9 +1232,9 @@ hw25 is
     var outerClazz = _clazzIds.get(cl);
     var s = _codeIds.get(c).get(ix);
     var tclazz =
-      (s instanceof Assign ass ) ? (Clazz) outerClazz.getRuntimeData(ass.tid_) : // NYI: This should be the same as assignedField._outer
-      (s instanceof Clazz  arg ) ? outerClazz : // assignment to arg field in inherits call, so outer clazz is current instance
-      (s instanceof Call   call) ? (Clazz) outerClazz.getRuntimeData(call.sid_ + 1) :
+      (s instanceof Assign         ass ) ? (Clazz) outerClazz.getRuntimeData(ass.tid_) : // NYI: This should be the same as assignedField._outer
+      (s instanceof Clazz          arg ) ? outerClazz : // assignment to arg field in inherits call, so outer clazz is current instance
+      (s instanceof AbstractCall   call) ? (Clazz) outerClazz.getRuntimeData(call.sid_ + 1) :
       (Clazz) (Object) new Object() { { if (true) throw new Error("acccessTargetClazz found unexpected Stmnt."); } } /* Java is ugly... */;
 
     return _clazzIds.get(tclazz);

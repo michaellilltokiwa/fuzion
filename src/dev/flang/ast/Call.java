@@ -42,12 +42,12 @@ import dev.flang.util.SourcePosition;
 
 
 /**
- * Call is an expresion that is a call to a class and that results in
+ * Call is an expression that is a call to a class and that results in
  * the result value of that class.
  *
  * @author Fridtjof Siebert (siebert@tokiwa.software)
  */
-public class Call extends Expr
+public class Call extends AbstractCall
 {
 
 
@@ -60,14 +60,6 @@ public class Call extends Expr
    * arguments list ("a.b()").
    */
   public static final List<Expr> NO_PARENTHESES = new List<>();
-
-
-  /**
-   * Special value for an empty generics list to distinguish a call without
-   * generics ("a.b(x,y)") from a call with an empty actual generics list
-   * ("a.b<>(x,y)").
-   */
-  public static final List<AbstractType> NO_GENERICS = new List<>();
 
 
   /**
@@ -106,18 +98,21 @@ public class Call extends Expr
    * actual generic arguments, set by parser
    */
   public /*final*/ List<AbstractType> generics; // NYI: Make this final again when resolveTypes can replace a call
+  public List<AbstractType> generics() { return generics; }
 
 
   /**
    * Actual arguments, set by parser
    */
   public List<Expr> _actuals;
+  public List<Expr> actuals() { return _actuals; }
 
 
   /**
    * the target of the call, null for "this". Set by parser
    */
   public Expr target;
+  public Expr target() { return target; }
 
 
   /**
@@ -158,16 +153,7 @@ public class Call extends Expr
    * call.
    */
   public boolean isInheritanceCall_ = false;
-
-
-  // NYI: Move sid_ to target?
-  public int sid_ = -1;  // NYI: Used by dev.flang.be.interpreter, REMOVE!
-
-  // For a call to parent in an inherits clause, these are the ids of the
-  // argument fields for the parent feature.
-  //
-  // NYI: remove, used in FUIR.  This should be replaced by explicit assignments to fields
-  public int parentCallArgFieldIds_ = -1;
+  public boolean isInheritanceCall() { return isInheritanceCall_; }
 
 
   /**
@@ -1313,7 +1299,7 @@ public class Call extends Expr
           }
         else if (aft != null)
           {
-            for (Call p: aft.inherits())
+            for (var p: aft.inherits())
               {
                 var pt = p.typeOrNull();
                 if (pt != null)
@@ -1508,7 +1494,7 @@ public class Call extends Expr
             boolean ok = false;
             if (outer != null && outer.isChoice())
               {
-                for (Call p : outer.inherits())
+                for (var p : outer.inherits())
                   {
                     ok = ok || p == this;
                   }

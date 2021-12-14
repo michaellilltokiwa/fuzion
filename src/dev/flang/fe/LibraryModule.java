@@ -382,7 +382,7 @@ public class LibraryModule extends Module
                     var gi = 0;
                     while (gi < k)
                       {
-                        generics.add(type(i, pos, from.generics().get(gi)));
+                        generics.add(type(i, pos, from == null ? null : from.generics().get(gi)));
                         i = typeNextPos(i);
                         gi++;
                       }
@@ -436,6 +436,12 @@ public class LibraryModule extends Module
    *   +--------+--------+---------------+-----------------------------------------------+
    *   | hasRT  | 1      | Type          | optional result type,                         |
    *   |        |        |               | hasRT = !isConstructor && !isChoice           |
+   *   +--------+--------+---------------+-----------------------------------------------+
+   *   | true   | 1      | int           | inherits count i                              |
+   *   | NYI!   |        |               |                                               |
+   *   | !isFiel+--------+---------------+-----------------------------------------------+
+   *   | d? !isI| i      | Code          | inherits calls                                |
+   *   | ntrinsc|        |               |                                               |
    *   +--------+--------+---------------+-----------------------------------------------+
    *   | isRou- | 1      | Code          | Feature code                                  |
    *   | tine   |        |               |                                               |
@@ -548,12 +554,31 @@ public class LibraryModule extends Module
        k != FuzionConstants.MIR_FILE_KIND_CONSTRUCTOR_VALUE &&
        k != AbstractFeature.Kind.Choice.ordinal());
   }
-  int featureCodePos(int at)
+  int featureInheritsCountPos(int at)
   {
     var i = featureResultTypePos(at);
     if (featureHasResultType(at))
       {
         i = typeNextPos(i);
+      }
+    return i;
+  }
+  int featureInheritsCount(int at)
+  {
+    return data().getInt(featureInheritsCountPos(at));
+  }
+  int featureInheritsPos(int at)
+  {
+    return featureInheritsCountPos(at) + 4;
+  }
+  int featureCodePos(int at)
+  {
+    var i = featureInheritsPos(at);
+    var ic = featureInheritsCount(at);
+    while (ic > 0)
+      {
+        i = codeNextPos(i);
+        ic--;
       }
     return i;
   }
@@ -1021,6 +1046,8 @@ public class LibraryModule extends Module
    *   | cond.  | repeat | type          | what                                          |
    *   +--------+--------+---------------+-----------------------------------------------+
    *   | true   | 1      | int           | called feature f index                        |
+   *   |        +--------+---------------+-----------------------------------------------+
+   *   |        | 1      | Type          | result type (NYI: remove, redundant!)s        |
    *   +--------+--------+---------------+-----------------------------------------------+
    *   | hasOpen| 1      | int           | num actual args (TBD: this is redundant,      |
    *   | ArgList|        |               | should be possible to determine)              |
@@ -1047,12 +1074,27 @@ public class LibraryModule extends Module
 
     return data().getInt(callCalledFeaturePos(at));
   }
-  int callNumArgsPos(int at)
+  int callTypePos(int at)
   {
     if (PRECONDITIONS) require
       (expressionKind(at-1) == IR.ExprKind.Call);
 
     return callCalledFeaturePos(at) + 4;
+  }
+  AbstractType callType(int at)
+  {
+    if (PRECONDITIONS) require
+      (expressionKind(at-1) == IR.ExprKind.Call);
+
+    return type(callTypePos(at), DUMMY_POS, null);
+  }
+  int callNumArgsPos(int at)
+  {
+    if (PRECONDITIONS) require
+      (expressionKind(at-1) == IR.ExprKind.Call);
+
+    var p = callTypePos(at);
+    return typeNextPos(p);
   }
   int callNumArgsRaw(int at)
   {

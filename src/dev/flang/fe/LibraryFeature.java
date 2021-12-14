@@ -31,11 +31,11 @@ import java.nio.charset.StandardCharsets;
 import java.util.Collection;
 import java.util.Stack;
 
+import dev.flang.ast.AbstractCall;
 import dev.flang.ast.AbstractFeature;
 import dev.flang.ast.AbstractType;
 import dev.flang.ast.Block;
 import dev.flang.ast.BoolConst;
-import dev.flang.ast.Call;
 import dev.flang.ast.Contract;
 import dev.flang.ast.Expr;
 import dev.flang.ast.Feature;
@@ -457,21 +457,34 @@ public class LibraryFeature extends AbstractFeature
             var tai = _libModule.featureTypeArgsPos(_index);
             var list = new List<Generic>();
             var n = _libModule.typeArgsCount(tai);
-            var isOpen = _libModule.typeArgsOpen(tai);
-            var tali = _libModule.typeArgsListPos(tai);
-            var i = 0;
-            while (i > n)
+            if (n > 0)
               {
-                var gn = _libModule.typeArgName(tali);
-                var gp = _from.generics().list.get(i)._pos; // NYI: pos of generic
-                var gc = _libModule.typeArgConstraint(tali, gp, _from.generics().list.get(i).constraint());
-                var g = new Generic(gp, i, gn, gc);
-                // NYI: Missing generic constraint!
-                list.add(g);
-                tali = _libModule.typeArgNextPos(tali);
-                i++;
+                var isOpen = _libModule.typeArgsOpen(tai);
+                var tali = _libModule.typeArgsListPos(tai);
+                var i = 0;
+                while (i < n)
+                  {
+                    var gn = _libModule.typeArgName(tali);
+                    var gp = _from.generics().list.get(i)._pos; // NYI: pos of generic
+                    var tali0 = tali;
+                    var i0 = i;
+                    var g = new Generic(gp, i, gn, null)
+                      {
+                        public AbstractType constraint()
+                        {
+                          return _libModule.typeArgConstraint(tali0, gp, _from instanceof LibraryFeature ? null : _from.generics().list.get(i0).constraint());
+                        }
+                      };
+                    list.add(g);
+                    tali = _libModule.typeArgNextPos(tali);
+                    i++;
+                  }
+                result = new FormalGenerics(list, isOpen, this);
               }
-            result = new FormalGenerics(list, isOpen, this);
+            else
+              {
+                result = FormalGenerics.NONE;
+              }
           }
         else
           {
@@ -488,7 +501,30 @@ public class LibraryFeature extends AbstractFeature
     return _featureName;
   }
   public SourcePosition pos() { return _from.pos(); }
-  public List<Call> inherits() { if (_libModule.USE_FUM) { check(false); return null; } else { return _from.inherits(); } }
+  List<AbstractCall> _inherits = null;
+  public List<AbstractCall> inherits()
+  {
+    if (_inherits == null)
+      {
+        _inherits = new List<>();
+        var n = _libModule.featureInheritsCount(_index);
+        var ip = _libModule.featureInheritsPos(_index);
+        for (var i = 0; i < n; i++)
+          {
+            var p = (AbstractCall) code1(ip);
+            _inherits.add(p);
+            ip = _libModule.codeNextPos(ip);
+          }
+      }
+    if (_libModule.USE_FUM)
+      {
+        return _inherits;
+      }
+    else
+      {
+        return _from.inherits();
+      }
+  }
 
   // following are used in IR/Clazzes middle end or later only:
   public Impl.Kind implKind() { if (_libModule.USE_FUM) { check(false); return _from.implKind(); } else { return _from.implKind(); } }      // NYI: remove, used only in Clazz.java for some obscure case
@@ -516,6 +552,18 @@ public class LibraryFeature extends AbstractFeature
       {
         return _from.code();
       }
+  }
+
+  /**
+   * Convert code at given offset in _libModule to an ast.Expr
+   */
+  Expr code1(int at)
+  {
+    var s = new Stack<Expr>();
+    code(at, s);
+    check
+      (s.size() == 1);
+    return s.pop();
   }
 
   /**
@@ -608,18 +656,8 @@ public class LibraryFeature extends AbstractFeature
             }
           case Call:
             {
-              var feat = _libModule.callCalledFeature(iat);
-              var f = _libModule.libraryFeature(feat, null);
-              var na = _libModule.callNumArgs(iat);
-              for (var i = 0; i < na; i++)
-                {
-                  s.pop();
-                }
-              if (!f.outer().isUniverse())
-                {
-                  var target = s.pop();
-                }
-              s.push(null);
+              var r = new LibraryCall(_libModule, iat, s);
+              s.push(r);
               break;
             }
           case Pop:
