@@ -311,7 +311,7 @@ public class AstErrors extends ANY
           "different separator used at " + p2.show());
   }
 
-  static void assignmentTargetNotFound(Assign ass, Feature outer)
+  static void assignmentTargetNotFound(Assign ass, AbstractFeature outer)
   {
     var solution = solutionDeclareReturnTypeIfResult(ass._name, 0);
     error(ass.pos(),
@@ -322,7 +322,7 @@ public class AstErrors extends ANY
           solution);
   }
 
-  static void assignmentToNonField(Assign ass, AbstractFeature f, Feature outer)
+  static void assignmentToNonField(Assign ass, AbstractFeature f, AbstractFeature outer)
   {
     error(ass.pos(),
           "Target of assignment is not a field",
@@ -331,7 +331,7 @@ public class AstErrors extends ANY
           "For assignment: " + s(ass) + "\n");
   }
 
-  static void assignmentToIndexVar(Assign ass, AbstractFeature f, Feature outer)
+  static void assignmentToIndexVar(Assign ass, AbstractFeature f, AbstractFeature outer)
   {
     error(ass.pos(),
           "Target of assignment must not be a loop index variable",
@@ -701,21 +701,23 @@ public class AstErrors extends ANY
           solution);
   }
 
-  static void ambiguousType(Type t,
-                            List<AbstractFeature> possibilities)
+  public static void ambiguousType(SourcePosition pos,
+                                   String t,
+                                   List<AbstractFeature> possibilities)
   {
-    error(t.pos,
+    error(pos,
           "Ambiguous type",
           "For a type used in a declaration, overloading results in an ambiguity that cannot be resolved by the compiler.\n" +
-          "Type that is ambiguous: " + s(t) + "\n" +
+          "Type that is ambiguous: " + st(t) + "\n" +
           "Possible features that match this type: \n" +
           featureList(possibilities) + "\n" +
           "To solve this, rename these features such that each one has a unique name.");
   }
 
-  static void typeNotFound(Type t,
-                           AbstractFeature outerfeat,
-                           List<AbstractFeature> nontypes_found)
+  public static void typeNotFound(SourcePosition pos,
+                                  String t,
+                                  AbstractFeature outerfeat,
+                                  List<AbstractFeature> nontypes_found)
   {
     int n = nontypes_found.size();
     boolean hasAbstract = false;
@@ -725,10 +727,10 @@ public class AstErrors extends ANY
         hasAbstract = f.isAbstract();
         hasReturnType =  (!(f instanceof Feature ff) || ff._returnType != NoType.INSTANCE) && !f.isConstructor();
       }
-    error(t.pos,
+    error(pos,
           "Type not found",
-          "Type " + st(t.name) + " was not found, no corresponding feature nor formal generic argument exists\n" +
-          "Type that was not found: " + s(t) + "\n" +
+          "Type " + st(t) + " was not found, no corresponding feature nor formal generic argument exists\n" +
+          "Type that was not found: " + st(t) + "\n" +
           "within feature: " + s(outerfeat) + "\n" +
           (n == 0 ? "" :
            "However, " + singularOrPlural(n, "feature") + " " +

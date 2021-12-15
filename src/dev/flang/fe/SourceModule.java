@@ -206,6 +206,21 @@ public class SourceModule extends Module implements SrcModule, MirModule
     _inputFile = inputFile;
     _defaultMain = defaultMain;
     _universe = universe;
+
+    if (LibraryModule.USE_FUM && dependsOn.length > 0)
+      {
+        Types.reset();
+        var stdlib = (LibraryModule) dependsOn[0];
+        new Types.Resolved((name, ref) -> new NormalType(stdlib,
+                                                         -1,
+                                                         SourcePosition.builtIn,
+                                                         lookupFeatureForType(SourcePosition.builtIn, name, universe, universe),
+                                                         ref,
+                                                         Type.NONE,
+                                                         universe.thisType(),
+                                                         null),
+                           universe);
+      }
     if (universe.state().atLeast(Feature.State.RESOLVED))
       {
         universe.resetState();   // NYI: HACK: universe is currently resolved twice, once as part of stdlib, and then as part of another module
@@ -482,7 +497,7 @@ public class SourceModule extends Module implements SrcModule, MirModule
 
     inner.visit(new FeatureVisitor()
       {
-        public Call      action(Call      c, Feature outer) {
+        public Call      action(Call      c, AbstractFeature outer) {
           if (c.name == null)
             { /* this is an anonymous feature declaration */
               check
@@ -495,7 +510,7 @@ public class SourceModule extends Module implements SrcModule, MirModule
             }
           return c;
         }
-        public Feature   action(Feature   f, Feature outer) { findDeclarations(f, outer); return f; }
+        public Feature   action(Feature   f, AbstractFeature outer) { findDeclarations(f, outer); return f; }
       });
 
     if (inner.initialValue() != null &&
@@ -1091,6 +1106,65 @@ public class SourceModule extends Module implements SrcModule, MirModule
       }
     while ((result.features.isEmpty()) && (curOuter != null));
 
+    return result;
+  }
+
+
+  /**
+   * Lookup the feature that is referenced in a non-generic type.  There might
+   * be several features with the given name and different argumentn counts.
+   * Then, only the feature that is a constructor defines the type.
+   *
+   * If there are several such constructors, the type is ambiguous and an error
+   * will be produced.
+   *
+   * Also, if there is no such type, an error will be produced.
+   *
+   * @param pos the position of the type.
+   *
+   * @param name the name of the type
+   *
+   * @param o the outer feature of the type
+   *
+   * @param outerfeat the outer feature that contains (uses) the type.
+   */
+  public AbstractFeature lookupFeatureForType(SourcePosition pos, String name, AbstractFeature o, AbstractFeature outerfeat)
+  {
+    AbstractFeature result = null;
+    var type_fs = new List<AbstractFeature>();
+    var nontype_fs = new List<AbstractFeature>();
+    do
+      {
+        var fs = lookupFeatures(o, name).values();
+        for (var f : fs)
+          {
+            if (f.isConstructor() || f.isChoice())
+              {
+                type_fs.add(f);
+                result = f.astFeature();
+              }
+            else
+              {
+                nontype_fs.add(f);
+              }
+          }
+        if (type_fs.size() > 1)
+          {
+            AstErrors.ambiguousType(pos, name, type_fs);
+            result = Types.f_ERROR;
+          }
+        o = o.outer();
+      }
+    while (result == null && o != null);
+
+    if (result == null)
+      {
+        result = Types.f_ERROR;
+        if (name != Types.ERROR_NAME)
+          {
+            AstErrors.typeNotFound(pos, name, outerfeat, nontype_fs);
+          }
+      }
     return result;
   }
 
