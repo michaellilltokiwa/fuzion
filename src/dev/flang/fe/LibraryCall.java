@@ -33,6 +33,9 @@ import dev.flang.ast.AbstractCall;
 import dev.flang.ast.AbstractFeature;
 import dev.flang.ast.AbstractType;
 import dev.flang.ast.Expr;
+import dev.flang.ast.FeatureVisitor;
+import dev.flang.ast.Types;
+import dev.flang.ast.Universe;
 
 import dev.flang.util.List;
 import dev.flang.util.SourcePosition;
@@ -81,7 +84,7 @@ public class LibraryCall extends AbstractCall
     super(LibraryModule.DUMMY_POS);
     _libModule = lib;
     _index = index;
-    _type = _libModule.USE_FUM ? lib.callType(index) : null;
+    _type = _libModule.USE_FUM ? lib.callType(index) : Types.t_ERROR;
     var na = _libModule.callNumArgs(index);
     var actuals = new List<Expr>();
     for (var i = 0; i < na; i++)
@@ -106,7 +109,11 @@ public class LibraryCall extends AbstractCall
     Expr target = null;
     var feat = lib.callCalledFeature(index);
     var f = lib.libraryFeature(feat, null);
-    if (!f.outer().isUniverse())
+    if (f.outer().isUniverse())
+      {
+        target = new Universe(pos());
+      }
+    else
       {
         target = s.pop();
       }
@@ -116,6 +123,40 @@ public class LibraryCall extends AbstractCall
 
 
   /*-----------------------------  methods  -----------------------------*/
+
+
+  /**
+   * visit all the features, expressions, statements within this feature.
+   *
+   * @param v the visitor instance that defines an action to be performed on
+   * visited objects.
+   *
+   * @param outer the feature surrounding this expression.
+   *
+   * @return this.
+   */
+  public Expr visit(FeatureVisitor v, AbstractFeature outer)
+  {
+    var i = generics().listIterator();
+    while (i.hasNext())
+      {
+        i.set(i.next().visit(v, outer));
+      }
+    var j = actuals().listIterator(); // _actuals can change during resolveTypes, so create iterator early
+    while (j.hasNext())
+      {
+        j.set(j.next().visit(v, outer));
+      };
+    if (target() != null)
+      {
+        var t = target().visit(v, outer);
+        check
+          (target() == t);
+      }
+    v.action(this);
+    return this;
+  }
+
 
 
   public List<AbstractType> generics() { return _generics; }
@@ -138,6 +179,27 @@ public class LibraryCall extends AbstractCall
   {
     return _type;
   }
+
+
+  /**
+   * toString
+   *
+   * @return
+   */
+  public String toString()
+  {
+    var t = target();
+    return (t == null //||
+             //t instanceof Universe
+            ? ""
+            : t.toString() + ".")
+      + calledFeature().featureName().baseName()
+      + (generics().isEmpty() ? "" : "<" + generics() + ">")
+      + (actuals().isEmpty() ? "" : "(" + actuals() +")")
+      //+ (select() < 0        ? "" : "." + select())
+      ;
+  }
+
 
 }
 

@@ -34,9 +34,12 @@ import java.util.Stack;
 import dev.flang.ast.AbstractCall;
 import dev.flang.ast.AbstractFeature;
 import dev.flang.ast.AbstractType;
+import dev.flang.ast.Assign;
 import dev.flang.ast.Block;
 import dev.flang.ast.BoolConst;
+import dev.flang.ast.Box;
 import dev.flang.ast.Contract;
+import dev.flang.ast.Current;
 import dev.flang.ast.Expr;
 import dev.flang.ast.Feature;
 import dev.flang.ast.FeatureName;
@@ -44,10 +47,12 @@ import dev.flang.ast.FeatureVisitor;
 import dev.flang.ast.FormalGenerics;
 import dev.flang.ast.Generic;
 import dev.flang.ast.Impl;
+import dev.flang.ast.NumLiteral;
 import dev.flang.ast.ReturnType;
 import dev.flang.ast.SrcModule;
 import dev.flang.ast.Stmnt;
 import dev.flang.ast.StrConst;
+import dev.flang.ast.Tag;
 import dev.flang.ast.Type;
 import dev.flang.ast.Types;
 
@@ -134,9 +139,12 @@ public class LibraryFeature extends AbstractFeature
     _libModule = lib;
     _index = index;
     _from = from;
-    check
-      (from._libraryFeature == null);
-    from._libraryFeature = this;
+    if (from != null)
+      {
+        check
+          (from._libraryFeature == null);
+        from._libraryFeature = this;
+      }
 
     _kind = lib.featureKind(index) & FuzionConstants.MIR_FILE_KIND_MASK;
     var bytes = lib.featureName(index);
@@ -144,7 +152,10 @@ public class LibraryFeature extends AbstractFeature
     var id = lib.featureId(index);
     var bn = new String(bytes, StandardCharsets.UTF_8);
     _featureName = FeatureName.get(bn, ac, id);
-    check(_featureName == _from.featureName());
+    if (from != null)
+      {
+        check(_featureName == _from.featureName());
+      }
   }
 
 
@@ -192,7 +203,7 @@ public class LibraryFeature extends AbstractFeature
       }
 
     check
-      (result.astFeature() == _from.outer().astFeature());
+      (_libModule.USE_FUM || result.astFeature() == _from.outer().astFeature());
 
     return result;
   }
@@ -218,10 +229,10 @@ public class LibraryFeature extends AbstractFeature
        at < _libModule.data().limit());
 
     AbstractFeature result = null;
-    var sz = _libModule.data().getInt(at);
+    var sz = _libModule.innerFeaturesSize(at);
     check
       (at+4+sz <= _libModule.data().limit());
-    var i = at+4;
+    var i = _libModule.innerFeaturesFeaturesPos(at);
     if (i <= _index && _index < i+sz)
       {
         while (result == null)
@@ -235,13 +246,23 @@ public class LibraryFeature extends AbstractFeature
                 var o = _libModule.libraryFeature(i, _libModule._srcModule.featureFromOffset(i));
                 check
                   (o != null);
-                var inner = _libModule.featureInnerSizePos(i);
+                var inner = _libModule.featureInnerFeaturesPos(i);
                 result = findOuter(o, inner);
                 i = _libModule.featureNextPos(i);
               }
           }
       }
     return result;
+  }
+
+
+  /**
+   * The features declared within this feature.
+   */
+  List<AbstractFeature> declaredFeatures()
+  {
+    var i = _libModule.featureInnerFeaturesPos(_index);
+    return _libModule.innerFeatures(i);
   }
 
 
@@ -253,13 +274,26 @@ public class LibraryFeature extends AbstractFeature
     if (_arguments == null)
       {
         _arguments = new List<AbstractFeature>();
-        var i = _libModule.featureInnerPos(_index);
-        var n = _libModule.featureArgCount(_index);
-        while (_arguments.size() < n)
+        if (LibraryModule.USE_FUM)
           {
-            var a = _libModule.libraryFeature(i, (Feature) _from.arguments().get(_arguments.size()).astFeature());
-            _arguments.add(a);
-            i = _libModule.featureNextPos(i);
+            var i = _libModule.innerFeatures(_libModule.featureInnerFeaturesPos(_index));
+            var n = _libModule.featureArgCount(_index);
+            while (_arguments.size() < n)
+              {
+                var a = i.get(_arguments.size());
+                _arguments.add(a);
+              }
+          }
+        else
+          {
+            var i = _libModule.featureInnerPos(_index);
+            var n = _libModule.featureArgCount(_index);
+            while (_arguments.size() < n)
+              {
+                var a = _libModule.libraryFeature(i, (Feature) _from.arguments().get(_arguments.size()).astFeature());
+                _arguments.add(a);
+                i = _libModule.featureNextPos(i);
+              }
           }
       }
     return _arguments;
@@ -276,15 +310,24 @@ public class LibraryFeature extends AbstractFeature
     AbstractFeature result = null;
     if (hasResultField())
       {
-        var i = _libModule.featureInnerPos(_index);
-        var n = _libModule.featureArgCount(_index);
-        var c = 0;
-        while (c < n)
+        if (LibraryModule.USE_FUM)
           {
-            c++;
-            i = _libModule.featureNextPos(i);
+            var i = _libModule.innerFeatures(_libModule.featureInnerFeaturesPos(_index));
+            var n = _libModule.featureArgCount(_index);
+            result = i.get(n);
           }
-        result = _libModule.libraryFeature(i, (Feature) _from.resultField());
+        else
+          {
+            var i = _libModule.featureInnerPos(_index);
+            var n = _libModule.featureArgCount(_index);
+            var c = 0;
+            while (c < n)
+              {
+                c++;
+                i = _libModule.featureNextPos(i);
+              }
+            result = _libModule.libraryFeature(i, (Feature) _from.resultField());
+          }
       }
 
     check
@@ -304,15 +347,24 @@ public class LibraryFeature extends AbstractFeature
     AbstractFeature result = null;
     if (hasOuterRef())
       {
-        var i = _libModule.featureInnerPos(_index);
-        var n = _libModule.featureArgCount(_index) + (hasResultField() ? 1 : 0);
-        var c = 0;
-        while (c < n)
+        if (LibraryModule.USE_FUM)
           {
-            c++;
-            i = _libModule.featureNextPos(i);
+            var i = _libModule.innerFeatures(_libModule.featureInnerFeaturesPos(_index));
+            var n = _libModule.featureArgCount(_index) + (hasResultField() ? 1 : 0);
+            result = i.get(n);
           }
-        result = _libModule.libraryFeature(i, (Feature) _from.outerRef());
+        else
+          {
+            var i = _libModule.featureInnerPos(_index);
+            var n = _libModule.featureArgCount(_index) + (hasResultField() ? 1 : 0);
+            var c = 0;
+            while (c < n)
+              {
+                c++;
+                i = _libModule.featureNextPos(i);
+              }
+            result = _libModule.libraryFeature(i, (Feature) _from.outerRef());
+          }
       }
 
     check
@@ -320,6 +372,7 @@ public class LibraryFeature extends AbstractFeature
 
     return result;
   }
+
 
   /**
    * For choice feature (i.e., isChoice() holds): The tag field that holds in
@@ -333,8 +386,16 @@ public class LibraryFeature extends AbstractFeature
     AbstractFeature result = null;
     if (isChoice())
       {
-        var i = _libModule.featureInnerPos(_index);
-        result = _libModule.libraryFeature(i, (Feature) _from.choiceTag());
+        if (LibraryModule.USE_FUM)
+          {
+            var i = _libModule.innerFeatures(_libModule.featureInnerFeaturesPos(_index));
+            result = i.get(0);
+          }
+        else
+          {
+            var i = _libModule.featureInnerPos(_index);
+            result = _libModule.libraryFeature(i, (Feature) _from.choiceTag());
+          }
       }
 
     check
@@ -354,25 +415,47 @@ public class LibraryFeature extends AbstractFeature
   public AbstractFeature get(String name)
   {
     AbstractFeature result = null;
-    var sz = _libModule.featureInnerSize(_index);
-    var i = _libModule.featureInnerPos(_index);
-    var e = i + sz;
-    while  (i < e)
+    if (LibraryModule.USE_FUM)
       {
-        var r = _libModule.libraryFeature(i, _libModule._srcModule.featureFromOffset(i));
-        var rn = r.featureName();
-        if (rn.baseName().equals(name))
+        var i = _libModule.innerFeatures(_libModule.featureInnerFeaturesPos(_index));
+        for (var r : i)
           {
-            if (result == null)
+            var rn = r.featureName();
+            if (rn.baseName().equals(name))
               {
-                result = r;
-              }
-            else
-              {
+                if (result == null)
+                  {
+                    result = r;
+                  }
+                else
+                  {
                 Errors.fatal("Ambiguous inner feature '" + name + "': found '" + result.featureName() + "' and '" + r.featureName() + "'.");
+                  }
               }
           }
-        i = _libModule.featureNextPos(i);
+      }
+    else
+      {
+        var sz = _libModule.featureInnerSize(_index);
+        var i = _libModule.featureInnerPos(_index);
+        var e = i + sz;
+        while  (i < e)
+          {
+            var r = _libModule.libraryFeature(i, _libModule._srcModule.featureFromOffset(i));
+            var rn = r.featureName();
+            if (rn.baseName().equals(name))
+              {
+                if (result == null)
+                  {
+                    result = r;
+                  }
+                else
+                  {
+                    Errors.fatal("Ambiguous inner feature '" + name + "': found '" + result.featureName() + "' and '" + r.featureName() + "'.");
+                  }
+              }
+            i = _libModule.featureNextPos(i);
+          }
       }
     if (result == null)
       {
@@ -400,7 +483,7 @@ public class LibraryFeature extends AbstractFeature
         // NYI: Remove creation of ast.Type here:
         result = new Type(pos(), featureName().baseName(), generics().asActuals(), null, this, Type.RefOrVal.LikeUnderlyingFeature);
 
-        result = new NormalType(_libModule, -1, pos(), this, false, generics().asActuals(), result.outer(), result);
+        result = new NormalType(_libModule, -1, pos(), this, Type.RefOrVal.LikeUnderlyingFeature, generics().asActuals(), result.outer(), result);
         _thisType = result;
       }
 
@@ -434,8 +517,9 @@ public class LibraryFeature extends AbstractFeature
       }
     else
       {
-        var from = _from.resultType();
-        return _libModule.type(_libModule.featureResultTypePos(_index), from.pos(), from);
+        var from = _from != null ? _from.resultType() : null;
+        var fromPos = from != null ? from.pos() : LibraryModule.DUMMY_POS;
+        return _libModule.type(_libModule.featureResultTypePos(_index), fromPos, from);
       }
   }
 
@@ -465,7 +549,7 @@ public class LibraryFeature extends AbstractFeature
                 while (i < n)
                   {
                     var gn = _libModule.typeArgName(tali);
-                    var gp = _from.generics().list.get(i)._pos; // NYI: pos of generic
+                    var gp = LibraryModule.USE_FUM ? LibraryModule.DUMMY_POS : _from.generics().list.get(i)._pos; // NYI: pos of generic
                     var tali0 = tali;
                     var i0 = i;
                     var g = new Generic(gp, i, gn, null)
@@ -500,7 +584,7 @@ public class LibraryFeature extends AbstractFeature
   {
     return _featureName;
   }
-  public SourcePosition pos() { return _from.pos(); }
+  public SourcePosition pos() { return _from == null ? LibraryModule.DUMMY_POS : _from.pos(); }
   List<AbstractCall> _inherits = null;
   public List<AbstractCall> inherits()
   {
@@ -539,7 +623,7 @@ public class LibraryFeature extends AbstractFeature
       {
         var c = _libModule.featureCodePos(_index);
         var result = code(c);
-        if (result != null)
+        if (_libModule.USE_FUM && result != null)
           {
             return result;
           }
@@ -554,6 +638,7 @@ public class LibraryFeature extends AbstractFeature
       }
   }
 
+
   /**
    * Convert code at given offset in _libModule to an ast.Expr
    */
@@ -566,24 +651,26 @@ public class LibraryFeature extends AbstractFeature
     return s.pop();
   }
 
+
   /**
    * Convert code at given offset in _libModule to an ast.Expr
    */
   Expr code(int at)
   {
     var s = new Stack<Expr>();
-    code(at, s);
+    var result = code(at, s);
     check
       (s.size() == 0);
-    return null;
+    return result;
   }
 
 
   /**
    * Convert code at given offset in _libModule to an ast.Expr
    */
-  void code(int at, Stack<Expr> s)
+  Block code(int at, Stack<Expr> s)
   {
+    var l = new List<Stmnt>();
     var sz = _libModule.codeSize(at);
     var eat = _libModule.codeExpressionsPos(at);
     var e = eat;
@@ -592,6 +679,7 @@ public class LibraryFeature extends AbstractFeature
         var k = _libModule.expressionKind(e);
         var iat = e + 1;
         Expr ex = null;
+        Stmnt c;
         switch (k)
           {
           case Assign:
@@ -600,12 +688,15 @@ public class LibraryFeature extends AbstractFeature
               var f = _libModule.libraryFeature(field, null);
               var target = s.pop();
               var val = s.pop();
+              c = new Assign(LibraryModule.DUMMY_POS, f, target, val);
               break;
             }
           case Unbox:
             {
               var val = s.pop();
               // NYI: type
+              if (_libModule.USE_FUM) System.out.println("NYI: Unbox");
+              c = null;
               s.push(null);
               break;
             }
@@ -613,7 +704,8 @@ public class LibraryFeature extends AbstractFeature
             {
               var val = s.pop();
               // NYI: type
-              s.push(null);
+              c = null;
+              s.push(new Box(val));
               break;
             }
           case Const:
@@ -621,25 +713,28 @@ public class LibraryFeature extends AbstractFeature
               var t = _libModule.constType(iat);
               var d = _libModule.constData(iat);
               Expr r;
-              if (t == Types.resolved.t_bool)
+              if (t.compareTo(Types.resolved.t_bool) == 0)
                 {
                   r = d[0] == 0 ? BoolConst. FALSE : BoolConst.TRUE;
                 }
-              else if (t == Types.resolved.t_string)
+              else if (t.compareTo(Types.resolved.t_string) == 0)
                 {
-                  r = new StrConst(pos(), new String(d, StandardCharsets.UTF_8));
+                  var str = new String(d, StandardCharsets.UTF_8);
+                  r = new StrConst(pos(), str, false);
                 }
               else
                 { // NYI: Numeric
-                  r = null;
+                  r = new NumLiteral(4711); // NYI!
                 }
+              c = null;
               s.push(r);
               break;
             }
           case Current:
             {
-              // NYI: type
-              s.push(null);
+              var r = new Current(LibraryModule.DUMMY_POS, thisType());
+              c = null;
+              s.push(r);
               break;
             }
           case Match:
@@ -652,39 +747,64 @@ public class LibraryFeature extends AbstractFeature
                   code(cat);
                   cat = _libModule.matchCaseNextPos(cat);
                 }
+              if (_libModule.USE_FUM) System.out.println("NYI: Match");
+              c = null;
               break;
             }
           case Call:
             {
               var r = new LibraryCall(_libModule, iat, s);
+              c = null;
               s.push(r);
               break;
             }
           case Pop:
             {
-              s.pop();
+              c = s.pop();
               break;
             }
           case Tag:
             {
               var val = s.pop();
               // NYI: tag
-              s.push(null);
+              var taggedType = Types.resolved.t_unit; // NYI!
+              c = null;
+              s.push(new Tag(val, taggedType));
               break;
             }
           case Unit:
             {
-              s.push(null);
+              c = null;
+              s.push(new Block(LibraryModule.DUMMY_POS, new List<>()));
               break;
             }
           default: throw new Error("Unexpected expression kind: " + k);
           }
+        if (c != null)
+          {
+            l.add(c);
+          }
         e = _libModule.expressionNextPos(e);
       }
+    return new Block(LibraryModule.DUMMY_POS, l);
   }
 
+
   // in FUIR or later
-  public Contract contract() { if (_libModule.USE_FUM) { check(false); return null; } else { return _from.contract(); } }
+  public Contract contract()
+  {
+    if (_libModule.USE_FUM)
+      {
+        if (true)
+          // NYI: return a dummy contract until contracts are saved to the module file
+          return new dev.flang.ast.Contract(null, null, null);
+        check(false); return null;
+      }
+    else
+      {
+        return _from.contract();
+      }
+  }
 
   public AbstractFeature astFeature() { return _libModule.USE_FUM ? this : _from; }
 
