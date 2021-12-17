@@ -672,7 +672,7 @@ public class Clazz extends ANY implements Comparable<Clazz>
       {
         for (var f : fields())
           {
-            if (!f.resultClazz().isUnitType())
+            if (f.resultClazz() != null && !f.resultClazz().isUnitType())
               {
                 return false;
               }
