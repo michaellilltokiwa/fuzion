@@ -1354,7 +1354,6 @@ public class Interpreter extends ANY
   {
     _callStack.clear();
     _callStackFrames.clear();
-    _cachedStrings_.clear();
   }
 
 }
