@@ -38,6 +38,7 @@ import dev.flang.ast.Assign;
 import dev.flang.ast.Block;
 import dev.flang.ast.BoolConst;
 import dev.flang.ast.Box;
+import dev.flang.ast.Constant;
 import dev.flang.ast.Contract;
 import dev.flang.ast.Current;
 import dev.flang.ast.Expr;
@@ -55,6 +56,7 @@ import dev.flang.ast.StrConst;
 import dev.flang.ast.Tag;
 import dev.flang.ast.Type;
 import dev.flang.ast.Types;
+import dev.flang.ast.Unbox;
 
 import dev.flang.util.Errors;
 import dev.flang.util.FuzionConstants;
@@ -596,6 +598,7 @@ public class LibraryFeature extends AbstractFeature
         for (var i = 0; i < n; i++)
           {
             var p = (AbstractCall) code1(ip);
+            ((LibraryCall) p)._isInheritanceCall = true;
             _inherits.add(p);
             ip = _libModule.codeNextPos(ip);
           }
@@ -611,7 +614,7 @@ public class LibraryFeature extends AbstractFeature
   }
 
   // following are used in IR/Clazzes middle end or later only:
-  public Impl.Kind implKind() { if (_libModule.USE_FUM) { check(false); return _from.implKind(); } else { return _from.implKind(); } }      // NYI: remove, used only in Clazz.java for some obscure case
+  public Impl.Kind implKind() { if (_libModule.USE_FUM) { if (true) return Impl.Kind.Routine; /* NYI! */ check(false); return _from.implKind(); } else { return _from.implKind(); } }      // NYI: remove, used only in Clazz.java for some obscure case
   public Expr initialValue() { if (_libModule.USE_FUM) { check(false); return null; } else { return _from.initialValue(); } }   // NYI: remove, used only in Clazz.java for some obscure case
 
   // following used in MIR or later
@@ -644,11 +647,17 @@ public class LibraryFeature extends AbstractFeature
    */
   Expr code1(int at)
   {
-    var s = new Stack<Expr>();
-    code(at, s);
-    check
-      (s.size() == 1);
-    return s.pop();
+    var res = _libModule._code1.get(at);
+    if (res == null)
+      {
+        var s = new Stack<Expr>();
+        code(at, s);
+        check
+          (s.size() == 1);
+        res = s.pop();
+        _libModule._code1.put(at, res);
+      }
+    return res;
   }
 
 
@@ -657,11 +666,16 @@ public class LibraryFeature extends AbstractFeature
    */
   Expr code(int at)
   {
-    var s = new Stack<Expr>();
-    var result = code(at, s);
-    check
-      (s.size() == 0);
-    return result;
+    var res = _libModule._code.get(at);
+    if (res == null)
+      {
+        var s = new Stack<Expr>();
+        res = code(at, s);
+        check
+          (s.size() == 0);
+        _libModule._code.put(at, res);
+      }
+    return res;
   }
 
 
@@ -679,7 +693,8 @@ public class LibraryFeature extends AbstractFeature
         var k = _libModule.expressionKind(e);
         var iat = e + 1;
         Expr ex = null;
-        Stmnt c;
+        Stmnt c = null;
+        Expr x = null;
         switch (k)
           {
           case Assign:
@@ -693,48 +708,36 @@ public class LibraryFeature extends AbstractFeature
             }
           case Unbox:
             {
-              var val = s.pop();
-              // NYI: type
-              if (_libModule.USE_FUM) System.out.println("NYI: Unbox");
-              c = null;
-              s.push(null);
+              x = s.pop();
+              if (x.type().isRef())
+                {
+                  x = new Unbox(x.pos(), x, _libModule.unboxType(iat), outer());
+                }
+              else
+                { // NYI: Why does this case exist?
+                }
               break;
             }
           case Box:
             {
-              var val = s.pop();
-              // NYI: type
-              c = null;
-              s.push(new Box(val));
+              x = new Box(s.pop());
               break;
             }
           case Const:
             {
               var t = _libModule.constType(iat);
               var d = _libModule.constData(iat);
-              Expr r;
-              if (t.compareTo(Types.resolved.t_bool) == 0)
+              x = new Constant(LibraryModule.DUMMY_POS)
                 {
-                  r = d[0] == 0 ? BoolConst. FALSE : BoolConst.TRUE;
-                }
-              else if (t.compareTo(Types.resolved.t_string) == 0)
-                {
-                  var str = new String(d, StandardCharsets.UTF_8);
-                  r = new StrConst(pos(), str, false);
-                }
-              else
-                { // NYI: Numeric
-                  r = new NumLiteral(4711); // NYI!
-                }
-              c = null;
-              s.push(r);
+                  public AbstractType typeOrNull() { return t; }
+                  public byte[] data() { return d; }
+                  public Expr visit(FeatureVisitor v, AbstractFeature af) { return this; };
+                };
               break;
             }
           case Current:
             {
-              var r = new Current(LibraryModule.DUMMY_POS, thisType());
-              c = null;
-              s.push(r);
+              x = new Current(LibraryModule.DUMMY_POS, thisType());
               break;
             }
           case Match:
@@ -747,15 +750,12 @@ public class LibraryFeature extends AbstractFeature
                   code(cat);
                   cat = _libModule.matchCaseNextPos(cat);
                 }
-              if (_libModule.USE_FUM) System.out.println("NYI: Match");
-              c = null;
+              if (_libModule.USE_FUM) System.out.println("NYI: Match in "+qualifiedName());
               break;
             }
           case Call:
             {
-              var r = new LibraryCall(_libModule, iat, s);
-              c = null;
-              s.push(r);
+              x = new LibraryCall(_libModule, iat, s);
               break;
             }
           case Pop:
@@ -767,20 +767,31 @@ public class LibraryFeature extends AbstractFeature
             {
               var val = s.pop();
               // NYI: tag
+              if (_libModule.USE_FUM) System.out.println("NYI: Tag in "+qualifiedName());
               var taggedType = Types.resolved.t_unit; // NYI!
-              c = null;
-              s.push(new Tag(val, taggedType));
+              x = new Tag(val, taggedType);
               break;
             }
           case Unit:
             {
-              c = null;
-              s.push(new Block(LibraryModule.DUMMY_POS, new List<>()));
+              x = new Block(LibraryModule.DUMMY_POS, new List<>());
               break;
             }
           default: throw new Error("Unexpected expression kind: " + k);
           }
-        if (c != null)
+        if (x != null)
+          {
+            check
+              (c == null);
+            if (!l.isEmpty())
+              {
+                l.add(x);
+                x = new Block(LibraryModule.DUMMY_POS, l);
+                l = new List<>();
+              }
+            s.push(x);
+          }
+        else if (c != null)
           {
             l.add(c);
           }

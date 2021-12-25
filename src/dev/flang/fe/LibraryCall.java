@@ -32,6 +32,7 @@ import java.util.Stack;
 import dev.flang.ast.AbstractCall;
 import dev.flang.ast.AbstractFeature;
 import dev.flang.ast.AbstractType;
+import dev.flang.ast.Current;
 import dev.flang.ast.Expr;
 import dev.flang.ast.FeatureVisitor;
 import dev.flang.ast.Types;
@@ -166,15 +167,22 @@ public class LibraryCall extends AbstractCall
   public int select() {
     if (type().isOpenGeneric())
       {
-        return -1;
+        throw new Error("NYI: select when calling "+calledFeature().qualifiedName()+" type is "+type()+" "+type().getClass());
       }
     else
       {
-        throw new Error("NYI");
+        return -1;
       }
   }
-  public boolean isDynamic() { throw new Error("NYI"); }
-  public boolean isInheritanceCall()  { throw new Error("NYI"); }
+  public boolean isDynamic()
+  {
+    return calledFeature().isDynamic() && !(target() instanceof Current);
+  }
+  boolean _isInheritanceCall = false;
+  public boolean isInheritanceCall()
+  {
+    return _isInheritanceCall;
+  }
   public AbstractType typeOrNull()
   {
     return _type;
