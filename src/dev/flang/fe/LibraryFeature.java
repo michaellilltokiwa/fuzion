@@ -29,10 +29,14 @@ package dev.flang.fe;
 import java.nio.charset.StandardCharsets;
 
 import java.util.Collection;
+import java.util.Set;
 import java.util.Stack;
+import java.util.TreeSet;
 
 import dev.flang.ast.AbstractCall;
+import dev.flang.ast.AbstractCase;
 import dev.flang.ast.AbstractFeature;
+import dev.flang.ast.AbstractMatch;
 import dev.flang.ast.AbstractType;
 import dev.flang.ast.Assign;
 import dev.flang.ast.Block;
@@ -138,6 +142,9 @@ public class LibraryFeature extends AbstractFeature
    */
   LibraryFeature(LibraryModule lib, int index, AbstractFeature from)
   {
+    if (PRECONDITIONS) require
+      (LibraryModule.USE_FUM || from != null);
+
     _libModule = lib;
     _index = index;
     _from = from;
@@ -200,7 +207,7 @@ public class LibraryFeature extends AbstractFeature
     var result = _outer;
     if (result == null)
       {
-        result = findOuter(_libModule._mir.universe(), FuzionConstants.MIR_FILE_FIRST_FEATURE_OFFSET);
+        result = findOuter(_libModule.universe(), FuzionConstants.MIR_FILE_FIRST_FEATURE_OFFSET);
         _outer = result;
       }
 
@@ -245,7 +252,8 @@ public class LibraryFeature extends AbstractFeature
               }
             else
               {
-                var o = _libModule.libraryFeature(i, _libModule._srcModule.featureFromOffset(i));
+                var o = _libModule.libraryFeature(i, LibraryModule.USE_FUM ? null
+                                                                           : _libModule._srcModule.featureFromOffset(i));
                 check
                   (o != null);
                 var inner = _libModule.featureInnerFeaturesPos(i);
@@ -558,7 +566,8 @@ public class LibraryFeature extends AbstractFeature
                       {
                         public AbstractType constraint()
                         {
-                          return _libModule.typeArgConstraint(tali0, gp, _from instanceof LibraryFeature ? null : _from.generics().list.get(i0).constraint());
+                          var fgc = LibraryModule.USE_FUM ? null : _from.generics().list.get(i0).constraint();
+                          return _libModule.typeArgConstraint(tali0, gp, fgc);
                         }
                       };
                     list.add(g);
@@ -709,9 +718,9 @@ public class LibraryFeature extends AbstractFeature
           case Unbox:
             {
               x = s.pop();
-              if (x.type().isRef())
+              if (x.type().isRef() || x.type() == Types.t_ADDRESS)
                 {
-                  x = new Unbox(x.pos(), x, _libModule.unboxType(iat), outer());
+                  x = new Unbox(x.pos(), x, _libModule.unboxType(iat));
                 }
               else
                 { // NYI: Why does this case exist?
@@ -745,12 +754,39 @@ public class LibraryFeature extends AbstractFeature
               var subj = s.pop();
               var n = _libModule.matchNumberOfCases(iat);
               var cat = _libModule.matchCasesPos(iat);
+              var cases = new List<AbstractCase>();
               for (var i = 0; i < n; i++)
                 {
-                  code(cat);
-                  cat = _libModule.matchCaseNextPos(cat);
+                  var cn = _libModule.caseNumTypes(cat);
+                  var cf = (cn == -1) ? _libModule.libraryFeature(_libModule.caseField(cat), null) : null;
+                  List<AbstractType> ts = null;
+                  if (cn != -1)
+                    {
+                      ts = new List<>();
+                      var tat = _libModule.caseTypePos(cat);
+                      for (var ci = 0; ci < cn; ci++)
+                        {
+                          ts.add(_libModule.type(tat, LibraryModule.DUMMY_POS, null));
+                          tat = _libModule.typeNextPos(tat);
+                        }
+                    }
+                  var cc = code(_libModule.caseCodePos(cat));
+                  var fts = ts;
+                  var lc = new AbstractCase(LibraryModule.DUMMY_POS)
+                    {
+                      public SourcePosition pos() { return LibraryModule.DUMMY_POS; }
+                      public AbstractFeature field() { return cf; }
+                      public List<AbstractType> types() { return fts; }
+                      public Block code() { return (Block) cc; }
+                    };
+                  cases.add(lc);
+                  cat = _libModule.caseNextPos(cat);
                 }
-              if (_libModule.USE_FUM) System.out.println("NYI: Match in "+qualifiedName());
+              c = new AbstractMatch(LibraryModule.DUMMY_POS)
+                {
+                  public Expr subject() { return subj; }
+                  public List<AbstractCase> cases() { return cases; }
+                };
               break;
             }
           case Call:
@@ -766,9 +802,7 @@ public class LibraryFeature extends AbstractFeature
           case Tag:
             {
               var val = s.pop();
-              // NYI: tag
-              if (_libModule.USE_FUM) System.out.println("NYI: Tag in "+qualifiedName());
-              var taggedType = Types.resolved.t_unit; // NYI!
+              var taggedType = _libModule.tagType(iat);
               x = new Tag(val, taggedType);
               break;
             }
@@ -816,6 +850,38 @@ public class LibraryFeature extends AbstractFeature
         return _from.contract();
       }
   }
+
+
+  /**
+   * All features that have been found to be directly redefined by this feature.
+   * This does not include redefintions of redefinitions.  Four Features loaded
+   * from source code, this set is collected during RESOLVING_DECLARATIONS.  For
+   * LibraryFeature, this will be loaded from the library module file.
+   */
+  private Set<AbstractFeature> _redefines;
+  public Set<AbstractFeature> redefines()
+  {
+    if (LibraryModule.USE_FUM)
+      {
+        if (_redefines == null)
+          {
+            _redefines = new TreeSet<>();
+            var n = _libModule.featureRedefinesCount(_index);
+            var ip = _libModule.featureRedefinesPos(_index);
+            for (var i = 0; i < n; i++)
+              {
+                var r = _libModule.libraryFeature(_libModule.featureRedefine(_index, i), null);
+                _redefines.add(r);
+              }
+          }
+        return _redefines;
+      }
+    else
+      {
+        return astFeature().redefines();
+      }
+  }
+
 
   public AbstractFeature astFeature() { return _libModule.USE_FUM ? this : _from; }
 

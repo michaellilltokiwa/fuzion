@@ -26,7 +26,16 @@ Fuzion language implementation.  If not, see <https://www.gnu.org/licenses/>.
 
 package dev.flang.fe;
 
+import java.io.IOException;
+
+import java.nio.channels.Channels;
+import java.nio.channels.FileChannel;
+
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
+
+import java.util.EnumSet;
 
 import dev.flang.mir.MIR;
 
@@ -72,6 +81,11 @@ public class FrontEnd extends ANY
   public FrontEnd(FrontEndOptions options)
   {
     var universe = Feature.createUniverse();
+    Types.reset();
+    if (options._saveBaseLib != null)
+      {
+        LibraryModule.USE_FUM = true;
+      }
     if (LibraryModule.USE_FUM)
       {
         universe = new Feature.Universe()
@@ -110,11 +124,47 @@ public class FrontEnd extends ANY
               return result;
             }
           };
-      }
 
-    Types.reset();
-    _stdlib = new LibraryModule(options, "stdlib", new SourceDir[] { new SourceDir(options._fuzionHome.resolve("lib")) }, null, null, new Module[0], universe);
-    _stdlib._srcModule.data(universe)._declaredOrInheritedFeatures = null;
+        var p = options._saveBaseLib;
+        if (p != null)
+          {
+            var sourceDirs = new SourceDir[] { new SourceDir(options._fuzionHome.resolve("lib")) };
+            var srcModule = new SourceModule(options, sourceDirs, null, null, new Module[0], universe);
+            var mir = srcModule.createMIR();
+            var data = mir._module.data();
+            System.out.println(" + " + p);
+            try (var os = Files.newOutputStream(p))
+              {
+                Channels.newChannel(os).write(data);
+              }
+            catch (IOException io)
+              {
+                Errors.error("FrontEnd I/O error when writing module file",
+                             "While trying to write file '"+ p + "' received '" + io + "'");
+              }
+            _module = null;
+            return;
+          }
+
+        // yippieh: At this point, we forget srcModule and continue with data only:
+        var b = options._fuzionHome.resolve("modules").resolve("base.fum");
+        try (var ch = (FileChannel) Files.newByteChannel(b, EnumSet.of(StandardOpenOption.READ)))
+          {
+            var data = ch.map(FileChannel.MapMode.READ_ONLY, 0, ch.size());
+            _stdlib = new LibraryModule(options, "base", data, new Module[0], universe);
+          }
+        catch (IOException io)
+          {
+            Errors.error("FrontEnd I/O error when reading module file",
+                         "While trying to read file '"+ b + "' received '" + io + "'");
+          }
+        universe.setState(Feature.State.RESOLVED);
+      }
+    else
+      {
+        _stdlib = new LibraryModule(options, "stdlib", new SourceDir[] { new SourceDir(options._fuzionHome.resolve("lib")) }, null, null, new Module[0], universe);
+        _stdlib._srcModule.data(universe)._declaredOrInheritedFeatures = null;
+      }
 
     Path[] sourcePaths;
     Path inputFile;

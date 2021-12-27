@@ -76,7 +76,7 @@ public class LibraryModule extends Module
    *
    * NYI: Remove when we have switched to .fum file!
    */
-  static boolean USE_FUM = "true".equals(System.getenv("USE_FUM"));
+  public static boolean USE_FUM = "true".equals(System.getenv("USE_FUM"));
 
 
   /**
@@ -143,6 +143,12 @@ public class LibraryModule extends Module
   Map<Integer, Expr> _code1 = new TreeMap<>();
 
 
+  /**
+   * The universe
+   */
+  final Feature _universe;
+
+
   /*--------------------------  constructors  ---------------------------*/
 
 
@@ -158,10 +164,35 @@ public class LibraryModule extends Module
     _name = name;
     _mir = _srcModule.createMIR();
     _data = _mir._module.data();
+    _universe = universe;
   }
 
 
+  /**
+   * Create LibraryModule for given options and sourceDirs.
+   */
+  LibraryModule(FrontEndOptions options, String name, ByteBuffer data, Module[] dependsOn, Feature universe)
+  {
+    super(dependsOn);
+
+    _options = options;
+    _srcModule = null;
+    _name = name;
+    _mir = null;
+    _data = data;
+    _universe = universe;
+  }
+
   /*-----------------------------  methods  -----------------------------*/
+
+
+  /**
+   * The universe
+   */
+  Feature universe()
+  {
+    return _universe;
+  }
 
 
   /**
@@ -447,59 +478,13 @@ public class LibraryModule extends Module
 
 
   /**
-   * Get direct redefininitions of given Feature as seen by this module.
-   * Result is null if f has no redefinitions in this module.
-   *
-   * @param f the original feature
-   */
-  Set<AbstractFeature>redefinitionsOrNull(AbstractFeature f)
-  {
-    Set<AbstractFeature> result = null;
-    var rfs = _srcModule.redefinitionsOrNull(f.astFeature());
-    if (rfs != null)
-      {
-        result = new TreeSet<>();
-        for (var e : rfs)
-          {
-            result.add(libraryFeature(e));
-          }
-      }
-    return result;
-  }
-
-
-  /**
-   * Get direct redefininitions of given Feature as seen by this module.
-   * Result is null if f has no redefinitions in this module.
-   *
-   * @param f the original feature
-   */
-  Set<AbstractFeature>redefinitions(AbstractFeature f)
-  {
-    if (USE_FUM)
-      {
-        return new TreeSet<>(); // NYI: remove!
-      }
-    else
-      {
-        var result = redefinitionsOrNull(f.astFeature());
-        if (result == null)
-          {
-            result = new TreeSet<>();
-          }
-        return result;
-      }
-  }
-
-
-  /**
    * Find the Generic instance defined at offset in this file.
    *
    * @param offset the offset of the Generic
    */
   Generic genericArgument(int offset)
   {
-    return findGenericArgument(offset, _mir.universe(), FuzionConstants.MIR_FILE_FIRST_FEATURE_OFFSET);
+    return findGenericArgument(offset, universe(), FuzionConstants.MIR_FILE_FIRST_FEATURE_OFFSET);
   }
 
 
@@ -531,7 +516,7 @@ public class LibraryModule extends Module
       {
         while (result == null)
           {
-            var o = libraryFeature(i, _srcModule.featureFromOffset(i));
+            var o = libraryFeature(i, USE_FUM ? null : _srcModule.featureFromOffset(i));
             if (((featureKind(i) & FuzionConstants.MIR_FILE_KIND_HAS_TYPE_PAREMETERS) != 0) &&
                 offset > i &&
                 offset <= featureResultTypePos(i))
@@ -578,7 +563,11 @@ public class LibraryModule extends Module
     if (result == null)
       {
         var k = typeKind(at);
-        if (k == -3)
+        if (k == -4)
+          {
+            return Types.t_ADDRESS;
+          }
+        else if (k == -3)
           {
             return Types.resolved.universe.thisType();
           }
@@ -727,6 +716,10 @@ public class LibraryModule extends Module
    *   | d? !isI| i      | Code          | inherits calls                                |
    *   | ntrinsc|        |               |                                               |
    *   +--------+--------+---------------+-----------------------------------------------+
+   *   | true   | 1      | int           | redefines count r                             |
+   *   |        +--------+---------------+-----------------------------------------------+
+   *   |        | r      | int           | feature offset of redefined feature           |
+   *   +--------+--------+---------------+-----------------------------------------------+
    *   | isRou- | 1      | Code          | Feature code                                  |
    *   | tine   |        |               |                                               |
    *   +--------+--------+---------------+-----------------------------------------------+
@@ -855,7 +848,7 @@ public class LibraryModule extends Module
   {
     return featureInheritsCountPos(at) + 4;
   }
-  int featureCodePos(int at)
+  int featureRedefinesCountPos(int at)
   {
     var i = featureInheritsPos(at);
     var ic = featureInheritsCount(at);
@@ -865,6 +858,26 @@ public class LibraryModule extends Module
         ic--;
       }
     return i;
+  }
+  int featureRedefinesCount(int at)
+  {
+    return data().getInt(featureRedefinesCountPos(at));
+  }
+  int featureRedefinesPos(int at)
+  {
+    return featureRedefinesCountPos(at) + 4;
+  }
+  int featureRedefine(int at, int i)
+  {
+    if (PRECONDITIONS) require
+      (i >= 0,
+       i < featureRedefinesPos(at));
+
+    return data().getInt(featureRedefinesPos(at) + 4 * i);
+  }
+  int featureCodePos(int at)
+  {
+    return featureRedefinesPos(at) + 4 * featureRedefinesCount(at);
   }
   int featureInnerFeaturesPos(int at)
   {
@@ -1018,6 +1031,8 @@ public class LibraryModule extends Module
    *   +--------+--------+---------------+-----------------------------------------------+
    *   | true   | 1      | int           | the kind of this type tk                      |
    *   +--------+--------+---------------+-----------------------------------------------+
+   *   | tk==-4 | 1      | unit          | ADDRESS                                       |
+   *   +--------+--------+---------------+-----------------------------------------------+
    *   | tk==-3 | 1      | unit          | type of universe                              |
    *   +--------+--------+---------------+-----------------------------------------------+
    *   | tk==-2 | 1      | int           | index of type                                 |
@@ -1037,6 +1052,13 @@ public class LibraryModule extends Module
   int typeKind(int at)
   {
     return data().getInt(at);
+  }
+  int typeAddressPos(int at)
+  {
+    if (PRECONDITIONS) require
+      (typeKind(at) == -4);
+
+    return at+4;
   }
   int typeUniversePos(int at)
   {
@@ -1126,7 +1148,11 @@ public class LibraryModule extends Module
   int typeNextPos(int at)
   {
     var k = typeKind(at);
-    if (k == -3)
+    if (k == -4)
+      {
+        return typeAddressPos(at) + 0;
+      }
+    else if (k == -3)
       {
         return typeUniversePos(at) + 0;
       }
@@ -1197,6 +1223,12 @@ public class LibraryModule extends Module
    *   +--------+--------+---------------+-----------------------------------------------+
    *   | k==Con | 1      | Constant      | constant                                      |
    *   +--------+--------+---------------+-----------------------------------------------+
+   *   | k==Cal | 1      | Call          | feature call                                  |
+   *   +--------+--------+---------------+-----------------------------------------------+
+   *   | k==Mat | 1      | Match         | match statement                               |
+   *   +--------+--------+---------------+-----------------------------------------------+
+   *   | k==Tag | 1      | Tag           | tag expression                                |
+   *   +--------+--------+---------------+-----------------------------------------------+
    */
   int expressionKindPos(int at)
   {
@@ -1223,7 +1255,7 @@ public class LibraryModule extends Module
       case Current -> eAt;
       case Match   -> matchNextPos(eAt);
       case Call    -> callNextPos (eAt);
-      case Tag     -> eAt;
+      case Tag     -> tagNextPos  (eAt);
       case Pop     -> eAt;
       case Unit    -> eAt;
       default      -> throw new Error("unexpected expression kind "+k+" at "+at+" in "+this);
@@ -1497,14 +1529,6 @@ public class LibraryModule extends Module
    *   |        +--------+---------------+-----------------------------------------------+
    *   |        | n      | Case          | cases                                         |
    *   +--------+--------+---------------+-----------------------------------------------+
-   *
-   *   +---------------------------------------------------------------------------------+
-   *   | Case                                                                            |
-   *   +--------+--------+---------------+-----------------------------------------------+
-   *   | cond.  | repeat | type          | what                                          |
-   *   +--------+--------+---------------+-----------------------------------------------+
-   *   | true   | 1      | Code          | code for case                                 |
-   *   +--------+--------+---------------+-----------------------------------------------+
    */
   int matchNumberOfCasesPos(int at)
   {
@@ -1527,10 +1551,6 @@ public class LibraryModule extends Module
 
     return matchNumberOfCasesPos(at) + 4;
   }
-  int matchCaseNextPos(int at)
-  {
-    return codeNextPos(at);
-  }
   int matchNextPos(int at)
   {
     if (PRECONDITIONS) require
@@ -1540,10 +1560,99 @@ public class LibraryModule extends Module
     at = matchCasesPos(at);
     for (var i = 0; i < n; i++)
       {
-        at = matchCaseNextPos(at);
+        at = caseNextPos(at);
       }
     return at;
   }
+
+
+  /*
+   *   +---------------------------------------------------------------------------------+
+   *   | Case                                                                            |
+   *   +--------+--------+---------------+-----------------------------------------------+
+   *   | cond.  | repeat | type          | what                                          |
+   *   +--------+--------+---------------+-----------------------------------------------+
+   *   | true   | 1      | int           | num types n                                   |
+   *   +--------+--------+---------------+-----------------------------------------------+
+   *   | n = -1 | 1      | int           | case field index                              |
+   *   +--------+--------+---------------+-----------------------------------------------+
+   *   | n >  0 | n      | Type          | case type                                     |
+   *   +--------+--------+---------------+-----------------------------------------------+
+   *   | true   | 1      | Code          | code for case                                 |
+   *   +--------+--------+---------------+-----------------------------------------------+
+   */
+  int caseNumTypesPos(int at)
+  {
+    return at;
+  }
+  int caseNumTypes(int at)
+  {
+    return data().getInt(caseNumTypesPos(at));
+  }
+  int caseFieldPos(int at)
+  {
+    return at + 4;
+  }
+  int caseField(int at)
+  {
+    if (PRECONDITIONS) require
+      (caseNumTypes(at) == -1);
+
+    return data().getInt(caseFieldPos(at));
+  }
+  int caseTypePos(int at)
+  {
+    return at + 4;
+  }
+  int caseCodePos(int at)
+  {
+    int result;
+    var n = caseNumTypes(at);
+    if (n == -1)
+      {
+        result = caseFieldPos(at) + 4;
+      }
+    else
+      {
+        check
+          (n > 0);
+        result = caseTypePos(at);
+        while (n > 0)
+          {
+            result = typeNextPos(result);
+            n--;
+          }
+      }
+    return result;
+  }
+  int caseNextPos(int at)
+  {
+    return codeNextPos(caseCodePos(at));
+  }
+
+
+  /*
+   *   +---------------------------------------------------------------------------------+
+   *   | Tag                                                                             |
+   *   +--------+--------+---------------+-----------------------------------------------+
+   *   | cond.  | repeat | type          | what                                          |
+   *   +--------+--------+---------------+-----------------------------------------------+
+   *   | true   | 1      | Type          | resulting tagged union type                   |
+   *   +--------+--------+---------------+-----------------------------------------------+
+   */
+  int tagTypePos(int at)
+  {
+    return at;
+  }
+  AbstractType tagType(int at)
+  {
+    return type(tagTypePos(at), DUMMY_POS, null);
+  }
+  int tagNextPos(int at)
+  {
+    return typeNextPos(tagTypePos(at));
+  }
+
 
   /*-------------------------------  misc  ------------------------------*/
 

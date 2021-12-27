@@ -33,6 +33,7 @@ import java.util.TreeSet;
 import java.util.TreeMap;
 
 import dev.flang.ast.AbstractFeature;
+import dev.flang.ast.AbstractMatch;
 import dev.flang.ast.AbstractType;
 import dev.flang.ast.Assign;
 import dev.flang.ast.Block;
@@ -47,7 +48,6 @@ import dev.flang.ast.FormalGenerics;
 import dev.flang.ast.Generic;
 import dev.flang.ast.If;
 import dev.flang.ast.InlineArray;
-import dev.flang.ast.Match;
 import dev.flang.ast.Nop;
 import dev.flang.ast.Stmnt;
 import dev.flang.ast.Tag;
@@ -243,6 +243,10 @@ class LibraryOut extends DataOut
    *   | d? !isI| i      | Code          | inherits calls                                |
    *   | ntrinsc|        |               |                                               |
    *   +--------+--------+---------------+-----------------------------------------------+
+   *   | true   | 1      | int           | redefines count r                             |
+   *   |        +--------+---------------+-----------------------------------------------+
+   *   |        | r      | int           | feature offset of redefined feature           |
+   *   +--------+--------+---------------+-----------------------------------------------+
    *   | isRou- | 1      | Code          | Feature code                                  |
    *   | tine   |        |               |                                               |
    *   +--------+--------+---------------+-----------------------------------------------+
@@ -319,6 +323,12 @@ class LibraryOut extends DataOut
       {
         code(p, false);
       }
+    var r = f.redefines();
+    writeInt(r.size());
+    for(var rf : r)
+      {
+        writeOffset(rf);
+      }
     if (f.isRoutine())
       {
         code(f.code());
@@ -339,6 +349,8 @@ class LibraryOut extends DataOut
    *   | cond.  | repeat | type          | what                                          |
    *   +--------+--------+---------------+-----------------------------------------------+
    *   | true   | 1      | int           | the kind of this type tk                      |
+   *   +--------+--------+---------------+-----------------------------------------------+
+   *   | tk==-4 | 1      | unit          | ADDRESS                                       |
    *   +--------+--------+---------------+-----------------------------------------------+
    *   | tk==-3 | 1      | unit          | type of universe                              |
    *   +--------+--------+---------------+-----------------------------------------------+
@@ -362,6 +374,10 @@ class LibraryOut extends DataOut
       {
         writeInt(-2);     // NYI: optimization: maybe write just one integer, e.g., -index-2
         writeInt(off);
+      }
+    else if (t == Types.t_ADDRESS)
+      {
+        writeInt(-4);
       }
     else if (t == Types.resolved.universe.thisType())
       {
@@ -482,6 +498,12 @@ class LibraryOut extends DataOut
    *   +--------+--------+---------------+-----------------------------------------------+
    *   | k==Con | 1      | Constant      | constant                                      |
    *   +--------+--------+---------------+-----------------------------------------------+
+   *   | k==Cal | 1      | Call          | feature call                                  |
+   *   +--------+--------+---------------+-----------------------------------------------+
+   *   | k==Mat | 1      | Match         | match statement                               |
+   *   +--------+--------+---------------+-----------------------------------------------+
+   *   | k==Tag | 1      | Tag           | tag expression                                |
+   *   +--------+--------+---------------+-----------------------------------------------+
    *
    * @param s the statement to write
    *
@@ -508,9 +530,7 @@ class LibraryOut extends DataOut
     else if (s instanceof Unbox u)
       {
         expressions(u.adr_);
-        if (u._needed)
-          {
-            write(IR.ExprKind.Unbox.ordinal());
+        write(IR.ExprKind.Unbox.ordinal());
   /*
    *   +---------------------------------------------------------------------------------+
    *   | Unbox                                                                           |
@@ -520,8 +540,7 @@ class LibraryOut extends DataOut
    *   | true   | 1      | Type          | result type                                   |
    *   +--------+--------+---------------+-----------------------------------------------+
    */
-            type(u.type());
-          }
+        type(u.type());
       }
     else if (s instanceof Box b)
       {
@@ -579,7 +598,11 @@ class LibraryOut extends DataOut
         expressions(i.cond);
         write(IR.ExprKind.Match.ordinal());
         writeInt(2);
+        writeInt(1);
+        type(Types.resolved.f_TRUE.resultType());
         code(i.block);
+        writeInt(1);
+        type(Types.resolved.f_FALSE.resultType());
         if (i.elseBlock != null)
           {
             code(i.elseBlock);
@@ -650,9 +673,9 @@ class LibraryOut extends DataOut
             write(IR.ExprKind.Pop.ordinal());
           }
       }
-    else if (s instanceof Match m)
+    else if (s instanceof AbstractMatch m)
       {
-        expressions(m.subject);
+        expressions(m.subject());
         write(IR.ExprKind.Match.ordinal());
   /*
    *   +---------------------------------------------------------------------------------+
@@ -664,25 +687,60 @@ class LibraryOut extends DataOut
    *   |        +--------+---------------+-----------------------------------------------+
    *   |        | n      | Case          | cases                                         |
    *   +--------+--------+---------------+-----------------------------------------------+
-   *
+   */
+        var cs = m.cases();
+        writeInt(cs.size());
+        for (var c : cs)
+          {
+  /*
    *   +---------------------------------------------------------------------------------+
    *   | Case                                                                            |
    *   +--------+--------+---------------+-----------------------------------------------+
    *   | cond.  | repeat | type          | what                                          |
    *   +--------+--------+---------------+-----------------------------------------------+
+   *   | true   | 1      | int           | num types n                                   |
+   *   +--------+--------+---------------+-----------------------------------------------+
+   *   | n = -1 | 1      | int           | case field index                              |
+   *   +--------+--------+---------------+-----------------------------------------------+
+   *   | n >  0 | n      | Type          | case type                                     |
+   *   +--------+--------+---------------+-----------------------------------------------+
    *   | true   | 1      | Code          | code for case                                 |
    *   +--------+--------+---------------+-----------------------------------------------+
    */
-        writeInt(m.cases.size());
-        for (var c : m.cases)
-          {
-            code(c.code);
+            var f = c.field();
+            if (f != null)
+              {
+                writeInt(-1);
+                writeOffset(f);
+              }
+            else
+              {
+                var ts = c.types();
+                check
+                  (ts.size() > 0);
+                writeInt(ts.size());
+                for (var t : ts)
+                  {
+                    type(t);
+                  }
+              }
+            code(c.code());
           }
       }
     else if (s instanceof Tag t)
       {
         expressions(t._value);
         write(IR.ExprKind.Tag.ordinal());
+  /*
+   *   +---------------------------------------------------------------------------------+
+   *   | Tag                                                                             |
+   *   +--------+--------+---------------+-----------------------------------------------+
+   *   | cond.  | repeat | type          | what                                          |
+   *   +--------+--------+---------------+-----------------------------------------------+
+   *   | true   | 1      | Type          | resulting tagged union type                   |
+   *   +--------+--------+---------------+-----------------------------------------------+
+   */
+        type(t.typeOrNull());
       }
     else if (s instanceof Nop)
       {

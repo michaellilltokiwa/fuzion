@@ -290,6 +290,23 @@ public class Feature extends AbstractFeature implements Stmnt
 
 
   /**
+   * All features that have been found to be directly redefined by this feature.
+   * This does not include redefintions of redefinitions.  Four Features loaded
+   * from source code, this set is collected during RESOLVING_DECLARATIONS.  For
+   * LibraryFeature, this will be loaded from the library module file.
+   */
+  private Set<AbstractFeature> _redefines = null;
+  public Set<AbstractFeature> redefines()
+  {
+    if (_redefines == null)
+      {
+        _redefines = new TreeSet<>();
+      }
+    return _redefines;
+  }
+
+
+  /**
    * The source module this is defined in.  This is set when this is first
    * scheduled for resolution.
    */
@@ -1400,22 +1417,16 @@ public class Feature extends AbstractFeature implements Stmnt
    * Find list of all accesses to this feature's closure by any of its inner
    * features.
    */
-  private List<Call> closureAccesses(Resolution res)
+  private List<AbstractCall> closureAccesses(Resolution res)
   {
-    List<Call> result = new List<>();
+    List<AbstractCall> result = new List<>();
     for (AbstractFeature af : res._module.declaredOrInheritedFeatures(this).values())
       {
-        var f = (Feature) af.astFeature();
-        f.visit(new FeatureVisitor()
-          {
-            public Call action(Call c, AbstractFeature outer)
-            {
-              if (c.calledFeature() == outerRef())
-                {
-                  result.add(c);
-                }
-              return c;
-            }
+        af.visitStatements(s -> {
+            if (s instanceof AbstractCall c && c.calledFeature() == outerRef())
+              {
+                result.add(c);
+              }
           });
       }
     return result;
@@ -1432,11 +1443,11 @@ public class Feature extends AbstractFeature implements Stmnt
    */
   void checkNoClosureAccesses(Resolution res, SourcePosition errorPos)
   {
-    List<Call> closureAccesses = closureAccesses(res);
+    var closureAccesses = closureAccesses(res);
     if (!closureAccesses.isEmpty())
       {
         StringBuilder accesses = new StringBuilder();
-        for (Call c: closureAccesses)
+        for (var c: closureAccesses)
           {
             accesses.append(c.pos.show()).append("\n");
           }
@@ -1709,34 +1720,6 @@ public class Feature extends AbstractFeature implements Stmnt
 
 
   /**
-   * Get the actual type from a type used in this feature after it was inherited
-   * by heir.  During inheritance, formal generics may be replaced by actual
-   * generics.
-   *
-   * @param t a type used in this feature, must not be an open generic type
-   * (which can be replaced by several types during inheritance).
-   *
-   * @param heir a heir of this, might be equal to this.
-   *
-   * @return interned type that represents t seen as it is seen from heir.
-   */
-  public AbstractType handDownNonOpen(Resolution res, AbstractType t, AbstractFeature heir)
-  {
-    if (PRECONDITIONS) require
-      (!t.isOpenGeneric(),
-       heir != null,
-       _state.atLeast(State.CHECKING_TYPES1));
-
-    var a = handDown(res, new AbstractType[] { t }, heir);
-
-    check
-      (Errors.count() > 0 || a.length == 1);
-
-    return a.length == 1 ? a[0] : Types.t_ERROR;
-  }
-
-
-  /**
    * Perform type checking, in particular, verify that all redefinitions of this
    * have the argument types.  Create compile time erros if this is not the
    * case.
@@ -1932,7 +1915,7 @@ public class Feature extends AbstractFeature implements Stmnt
   public Stmnt visit(FeatureVisitor v, AbstractFeature outer)
   {
     check
-      (!this._state.atLeast(State.LOADED) || this.outer() == outer);
+      (!this._state.atLeast(State.LOADED) || this.outer().sameAs(outer));
 
     // impl.initialValue is code executed by outer, not by this. So we visit it
     // here, while impl.code is visited when impl.visit is called with this as
@@ -2123,11 +2106,11 @@ public class Feature extends AbstractFeature implements Stmnt
               curres[0] = stack.pop();
             }
         }
-        public void actionBefore(Case c, AbstractFeature outer)
+        public void actionBefore(AbstractCase c)
         {
           stack.push(curres[0]);
         }
-        public void  actionAfter(Case c, AbstractFeature outer)
+        public void  actionAfter(AbstractCase c)
         {
           curres[0] = stack.pop();
         }

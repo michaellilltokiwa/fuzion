@@ -28,6 +28,7 @@ package dev.flang.ast;
 
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Set;
 import java.util.TreeSet;
 
 import dev.flang.util.ANY;
@@ -46,6 +47,16 @@ import dev.flang.util.SourcePosition;
  */
 public abstract class AbstractFeature extends ANY implements Comparable<AbstractFeature>
 {
+
+
+  /**
+   * All features that have been found to be directly redefined by this feature.
+   * This does not include redefintions of redefinitions.  Four Features loaded
+   * from source code, this set is collected during RESOLVING_DECLARATIONS.  For
+   * LibraryFeature, this will be loaded from the library module file.
+   */
+  public abstract Set<AbstractFeature> redefines();
+
 
   /**
    * NYI: to be removed: Temporary mapping from Feature to corresponding
@@ -534,6 +545,34 @@ public abstract class AbstractFeature extends ANY implements Comparable<Abstract
 
 
   /**
+   * Get the actual type from a type used in this feature after it was inherited
+   * by heir.  During inheritance, formal generics may be replaced by actual
+   * generics.
+   *
+   * @param t a type used in this feature, must not be an open generic type
+   * (which can be replaced by several types during inheritance).
+   *
+   * @param heir a heir of this, might be equal to this.
+   *
+   * @return interned type that represents t seen as it is seen from heir.
+   */
+  public AbstractType handDownNonOpen(Resolution res, AbstractType t, AbstractFeature heir)
+  {
+    if (PRECONDITIONS) require
+      (!t.isOpenGeneric(),
+       heir != null,
+       heir.state().atLeast(Feature.State.CHECKING_TYPES1));
+
+    var a = handDown(res, new AbstractType[] { t }, heir);
+
+    check
+      (Errors.count() > 0 || a.length == 1);
+
+    return a.length == 1 ? a[0] : Types.t_ERROR;
+  }
+
+
+  /**
    * Find the chain of inheritance calls from this to its parent f.
    *
    * NYI: Repeated inheritance handling is still missing, there might be several
@@ -663,6 +702,28 @@ public abstract class AbstractFeature extends ANY implements Comparable<Abstract
     if (isRoutine())
       {
         code().visit(fv, astFeature());
+      }
+  }
+
+
+  /**
+   * Call v.action(s) on all statements s within this feature.
+   *
+   * @param v the action to be performed on the statements.
+   */
+  public void visitStatements(StatementVisitor v)
+  {
+    for (var c: inherits())
+      {
+        c.visitStatements(v);
+      }
+    if (contract() != null)
+      {
+        contract().visitStatements(v);
+      }
+    if (isRoutine())
+      {
+        astFeature().code().visitStatements(v);
       }
   }
 

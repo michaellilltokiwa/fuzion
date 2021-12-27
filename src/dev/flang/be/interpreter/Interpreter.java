@@ -50,11 +50,11 @@ import dev.flang.air.Clazzes;
 
 import dev.flang.ast.AbstractCall; // NYI: remove dependency! Use dev.flang.fuir instead.
 import dev.flang.ast.AbstractFeature; // NYI: remove dependency! Use dev.flang.fuir instead.
+import dev.flang.ast.AbstractMatch; // NYI: remove dependency! Use dev.flang.fuir instead.
 import dev.flang.ast.AbstractType; // NYI: remove dependency! Use dev.flang.fuir instead.
 import dev.flang.ast.Assign; // NYI: remove dependency! Use dev.flang.fuir instead.
 import dev.flang.ast.Block; // NYI: remove dependency! Use dev.flang.fuir instead.
 import dev.flang.ast.Box; // NYI: remove dependency! Use dev.flang.fuir instead.
-import dev.flang.ast.Case; // NYI: remove dependency! Use dev.flang.fuir instead.
 import dev.flang.ast.Check; // NYI: remove dependency! Use dev.flang.fuir instead.
 import dev.flang.ast.Constant; // NYI: remove dependency! Use dev.flang.fuir instead.
 import dev.flang.ast.Current; // NYI: remove dependency! Use dev.flang.fuir instead.
@@ -62,7 +62,6 @@ import dev.flang.ast.Expr; // NYI: remove dependency! Use dev.flang.fuir instead
 import dev.flang.ast.If; // NYI: remove dependency! Use dev.flang.fuir instead.
 import dev.flang.ast.Impl; // NYI: remove dependency! Use dev.flang.fuir instead.
 import dev.flang.ast.InlineArray; // NYI: remove dependency! Use dev.flang.fuir instead.
-import dev.flang.ast.Match; // NYI: remove dependency! Use dev.flang.fuir instead.
 import dev.flang.ast.Nop; // NYI: remove dependency! Use dev.flang.fuir instead.
 import dev.flang.ast.Old; // NYI: remove dependency! Use dev.flang.fuir instead.
 import dev.flang.ast.Stmnt; // NYI: remove dependency! Use dev.flang.fuir instead.
@@ -381,11 +380,11 @@ public class Interpreter extends ANY
           }
       }
 
-    else if (s instanceof Match m)
+    else if (s instanceof AbstractMatch m)
       {
         result = null;
         Clazz staticSubjectClazz = staticClazz.getRuntimeClazz(m.runtimeClazzId_);
-        Value sub = execute(m.subject, staticClazz, cur);
+        Value sub = execute(m.subject(), staticClazz, cur);
         var sf = staticSubjectClazz.feature();
         int tag;
         Value refVal = null;
@@ -406,26 +405,26 @@ public class Interpreter extends ANY
           ? ((Instance) refVal).clazz()
           : staticSubjectClazz.getChoiceClazz(tag);
 
-        Iterator<Case> it = m.cases.iterator();
+        var it = m.cases().iterator();
         boolean matches = false;
         do
           {
-            Case c = it.next();
+            var c = it.next();
 
-            if (c.field != null && Clazzes.isUsed(c.field, staticClazz))
+            if (c.field() != null && Clazzes.isUsed(c.field(), staticClazz))
               {
                 Clazz fieldClazz = staticClazz.getRuntimeClazz(c.runtimeClazzId_).resultClazz();
                 if (fieldClazz.isAssignableFrom(subjectClazz))
                   {
                     Value v = tag < 0 ? refVal
                                       : getChoiceVal(sf, staticSubjectClazz, sub, tag);
-                    setField(c.field, -1, staticClazz, cur, v);
+                    setField(c.field(), -1, staticClazz, cur, v);
                     matches = true;
                   }
               }
             else
               {
-                var nt = c.field != null ? 1 : c.types.size();
+                var nt = c.field() != null ? 1 : c.types().size();
                 for (int i = 0; !matches && i < nt; i++)
                   {
                     Clazz caseClazz = staticClazz.getRuntimeClazz(c.runtimeClazzId_ + i);
@@ -434,7 +433,7 @@ public class Interpreter extends ANY
               }
             if (matches)
               {
-                result = execute(c.code, staticClazz, cur);
+                result = execute(c.code(), staticClazz, cur);
               }
           }
         while (!matches && it.hasNext());
@@ -442,15 +441,15 @@ public class Interpreter extends ANY
         if (!matches)
           {
             var permitted = new List<Clazz>();
-            for (var c : m.cases)
+            for (var c : m.cases())
               {
-                if (c.field != null)
+                if (c.field() != null)
                   {
                     permitted.add(staticClazz.getRuntimeClazz(c.runtimeClazzId_).resultClazz());
                   }
                 else
                   {
-                    for (int i = 0; i < c.types.size(); i++)
+                    for (int i = 0; i < c.types().size(); i++)
                       {
                         permitted.add(staticClazz.getRuntimeClazz(c.runtimeClazzId_ + i));
                       }

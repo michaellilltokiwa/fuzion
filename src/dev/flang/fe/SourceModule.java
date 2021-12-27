@@ -648,56 +648,6 @@ public class SourceModule extends Module implements SrcModule, MirModule
 
 
   /**
-   * Get direct redefininitions of given Feature as seen by this module.
-   * Result is never null.
-   *
-   * @param f the original feature
-   */
-  public Set<AbstractFeature>redefinitions(AbstractFeature f)
-  {
-    f = f.libraryFeature();
-    var d = data(f);
-    var r = d._redefinitions;
-    if (r == null)
-      {
-        r = new TreeSet<>();
-        d._redefinitions = r;
-        for (Module m : _dependsOn)
-          { // NYI: properly obtain set of declared features from m, do we need
-            // to take care for the order and dependencies between modules?
-            var mr = m.redefinitionsOrNull(f);
-            if (mr != null)
-              {
-                for (var e : mr)
-                  {
-                    r.add(e);
-                  }
-              }
-          }
-      }
-    return r;
-  }
-
-
-  /**
-   * Get redefinitions for given outer Feature as seen by this module.
-   * Result is null if f has no redefinitions in this module.
-   *
-   * @param f the original feature
-   */
-  Set<AbstractFeature>redefinitionsOrNull(AbstractFeature f)
-  {
-    var d = _data.get(f);
-    if (d != null)
-      {
-        return d._redefinitions;
-      }
-    return null;
-  }
-
-
-
-  /**
    * Helper method for findInheritedFeatures and addToHeirs to add a feature
    * that this feature inherits.
    *
@@ -714,10 +664,10 @@ public class SourceModule extends Module implements SrcModule, MirModule
     var existing = s == null ? null : s.get(fn);
     if (existing != null)
       {
-        if (redefinitions(existing).contains(f))
+        if (f.redefines().contains(existing))
           { // f redefined existing, so we are fine
           }
-        else if (redefinitions(f).contains(existing))
+        else if (existing.redefines().contains(f))
           { // existing redefines f, so use existing
             f = existing;
           }
@@ -775,7 +725,7 @@ public class SourceModule extends Module implements SrcModule, MirModule
           }
         else
           {
-            redefinitions(existing).add(f);
+            f.redefines().add(existing);
           }
         doi.put(fn, f);
         if (f instanceof Feature ff)
@@ -1072,13 +1022,13 @@ public class SourceModule extends Module implements SrcModule, MirModule
   {
     var args = f.arguments();
     int ean = args.size();
-    for (var r : redefinitions(f))
+    for (var o : f.redefines())
       {
-        var ta = f.handDown(_res, f.argTypes(), r.outer());
-        var ra = r.argTypes();
+        var ta = o.handDown(_res, o.argTypes(), f.outer());
+        var ra = f.argTypes();
         if (ta.length != ra.length)
           {
-            AstErrors.argumentLengthsMismatch(f, ta.length, r, ra.length);
+            AstErrors.argumentLengthsMismatch(o, ta.length, f, ra.length);
           }
         else
           {
@@ -1095,22 +1045,22 @@ public class SourceModule extends Module implements SrcModule, MirModule
                        args.get(args.size()-1).resultType().isOpenGeneric());
                     int ai = Math.min(args.size() - 1, i);
 
-                    var actualArg   = r.arguments().get(i);
+                    var actualArg   = f.arguments().get(i);
                     var originalArg =   args       .get(ai);
-                    AstErrors.argumentTypeMismatchInRedefinition(f, originalArg,
-                                                                 r,    actualArg);
+                    AstErrors.argumentTypeMismatchInRedefinition(o, originalArg,
+                                                                 f, actualArg);
                   }
               }
           }
 
-        var t1 = f.handDownNonOpen(_res, f.resultType(), r.outer());
-        var t2 = r.resultType();
+        var t1 = o.handDownNonOpen(_res, o.resultType(), f.outer());
+        var t2 = f.resultType();
         if ((t1.isChoice()
              ? t1 != t2  // we (currently) do not tag the result in a redefined feature, see testRedefine
              : !t1.isAssignableFrom(t2)) &&
             t2 != Types.resolved.t_void)
           {
-            AstErrors.resultTypeMismatchInRedefinition(f, r);
+            AstErrors.resultTypeMismatchInRedefinition(o, f);
           }
       }
 

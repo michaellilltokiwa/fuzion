@@ -34,13 +34,14 @@ import java.util.TreeMap;
 import java.util.TreeSet;
 
 import dev.flang.ast.AbstractCall; // NYI: remove dependency!
+import dev.flang.ast.AbstractCase; // NYI: remove dependency!
 import dev.flang.ast.AbstractFeature; // NYI: remove dependency!
+import dev.flang.ast.AbstractMatch; // NYI: remove dependency!
 import dev.flang.ast.AbstractType; // NYI: remove dependency!
 import dev.flang.ast.Assign; // NYI: remove dependency!
 import dev.flang.ast.Block; // NYI: remove dependency!
-import dev.flang.ast.BoolConst; // NYI: remove dependency!
 import dev.flang.ast.Box; // NYI: remove dependency!
-import dev.flang.ast.Case; // NYI: remove dependency!
+import dev.flang.ast.Constant; // NYI: remove dependency!
 import dev.flang.ast.Current; // NYI: remove dependency!
 import dev.flang.ast.Expr; // NYI: remove dependency!
 import dev.flang.ast.Feature; // NYI: remove dependency!
@@ -48,8 +49,6 @@ import dev.flang.ast.FunctionReturnType; // NYI: remove dependency!
 import dev.flang.ast.If; // NYI: remove dependency!
 import dev.flang.ast.Impl; // NYI: remove dependency!
 import dev.flang.ast.InlineArray; // NYI: remove dependency!
-import dev.flang.ast.NumLiteral; // NYI: remove dependency!
-import dev.flang.ast.Match; // NYI: remove dependency!
 import dev.flang.ast.Old; // NYI: remove dependency!
 import dev.flang.ast.StrConst; // NYI: remove dependency!
 import dev.flang.ast.Tag; // NYI: remove dependency!
@@ -771,7 +770,8 @@ public class Clazzes extends ANY
       }
     else
       {
-        throw new Error("unexpected box target statement: " + s.getClass());
+        if (!dev.flang.fe.LibraryModule.USE_FUM)
+          throw new Error("unexpected box target statement: " + s.getClass());
       }
     if (ft != null)
       {
@@ -903,27 +903,27 @@ public class Clazzes extends ANY
   /**
    * Find all static clazzes for this case and store them in outerClazz.
    */
-  public static void findClazzes(Case c, Clazz outerClazz)
+  public static void findClazzes(AbstractCase c, Clazz outerClazz)
   {
     // NYI: Check if this works for a case that is part of an inherits clause, do
     // we need to store in outerClazz.outer?
     if (c.runtimeClazzId_ < 0)
       {
-        c.runtimeClazzId_ = getRuntimeClazzIds(c.field != null
+        c.runtimeClazzId_ = getRuntimeClazzIds(c.field() != null
                                                ? 1
-                                               : c.types.size());
+                                               : c.types().size());
       }
     int i = c.runtimeClazzId_;
-    if (c.field != null)
+    if (c.field() != null)
       {
-        var fOrFc = isUsed(c.field, outerClazz)
-          ? outerClazz.lookup(c.field, AbstractCall.NO_GENERICS, isUsedAt(c.field))
-          : outerClazz.actualClazz(c.field.resultType());
+        var fOrFc = isUsed(c.field(), outerClazz)
+          ? outerClazz.lookup(c.field(), AbstractCall.NO_GENERICS, isUsedAt(c.field()))
+          : outerClazz.actualClazz(c.field().resultType());
         outerClazz.setRuntimeClazz(i, fOrFc);
       }
     else
       {
-        for (var caseType : c.types)
+        for (var caseType : c.types())
           {
             outerClazz.setRuntimeClazz(i, outerClazz.actualClazz(caseType));
             i++;
@@ -935,7 +935,7 @@ public class Clazzes extends ANY
   /**
    * Find all static clazzes for this case and store them in outerClazz.
    */
-  public static void findClazzes(Match m, Clazz outerClazz)
+  public static void findClazzes(AbstractMatch m, Clazz outerClazz)
   {
     if (m.runtimeClazzId_ < 0)
       {
@@ -943,7 +943,7 @@ public class Clazzes extends ANY
         // we need to store in outerClazz.outer?
         m.runtimeClazzId_ = getRuntimeClazzIds(1);
       }
-    outerClazz.setRuntimeClazz(m.runtimeClazzId_, clazz(m.subject, outerClazz));
+    outerClazz.setRuntimeClazz(m.runtimeClazzId_, clazz(m.subject(), outerClazz));
   }
 
 
@@ -1035,19 +1035,9 @@ public class Clazzes extends ANY
         result = outerClazz.actualClazz(i.type());
       }
 
-    else if (e instanceof BoolConst b)
+    else if (e instanceof AbstractMatch m)
       {
-        result = bool.get();
-      }
-
-    else if (e instanceof NumLiteral i)
-      {
-        result = outerClazz.actualClazz(i.type());
-      }
-
-    else if (e instanceof Match m)
-      {
-        result = outerClazz.actualClazz(m.type_);
+        result = outerClazz.actualClazz(m.type());
       }
 
     else if (e instanceof Old o)
@@ -1062,9 +1052,12 @@ public class Clazzes extends ANY
 
     else if (e instanceof StrConst s)
       {
-        i32.get();
-        object.get();
         result = conststring.get();
+      }
+
+    else if (e instanceof Constant c)
+      {
+        result = outerClazz.actualClazz(c.type());
       }
 
     else if (e instanceof Tag t)
