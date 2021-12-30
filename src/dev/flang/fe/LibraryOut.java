@@ -243,6 +243,18 @@ class LibraryOut extends DataOut
    *   | d? !isI| i      | Code          | inherits calls                                |
    *   | ntrinsc|        |               |                                               |
    *   +--------+--------+---------------+-----------------------------------------------+
+   *   | true   | 1      | int           | precondition count pre_n                      |
+   *   |        +--------+---------------+-----------------------------------------------+
+   *   |        | pre_n  | Code          | precondition code                             |
+   *   |        +--------+---------------+-----------------------------------------------+
+   *   |        | 1      | int           | postcondition count post_n                    |
+   *   |        +--------+---------------+-----------------------------------------------+
+   *   |        | post_n | Code          | postcondition code                            |
+   *   |        +--------+---------------+-----------------------------------------------+
+   *   |        | 1      | int           | invariant count inv_n                         |
+   *   |        +--------+---------------+-----------------------------------------------+
+   *   |        | inv_n  | Code          | invariant code                                |
+   *   +--------+--------+---------------+-----------------------------------------------+
    *   | true   | 1      | int           | redefines count r                             |
    *   |        +--------+---------------+-----------------------------------------------+
    *   |        | r      | int           | feature offset of redefined feature           |
@@ -322,6 +334,21 @@ class LibraryOut extends DataOut
     for (var p : i)
       {
         code(p, false);
+      }
+    writeInt(f.contract().req.size());
+    for (var c : f.contract().req)
+      {
+        code(c.cond, false);
+      }
+    writeInt(f.contract().ens.size());
+    for (var c : f.contract().ens)
+      {
+        code(c.cond, false);
+      }
+    writeInt(f.contract().inv.size());
+    for (var c : f.contract().inv)
+      {
+        code(c.cond, false);
       }
     var r = f.redefines();
     writeInt(r.size());
@@ -538,9 +565,12 @@ class LibraryOut extends DataOut
    *   | cond.  | repeat | type          | what                                          |
    *   +--------+--------+---------------+-----------------------------------------------+
    *   | true   | 1      | Type          | result type                                   |
+   *   |        +--------+---------------+-----------------------------------------------+
+   *   |        | 1      | bool          | needed flag (NYI: What is this? remove?)      |
    *   +--------+--------+---------------+-----------------------------------------------+
    */
         type(u.type());
+        write(u._needed ? 1 : 0);
       }
     else if (s instanceof Box b)
       {
@@ -641,8 +671,14 @@ class LibraryOut extends DataOut
    *   | rics.is|        |               |                                               |
    *   | Open   |        |               |                                               |
    *   +--------+--------+---------------+-----------------------------------------------+
-   *   |        | n      | Type          | actual generics. if !hasOpen, n is            |
+   *   | true   | n      | Type          | actual generics. if !hasOpen, n is            |
    *   |        |        |               | f.generics().list.size()                      |
+   *   +--------+--------+---------------+-----------------------------------------------+
+   *   | cf.resu| 1      | int           | select                                        |
+   *   | ltType(|        |               |                                               |
+   *   | ).isOpe|        |               |                                               |
+   *   | nGeneri|        |               |                                               |
+   *   | c()    |        |               |                                               |
    *   +--------+--------+---------------+-----------------------------------------------+
    */
         writeOffset(c.calledFeature());
@@ -667,6 +703,12 @@ class LibraryOut extends DataOut
         for (int i = 0; i < n; i++)
           {
             type(c.generics.get(i));
+          }
+        check
+          (cf.resultType().isOpenGeneric() == (c.select() >= 0));
+        if (cf.resultType().isOpenGeneric())
+          {
+            writeInt(c.select());
           }
         if (dumpResult)
           {

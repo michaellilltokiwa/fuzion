@@ -142,6 +142,11 @@ public class LibraryModule extends Module
    */
   Map<Integer, Expr> _code1 = new TreeMap<>();
 
+  /**
+   * Cache for innerFeatures created from given index
+   */
+  Map<Integer, List<AbstractFeature>> _innerFeatures = new TreeMap<>();
+
 
   /**
    * The universe
@@ -333,12 +338,17 @@ public class LibraryModule extends Module
    */
   List<AbstractFeature> innerFeatures(int at)
   {
-    var result = new List<AbstractFeature>();
-    var is = innerFeaturesSize(at);
-    var ip = innerFeaturesFeaturesPos(at);
-    for (var i = ip; i < ip+is; i = featureNextPos(i))
+    var result = _innerFeatures.get(at);
+    if (result == null)
       {
-        result.add(libraryFeature(i, null));
+        result = new List<AbstractFeature>();
+        var is = innerFeaturesSize(at);
+        var ip = innerFeaturesFeaturesPos(at);
+        for (var i = ip; i < ip+is; i = featureNextPos(i))
+          {
+            result.add(libraryFeature(i, null));
+          }
+        _innerFeatures.put(at, result);
       }
     return result;
   }
@@ -716,6 +726,18 @@ public class LibraryModule extends Module
    *   | d? !isI| i      | Code          | inherits calls                                |
    *   | ntrinsc|        |               |                                               |
    *   +--------+--------+---------------+-----------------------------------------------+
+   *   | true   | 1      | int           | precondition count pre_n                      |
+   *   |        +--------+---------------+-----------------------------------------------+
+   *   |        | pre_n  | Code          | precondition code                             |
+   *   |        +--------+---------------+-----------------------------------------------+
+   *   |        | 1      | int           | postcondition count post_n                    |
+   *   |        +--------+---------------+-----------------------------------------------+
+   *   |        | post_n | Code          | postcondition code                            |
+   *   |        +--------+---------------+-----------------------------------------------+
+   *   |        | 1      | int           | invariant count inv_n                         |
+   *   |        +--------+---------------+-----------------------------------------------+
+   *   |        | inv_n  | Code          | invariant code                                |
+   *   +--------+--------+---------------+-----------------------------------------------+
    *   | true   | 1      | int           | redefines count r                             |
    *   |        +--------+---------------+-----------------------------------------------+
    *   |        | r      | int           | feature offset of redefined feature           |
@@ -848,10 +870,71 @@ public class LibraryModule extends Module
   {
     return featureInheritsCountPos(at) + 4;
   }
-  int featureRedefinesCountPos(int at)
+
+  int featurePreCondCountPos(int at)
   {
     var i = featureInheritsPos(at);
     var ic = featureInheritsCount(at);
+    while (ic > 0)
+      {
+        i = codeNextPos(i);
+        ic--;
+      }
+    return i;
+  }
+  int featurePreCondCount(int at)
+  {
+    return data().getInt(featurePreCondCountPos(at));
+  }
+  int featurePreCondPos(int at)
+  {
+    return featurePreCondCountPos(at) + 4;
+  }
+
+  int featurePostCondCountPos(int at)
+  {
+    var i = featurePreCondPos(at);
+    var ic = featurePreCondCount(at);
+    while (ic > 0)
+      {
+        i = codeNextPos(i);
+        ic--;
+      }
+    return i;
+  }
+  int featurePostCondCount(int at)
+  {
+    return data().getInt(featurePostCondCountPos(at));
+  }
+  int featurePostCondPos(int at)
+  {
+    return featurePostCondCountPos(at) + 4;
+  }
+
+  int featureInvCondCountPos(int at)
+  {
+    var i = featurePostCondPos(at);
+    var ic = featurePostCondCount(at);
+    while (ic > 0)
+      {
+        i = codeNextPos(i);
+        ic--;
+      }
+    return i;
+  }
+  int featureInvCondCount(int at)
+  {
+    return data().getInt(featureInvCondCountPos(at));
+  }
+  int featureInvCondPos(int at)
+  {
+    return featureInvCondCountPos(at) + 4;
+  }
+
+  int featureRedefinesCountPos(int at)
+  {
+    var i = featureInvCondPos(at);
+    var ic = featureInvCondCount(at);
     while (ic > 0)
       {
         i = codeNextPos(i);
@@ -1121,7 +1204,6 @@ public class LibraryModule extends Module
     if (PRECONDITIONS) require
       (typeKind(at) >= 0);
 
-    if (true) return false;  // NYI: WHy?
     return data().get(typeIsRefPos(at)) != 0;
   }
   int typeActualGenericsPos(int at)
@@ -1302,6 +1384,8 @@ public class LibraryModule extends Module
    *   | cond.  | repeat | type          | what                                          |
    *   +--------+--------+---------------+-----------------------------------------------+
    *   | true   | 1      | Type          | result type                                   |
+   *   |        +--------+---------------+-----------------------------------------------+
+   *   |        | 1      | bool          | needed flag (NYI: What is this? remove?)      |
    *   +--------+--------+---------------+-----------------------------------------------+
    */
   int unboxTypePos(int at)
@@ -1318,12 +1402,26 @@ public class LibraryModule extends Module
 
     return type(unboxTypePos(at), DUMMY_POS, null);
   }
-  int unboxNextPos(int at)
+  int unboxNeededPos(int at)
   {
     if (PRECONDITIONS) require
       (expressionKind(at-1) == IR.ExprKind.Unbox);
 
     return typeNextPos(unboxTypePos(at));
+  }
+  boolean unboxNeeded(int at)
+  {
+    if (PRECONDITIONS) require
+      (expressionKind(at-1) == IR.ExprKind.Unbox);
+
+    return data().get(unboxNeededPos(at)) != 0;
+  }
+  int unboxNextPos(int at)
+  {
+    if (PRECONDITIONS) require
+      (expressionKind(at-1) == IR.ExprKind.Unbox);
+
+    return unboxNeededPos(at) + 1;
   }
 
 
@@ -1411,8 +1509,14 @@ public class LibraryModule extends Module
    *   | rics.is|        |               |                                               |
    *   | Open   |        |               |                                               |
    *   +--------+--------+---------------+-----------------------------------------------+
-   *   |        | n      | Type          | type parameters. if !hasOpen, n is            |
+   *   | true   | n      | Type          | actual generics. if !hasOpen, n is            |
    *   |        |        |               | f.generics().list.size()                      |
+   *   +--------+--------+---------------+-----------------------------------------------+
+   *   | cf.resu| 1      | int           | select                                        |
+   *   | ltType(|        |               |                                               |
+   *   | ).isOpe|        |               |                                               |
+   *   | nGeneri|        |               |                                               |
+   *   | c()    |        |               |                                               |
    *   +--------+--------+---------------+-----------------------------------------------+
    */
   int callCalledFeaturePos(int at)
@@ -1503,7 +1607,7 @@ public class LibraryModule extends Module
     return callNumTypeParametersPos(at) +
       (libraryFeature(callCalledFeature(at), null).generics().isOpen() ? 4 : 0);
   }
-  int callNextPos(int at)
+  int callSelectPos(int at)
   {
     if (PRECONDITIONS) require
       (expressionKind(at-1) == IR.ExprKind.Call);
@@ -1516,6 +1620,24 @@ public class LibraryModule extends Module
       }
 
     return tat;
+  }
+  int callSelect(int at)
+  {
+    if (PRECONDITIONS) require
+      (expressionKind(at-1) == IR.ExprKind.Call,
+       libraryFeature(callCalledFeature(at), null).resultType().isOpenGeneric());
+
+    return data().getInt(callSelectPos(at));
+  }
+  int callNextPos(int at)
+  {
+    if (PRECONDITIONS) require
+      (expressionKind(at-1) == IR.ExprKind.Call);
+
+    var sat = callSelectPos(at);
+    var nat = sat + (libraryFeature(callCalledFeature(at), null).resultType().isOpenGeneric() ? 4 : 0);
+
+    return nat;
   }
 
 
