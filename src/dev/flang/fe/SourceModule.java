@@ -547,7 +547,7 @@ public class SourceModule extends Module implements SrcModule, MirModule
    */
   SortedMap<FeatureName, AbstractFeature>declaredFeaturesOrNull(AbstractFeature outer)
   {
-    var d = _data.get(outer);
+    var d = data(outer);
     if (d != null)
       {
         return d._declaredFeatures;
@@ -565,7 +565,7 @@ public class SourceModule extends Module implements SrcModule, MirModule
    */
   SortedMap<FeatureName, AbstractFeature>declaredOrInheritedFeaturesOrNull(AbstractFeature outer)
   {
-    var d = _data.get(outer);
+    var d = data(outer);
     if (d != null)
       {
         return d._declaredOrInheritedFeatures;
@@ -806,7 +806,7 @@ public class SourceModule extends Module implements SrcModule, MirModule
    */
   private void addToHeirs(AbstractFeature outer, FeatureName fn, Feature f)
   {
-    var d = _data.get(outer);
+    var d = data(outer);
     if (d != null)
       {
         for (var h : d._heirs)
@@ -816,6 +816,38 @@ public class SourceModule extends Module implements SrcModule, MirModule
             addToHeirs(h, fn, f);
           }
       }
+  }
+
+
+  /**
+   * allInnerAndInheritedFeatures returns a complete set of inner features, used
+   * by Clazz.layout and Clazz.hasState.
+   *
+   * @return
+   */
+  public Collection<AbstractFeature> allInnerAndInheritedFeatures(AbstractFeature f)
+  {
+    var d = data(f);
+    var result = d._allInnerAndInheritedFeatures;
+    if (result == null)
+      {
+        result = new TreeSet<>();
+
+        result.addAll(declaredFeatures(f).values());
+        for (var p : f.inherits())
+          {
+            var cf = p.calledFeature();
+            check
+              (Errors.count() > 0 || cf != null);
+
+            if (cf != null)
+              {
+                result.addAll(allInnerAndInheritedFeatures(cf));
+              }
+          }
+        d._allInnerAndInheritedFeatures = result;
+      }
+    return result;
   }
 
 
@@ -1036,7 +1068,7 @@ public class SourceModule extends Module implements SrcModule, MirModule
               {
                 var t1 = ta[i];
                 var t2 = ra[i];
-                if (t1 != t2 && !t1.containsError() && !t2.containsError())
+                if (t1.compareTo(t2) != 0 && !t1.containsError() && !t2.containsError())
                   {
                     // original arg list may be shorter if last arg is open generic:
                     check
@@ -1056,7 +1088,7 @@ public class SourceModule extends Module implements SrcModule, MirModule
         var t1 = o.handDownNonOpen(_res, o.resultType(), f.outer());
         var t2 = f.resultType();
         if ((t1.isChoice()
-             ? t1 != t2  // we (currently) do not tag the result in a redefined feature, see testRedefine
+             ? t1.compareTo(t2) != 0  // we (currently) do not tag the result in a redefined feature, see testRedefine
              : !t1.isAssignableFrom(t2)) &&
             t2 != Types.resolved.t_void)
           {

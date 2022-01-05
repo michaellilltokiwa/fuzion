@@ -53,6 +53,7 @@ import dev.flang.mir.MIR;
 
 import dev.flang.util.Errors;
 import dev.flang.util.FuzionConstants;
+import dev.flang.util.HexDump;
 import dev.flang.util.List;
 import dev.flang.util.SourceDir;
 import dev.flang.util.SourcePosition;
@@ -86,13 +87,14 @@ public class LibraryModule extends Module
   static SourcePosition DUMMY_POS = SourcePosition.builtIn;
 
 
-  /*----------------------------  variables  ----------------------------*/
-
-
   /**
-   * Configuration
+   * NYI: Instead of using env var, create a new tool "fzdump" or similar to
+   * dump intermediate files.
    */
-  public final FrontEndOptions _options;
+  static final boolean DUMP = "true".equals(System.getenv("FUZION_DUMP_MODULE_FILE"));
+
+
+  /*----------------------------  variables  ----------------------------*/
 
 
   /**
@@ -164,7 +166,6 @@ public class LibraryModule extends Module
   {
     super(dependsOn);
 
-    _options = options;
     _srcModule = new SourceModule(options, sourceDirs, inputFile, defaultMain, dependsOn, universe);
     _name = name;
     _mir = _srcModule.createMIR();
@@ -176,16 +177,16 @@ public class LibraryModule extends Module
   /**
    * Create LibraryModule for given options and sourceDirs.
    */
-  LibraryModule(FrontEndOptions options, String name, ByteBuffer data, Module[] dependsOn, Feature universe)
+  LibraryModule(String name, ByteBuffer data, Module[] dependsOn, Feature universe)
   {
     super(dependsOn);
 
-    _options = options;
     _srcModule = null;
     _name = name;
     _mir = null;
     _data = data;
     _universe = universe;
+    if (DUMP) System.out.println(dump());
   }
 
   /*-----------------------------  methods  -----------------------------*/
@@ -664,6 +665,8 @@ Module File
 .2+|true      | 1      | byte[]        | MIR_FILE_MAGIC
 
               | 1      | InnerFeatures | inner Features
+
+              | 1      | SourceFiles   | source code files
 |====
 
 --asciidoc--
@@ -677,6 +680,8 @@ Module File
    *   | true   | 1      | byte[]        | MIR_FILE_MAGIC                                |
    *   +        +--------+---------------+-----------------------------------------------+
    *   |        | 1      | InnerFeatures | inner Features                                |
+   *   +        +--------+---------------+-----------------------------------------------+
+   *   |        | 1      | SourceFiles   | source code files                             |
    *   +--------+--------+---------------+-----------------------------------------------+
    */
 
@@ -759,10 +764,11 @@ Feature
 [options="header",cols="1,1,2,5"]
 |====
    |cond.     | repeat | type          | what
-.4+| true  .4+| 1      | byte          | 0000Tkkk  kkk = kind, T = has type parameters
+.5+| true  .5+| 1      | byte          | 0000Tkkk  kkk = kind, T = has type parameters
                        | Name          | name
                        | int           | arg count
                        | int           | name id
+                       | Pos           | source code position
    | T=1      | 1      | TypeArgs      | optional type arguments
    | hasRT    | 1      | Type          | optional result type,
                                        hasRT = !isConstructor && !isChoice
@@ -795,6 +801,8 @@ Feature
    *   |        |        | int           | arg count                                     |
    *   |        |        +---------------+-----------------------------------------------+
    *   |        |        | int           | name id                                       |
+   *   |        |        +---------------+-----------------------------------------------+
+   *   |        |        | Pos           | source code position                          |
    *   +--------+--------+---------------+-----------------------------------------------+
    *   | T=1    | 1      | TypeArgs      | optional type arguments                       |
    *   +--------+--------+---------------+-----------------------------------------------+
@@ -908,12 +916,24 @@ Feature
   {
     return data().getInt(featureIdPos(at));
   }
+  int featurePositionPos(int at)
+  {
+    return featureIdNextPos(at);
+  }
+  int featurePosition(int at)
+  {
+    return data().getInt(featurePositionPos(at));
+  }
+  int featurePositionNextPos(int at)
+  {
+    return featurePositionPos(at) + 4;
+  }
   int featureTypeArgsPos(int at)
   {
     if (PRECONDITIONS) require
       ((featureKind(at) & FuzionConstants.MIR_FILE_KIND_HAS_TYPE_PAREMETERS) != 0);
 
-    return featureIdNextPos(at);
+    return featurePositionNextPos(at);
   }
   int featureResultTypePos(int at)
   {
@@ -923,7 +943,7 @@ Feature
       }
     else
       {
-        return featureIdNextPos(at);
+        return featurePositionNextPos(at);
       }
   }
   boolean featureHasResultType(int at)
@@ -1423,7 +1443,7 @@ Expressions
 |====
    |cond.     | repeat | type          | what
 
-   | true     n      | Expression    | the single expressions
+   | true     | n      | Expression    | the single expressions
 |====
 
 --asciidoc--
@@ -1473,7 +1493,8 @@ Expression
 |====
    |cond.     | repeat | type          | what
 
-   | true     | 1      | byte          | ExprKind k
+   | true     | 1      | byte          | ExprKind k in bits 0..6,  hasPos in bit 7
+   | hasPos   | 1      | int           | source position: index in this file's SourceFiles section, 0 for builtIn pos
    | k==Add   | 1      | Assign        | assignment
    | k==Unb   | 1      | Unbox         | unbox expression
    | k==Con   | 1      | Constant      | constant
@@ -1488,7 +1509,10 @@ Expression
    *   +--------+--------+---------------+-----------------------------------------------+
    *   | cond.  | repeat | type          | what                                          |
    *   +--------+--------+---------------+-----------------------------------------------+
-   *   | true   | 1      | byte          | ExprKind k                                    |
+   *   | true   | 1      | byte          | ExprKind k in bits 0..6,  hasPos in bit 7     |
+   *   +--------+--------+---------------+-----------------------------------------------+
+   *   | hasPos | 1      | int           | source position: index in this file's         |
+   *   |        |        |               | SourceFiles section, 0 for builtIn pos        |
    *   +--------+--------+---------------+-----------------------------------------------+
    *   | k==Add | 1      | Assign        | assignment                                    |
    *   +--------+--------+---------------+-----------------------------------------------+
@@ -1509,16 +1533,35 @@ Expression
   }
   int expressionKindRaw(int at)
   {
-    return data().get(expressionKindPos(at));
+    return data().get(expressionKindPos(at)) & 0xff;
   }
   IR.ExprKind expressionKind(int at)
   {
-    return IR.ExprKind.from(expressionKindRaw(at));
+    return IR.ExprKind.from(expressionKindRaw(at) & 0x7f);
+  }
+  boolean expressionHasPosition(int at)
+  {
+    return (expressionKindRaw(at) & 0x80) != 0;
+  }
+  int expressionPositionPos(int at)
+  {
+    return expressionKindPos(at) + 1;
+  }
+  int expressionPosition(int at)
+  {
+    if (PRECONDITIONS) require
+      (expressionHasPosition(at));
+
+    return data().getInt(expressionPositionPos(at));
+  }
+  int expressionExprPos(int at)
+  {
+    return expressionPositionPos(at) + (expressionHasPosition(at) ? 4 : 0);
   }
   int expressionNextPos(int at)
   {
     var k = expressionKind(at);
-    var eAt = at + 1;
+    var eAt = expressionExprPos(at);
     return switch (k)
       {
       case Assign  -> assignNextPos(eAt);
@@ -1561,21 +1604,24 @@ Assign
   int assignFieldPos(int at)
   {
     if (PRECONDITIONS) require
-      (expressionKind(at-1) == IR.ExprKind.Assign);
+      (expressionKindRaw(at-1) ==  IR.ExprKind.Assign.ordinal()         ||
+       expressionKindRaw(at-5) == (IR.ExprKind.Assign.ordinal() | 0x80)    );
 
     return at;
   }
   int assignField(int at)
   {
     if (PRECONDITIONS) require
-      (expressionKind(at-1) == IR.ExprKind.Assign);
+     (expressionKindRaw(at-1) ==  IR.ExprKind.Assign.ordinal()         ||
+      expressionKindRaw(at-5) == (IR.ExprKind.Assign.ordinal() | 0x80)     );
 
     return data().getInt(assignFieldPos(at));
   }
   int assignNextPos(int at)
   {
     if (PRECONDITIONS) require
-      (expressionKind(at-1) == IR.ExprKind.Assign);
+     (expressionKindRaw(at-1) ==  IR.ExprKind.Assign.ordinal()         ||
+      expressionKindRaw(at-5) == (IR.ExprKind.Assign.ordinal() | 0x80)     );
 
     return assignFieldPos(at) + 4;
   }
@@ -1609,35 +1655,40 @@ Unbox
   int unboxTypePos(int at)
   {
     if (PRECONDITIONS) require
-      (expressionKind(at-1) == IR.ExprKind.Unbox);
+     (expressionKindRaw(at-1) ==  IR.ExprKind.Unbox.ordinal()         ||
+      expressionKindRaw(at-5) == (IR.ExprKind.Unbox.ordinal() | 0x80)     );
 
     return at;
   }
   AbstractType unboxType(int at)
   {
     if (PRECONDITIONS) require
-      (expressionKind(at-1) == IR.ExprKind.Unbox);
+     (expressionKindRaw(at-1) ==  IR.ExprKind.Unbox.ordinal()         ||
+      expressionKindRaw(at-5) == (IR.ExprKind.Unbox.ordinal() | 0x80)     );
 
     return type(unboxTypePos(at), DUMMY_POS, null);
   }
   int unboxNeededPos(int at)
   {
     if (PRECONDITIONS) require
-      (expressionKind(at-1) == IR.ExprKind.Unbox);
+     (expressionKindRaw(at-1) ==  IR.ExprKind.Unbox.ordinal()         ||
+      expressionKindRaw(at-5) == (IR.ExprKind.Unbox.ordinal() | 0x80)     );
 
     return typeNextPos(unboxTypePos(at));
   }
   boolean unboxNeeded(int at)
   {
     if (PRECONDITIONS) require
-      (expressionKind(at-1) == IR.ExprKind.Unbox);
+     (expressionKindRaw(at-1) ==  IR.ExprKind.Unbox.ordinal()         ||
+      expressionKindRaw(at-5) == (IR.ExprKind.Unbox.ordinal() | 0x80)     );
 
     return data().get(unboxNeededPos(at)) != 0;
   }
   int unboxNextPos(int at)
   {
     if (PRECONDITIONS) require
-      (expressionKind(at-1) == IR.ExprKind.Unbox);
+     (expressionKindRaw(at-1) ==  IR.ExprKind.Unbox.ordinal()         ||
+      expressionKindRaw(at-5) == (IR.ExprKind.Unbox.ordinal() | 0x80)     );
 
     return unboxNeededPos(at) + 1;
   }
@@ -1674,42 +1725,48 @@ Constant
   int constTypePos(int at)
   {
     if (PRECONDITIONS) require
-      (expressionKind(at-1) == IR.ExprKind.Const);
+     (expressionKindRaw(at-1) ==  IR.ExprKind.Const.ordinal()         ||
+      expressionKindRaw(at-5) == (IR.ExprKind.Const.ordinal() | 0x80)     );
 
     return at;
   }
   AbstractType constType(int at)
   {
     if (PRECONDITIONS) require
-      (expressionKind(at-1) == IR.ExprKind.Const);
+     (expressionKindRaw(at-1) ==  IR.ExprKind.Const.ordinal()         ||
+      expressionKindRaw(at-5) == (IR.ExprKind.Const.ordinal() | 0x80)     );
 
     return type(constTypePos(at), DUMMY_POS, null);
   }
   int constLengthPos(int at)
   {
     if (PRECONDITIONS) require
-      (expressionKind(at-1) == IR.ExprKind.Const);
+     (expressionKindRaw(at-1) ==  IR.ExprKind.Const.ordinal()         ||
+      expressionKindRaw(at-5) == (IR.ExprKind.Const.ordinal() | 0x80)     );
 
     return typeNextPos(constTypePos(at));
   }
   int constLength(int at)
   {
     if (PRECONDITIONS) require
-      (expressionKind(at-1) == IR.ExprKind.Const);
+     (expressionKindRaw(at-1) ==  IR.ExprKind.Const.ordinal()         ||
+      expressionKindRaw(at-5) == (IR.ExprKind.Const.ordinal() | 0x80)     );
 
     return data().getInt(constLengthPos(at));
   }
   int constDataPos(int at)
   {
     if (PRECONDITIONS) require
-      (expressionKind(at-1) == IR.ExprKind.Const);
+     (expressionKindRaw(at-1) ==  IR.ExprKind.Const.ordinal()         ||
+      expressionKindRaw(at-5) == (IR.ExprKind.Const.ordinal() | 0x80)     );
 
     return constLengthPos(at) + 4;
   }
   byte[] constData(int at)
   {
     if (PRECONDITIONS) require
-      (expressionKind(at-1) == IR.ExprKind.Const);
+     (expressionKindRaw(at-1) ==  IR.ExprKind.Const.ordinal()         ||
+      expressionKindRaw(at-5) == (IR.ExprKind.Const.ordinal() | 0x80)     );
 
     var l = constLength(at);
     var result = new byte[l];
@@ -1719,7 +1776,8 @@ Constant
   int constNextPos(int at)
   {
     if (PRECONDITIONS) require
-      (expressionKind(at-1) == IR.ExprKind.Const);
+     (expressionKindRaw(at-1) ==  IR.ExprKind.Const.ordinal()         ||
+      expressionKindRaw(at-5) == (IR.ExprKind.Const.ordinal() | 0x80)     );
 
     return constDataPos(at) + constLength(at);
   }
@@ -1778,35 +1836,40 @@ Call
   int callCalledFeaturePos(int at)
   {
     if (PRECONDITIONS) require
-      (expressionKind(at-1) == IR.ExprKind.Call);
+     (expressionKindRaw(at-1) ==  IR.ExprKind.Call.ordinal()         ||
+      expressionKindRaw(at-5) == (IR.ExprKind.Call.ordinal() | 0x80)     );
 
     return at;
   }
   int callCalledFeature(int at)
   {
     if (PRECONDITIONS) require
-      (expressionKind(at-1) == IR.ExprKind.Call);
+     (expressionKindRaw(at-1) ==  IR.ExprKind.Call.ordinal()         ||
+      expressionKindRaw(at-5) == (IR.ExprKind.Call.ordinal() | 0x80)     );
 
     return data().getInt(callCalledFeaturePos(at));
   }
   int callTypePos(int at)
   {
     if (PRECONDITIONS) require
-      (expressionKind(at-1) == IR.ExprKind.Call);
+     (expressionKindRaw(at-1) ==  IR.ExprKind.Call.ordinal()         ||
+      expressionKindRaw(at-5) == (IR.ExprKind.Call.ordinal() | 0x80)     );
 
     return callCalledFeaturePos(at) + 4;
   }
   AbstractType callType(int at)
   {
     if (PRECONDITIONS) require
-      (expressionKind(at-1) == IR.ExprKind.Call);
+     (expressionKindRaw(at-1) ==  IR.ExprKind.Call.ordinal()         ||
+      expressionKindRaw(at-5) == (IR.ExprKind.Call.ordinal() | 0x80)     );
 
     return type(callTypePos(at), DUMMY_POS, null);
   }
   int callNumArgsPos(int at)
   {
     if (PRECONDITIONS) require
-      (expressionKind(at-1) == IR.ExprKind.Call);
+     (expressionKindRaw(at-1) ==  IR.ExprKind.Call.ordinal()         ||
+      expressionKindRaw(at-5) == (IR.ExprKind.Call.ordinal() | 0x80)     );
 
     var p = callTypePos(at);
     return typeNextPos(p);
@@ -1814,7 +1877,8 @@ Call
   int callNumArgsRaw(int at)
   {
     if (PRECONDITIONS) require
-      (expressionKind(at-1) == IR.ExprKind.Call,
+      (expressionKindRaw(at-1) ==  IR.ExprKind.Call.ordinal()         ||
+       expressionKindRaw(at-5) == (IR.ExprKind.Call.ordinal() | 0x80)       ,
        libraryFeature(callCalledFeature(at), null).hasOpenGenericsArgList());
 
     return data().getInt(callNumArgsPos(at));
@@ -1822,7 +1886,8 @@ Call
   int callNumArgs(int at)
   {
     if (PRECONDITIONS) require
-      (expressionKind(at-1) == IR.ExprKind.Call);
+     (expressionKindRaw(at-1) ==  IR.ExprKind.Call.ordinal()         ||
+      expressionKindRaw(at-5) == (IR.ExprKind.Call.ordinal() | 0x80)     );
 
     var f = libraryFeature(callCalledFeature(at), null);
     return f.hasOpenGenericsArgList()
@@ -1832,7 +1897,8 @@ Call
   int callNumTypeParametersPos(int at)
   {
     if (PRECONDITIONS) require
-      (expressionKind(at-1) == IR.ExprKind.Call);
+     (expressionKindRaw(at-1) ==  IR.ExprKind.Call.ordinal()         ||
+      expressionKindRaw(at-5) == (IR.ExprKind.Call.ordinal() | 0x80)     );
 
     return callNumArgsPos(at) +
       (libraryFeature(callCalledFeature(at), null).hasOpenGenericsArgList() ? 4 : 0);
@@ -1840,7 +1906,8 @@ Call
   int callNumTypeParametersRaw(int at)
   {
     if (PRECONDITIONS) require
-      (expressionKind(at-1) == IR.ExprKind.Call,
+      (expressionKindRaw(at-1) ==  IR.ExprKind.Call.ordinal()         ||
+       expressionKindRaw(at-5) == (IR.ExprKind.Call.ordinal() | 0x80)    ,
        libraryFeature(callCalledFeature(at), null).generics().isOpen());
 
     return data().getInt(callNumTypeParametersPos(at));
@@ -1848,7 +1915,8 @@ Call
   int callNumTypeParameters(int at)
   {
     if (PRECONDITIONS) require
-      (expressionKind(at-1) == IR.ExprKind.Call);
+     (expressionKindRaw(at-1) ==  IR.ExprKind.Call.ordinal()         ||
+      expressionKindRaw(at-5) == (IR.ExprKind.Call.ordinal() | 0x80)     );
 
     var f = libraryFeature(callCalledFeature(at), null);
     return f.generics().isOpen()
@@ -1858,7 +1926,8 @@ Call
   int callTypeParametersPos(int at)
   {
     if (PRECONDITIONS) require
-      (expressionKind(at-1) == IR.ExprKind.Call);
+     (expressionKindRaw(at-1) ==  IR.ExprKind.Call.ordinal()         ||
+      expressionKindRaw(at-5) == (IR.ExprKind.Call.ordinal() | 0x80)     );
 
     return callNumTypeParametersPos(at) +
       (libraryFeature(callCalledFeature(at), null).generics().isOpen() ? 4 : 0);
@@ -1866,7 +1935,8 @@ Call
   int callSelectPos(int at)
   {
     if (PRECONDITIONS) require
-      (expressionKind(at-1) == IR.ExprKind.Call);
+     (expressionKindRaw(at-1) ==  IR.ExprKind.Call.ordinal()         ||
+      expressionKindRaw(at-5) == (IR.ExprKind.Call.ordinal() | 0x80)     );
 
     var n = callNumTypeParameters(at);
     var tat = callTypeParametersPos(at);
@@ -1880,7 +1950,8 @@ Call
   int callSelect(int at)
   {
     if (PRECONDITIONS) require
-      (expressionKind(at-1) == IR.ExprKind.Call,
+      (expressionKindRaw(at-1) ==  IR.ExprKind.Call.ordinal()         ||
+       expressionKindRaw(at-5) == (IR.ExprKind.Call.ordinal() | 0x80)    ,
        libraryFeature(callCalledFeature(at), null).resultType().isOpenGeneric());
 
     return data().getInt(callSelectPos(at));
@@ -1888,7 +1959,8 @@ Call
   int callNextPos(int at)
   {
     if (PRECONDITIONS) require
-      (expressionKind(at-1) == IR.ExprKind.Call);
+     (expressionKindRaw(at-1) ==  IR.ExprKind.Call.ordinal()         ||
+      expressionKindRaw(at-5) == (IR.ExprKind.Call.ordinal() | 0x80)     );
 
     var sat = callSelectPos(at);
     var nat = sat + (libraryFeature(callCalledFeature(at), null).resultType().isOpenGeneric() ? 4 : 0);
@@ -1925,28 +1997,32 @@ Match
   int matchNumberOfCasesPos(int at)
   {
     if (PRECONDITIONS) require
-      (expressionKind(at-1) == IR.ExprKind.Match);
+     (expressionKindRaw(at-1) ==  IR.ExprKind.Match.ordinal()         ||
+      expressionKindRaw(at-5) == (IR.ExprKind.Match.ordinal() | 0x80)     );
 
     return at;
   }
   int matchNumberOfCases(int at)
   {
     if (PRECONDITIONS) require
-      (expressionKind(at-1) == IR.ExprKind.Match);
+     (expressionKindRaw(at-1) ==  IR.ExprKind.Match.ordinal()         ||
+      expressionKindRaw(at-5) == (IR.ExprKind.Match.ordinal() | 0x80)     );
 
     return data().getInt(matchNumberOfCasesPos(at));
   }
   int matchCasesPos(int at)
   {
     if (PRECONDITIONS) require
-      (expressionKind(at-1) == IR.ExprKind.Match);
+     (expressionKindRaw(at-1) ==  IR.ExprKind.Match.ordinal()         ||
+      expressionKindRaw(at-5) == (IR.ExprKind.Match.ordinal() | 0x80)     );
 
     return matchNumberOfCasesPos(at) + 4;
   }
   int matchNextPos(int at)
   {
     if (PRECONDITIONS) require
-      (expressionKind(at-1) == IR.ExprKind.Match);
+     (expressionKindRaw(at-1) ==  IR.ExprKind.Match.ordinal()         ||
+      expressionKindRaw(at-5) == (IR.ExprKind.Match.ordinal() | 0x80)     );
 
     var n = matchNumberOfCases(at);
     at = matchCasesPos(at);
@@ -2076,7 +2152,157 @@ Case
   }
 
 
+  /*
+
+--asciidoc--
+
+SourceFiles
+^^^^^^^^^^^
+
+[options="header",cols="1,1,2,5"]
+|====
+   |cond.     | repeat | type          | what
+
+.2+| true     | 1      | int           | count n
+              | n      | SourceFile    | source file
+|====
+
+--asciidoc--
+   *   +---------------------------------------------------------------------------------+
+   *   | SourceFiles                                                                     |
+   *   +--------+--------+---------------+-----------------------------------------------+
+   *   | cond.  | repeat | type          | what                                          |
+   *   +--------+--------+---------------+-----------------------------------------------+
+   *   | true   | 1      | int           | count n                                       |
+   *   +        +--------+---------------+-----------------------------------------------+
+   *   |        | n      | SourceFile    | source file                                   |
+   *   +--------+--------+---------------+-----------------------------------------------+
+   *
+   */
+  int sourceFilesPos()
+  {
+    return innerFeaturesNextPos(startPos());
+  }
+  int sourceFilesCountPos()
+  {
+    return sourceFilesPos();
+  }
+  int sourceFilesCount()
+  {
+    return _data.getInt(sourceFilesCountPos());
+  }
+  int sourceFilesFirstSourceFilePos()
+  {
+    return sourceFilesCountPos() + 4;
+  }
+
+  /*
+
+--asciidoc--
+
+SourceFile
+^^^^^^^^^^
+
+[options="header",cols="1,1,2,5"]
+|====
+   |cond.     | repeat | type          | what
+
+.2+| true     | 1      | Name          | file name
+              | 1      | int           | size s
+              | s      | byte          | source file data
+|====
+
+--asciidoc--
+   *   +---------------------------------------------------------------------------------+
+   *   | SourceFile                                                                      |
+   *   +--------+--------+---------------+-----------------------------------------------+
+   *   | cond.  | repeat | type          | what                                          |
+   *   +--------+--------+---------------+-----------------------------------------------+
+   *   | true   | 1      | Name          | file name                                     |
+   *   +        +--------+---------------+-----------------------------------------------+
+   *   |        | 1      | int           | size s                                        |
+   *   +        +--------+---------------+-----------------------------------------------+
+   *   |        | s      | byte          | source file data                              |
+   *   +--------+--------+---------------+-----------------------------------------------+
+   *
+   */
+  int sourceFileNamePos(int at)
+  {
+    return at;
+  }
+  String sourceFileName(int at)
+  {
+    return name(sourceFileNamePos(at));
+  }
+  int sourceFileSizePos(int at)
+  {
+    return nameNextPos(sourceFileNamePos(at));
+  }
+  int sourceFileSize(int at)
+  {
+    return _data.getInt(sourceFileSizePos(at));
+  }
+  int sourceFileBytesPos(int at)
+  {
+    return sourceFileSizePos(at) + 4;
+  }
+  ByteBuffer sourceFileBytes(int at)
+  {
+    return _data.slice(sourceFileBytesPos(at), sourceFileSize(at));
+  }
+  int sourceFileNextPos(int at)
+  {
+    return sourceFileBytesPos(at) + sourceFileSize(at);
+  }
+
+
   /*-------------------------------  misc  ------------------------------*/
+
+
+  /**
+   * Create annotated hex dump of this module file.
+   */
+  public String dump()
+  {
+    var hd = new HexDump(_data);
+    hd.mark(0, FuzionConstants.MIR_FILE_MAGIC_EXPLANATION);
+    hd.mark(startPos(), "InnerFeatures");
+    dump(hd, features());
+    hd.mark(sourceFilesPos(), "SourceFiles");
+    var n = sourceFilesCount();
+    var at = sourceFilesFirstSourceFilePos();
+    while (n > 0)
+      {
+        hd.mark(at, "Source: " + sourceFileName(at));
+        at = sourceFileNextPos(at);
+        n--;
+      }
+    return hd.toString();
+  }
+
+
+  /**
+   * Helper for dump to recursivle annotate hex dump for features
+   *
+   * @param hd the hex dump instance
+   *
+   * @param fs the features to annotate.
+   */
+  private void dump(HexDump hd, List<AbstractFeature> fs)
+  {
+    for (var f: fs)
+      {
+        var lf = (LibraryFeature) f;
+        var li = lf._index;
+        hd.mark(li, featureKindEnum(li).toString());
+        hd.mark(featureNamePos(li), f.qualifiedName());
+        if (featureIsRoutine(li))
+          {
+            hd.mark(featureCodePos(li), "code");
+          }
+        dump(hd, innerFeatures(featureInnerFeaturesPos(li)));
+      }
+  }
 
 
   /**

@@ -31,6 +31,8 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 
+import java.nio.file.Path;
+
 
 /**
  * SourcePosition represents a position in a source code file.
@@ -60,14 +62,37 @@ public class SourcePosition extends ANY implements Comparable<SourcePosition>
 
 
   /**
-   * SourcePosition instance of built-in types and features that do not have a
+   * SourcePosition instance for built-in types and features that do not have a
    * source code position.
    */
-  public static final SourcePosition builtIn = new SourcePosition(new SourceFile(SourceFile.BUILT_IN), 0, 0)
+  public static final SourcePosition builtIn = new SourcePosition(new SourceFile(Path.of("--builtin--"), new byte[0]), 0, 0)
     {
       public boolean isBuiltIn()
       {
         return true;
+      }
+
+      String rawFileNameWithPosition()
+      {
+        return "<built-in>";
+      }
+    };
+
+
+  /**
+   * SourcePosition instance for source positions that are not available, e.g., for
+   * precompiled modules that do not include source code..
+   */
+  public static final SourcePosition notAvailable = new SourcePosition(new SourceFile(Path.of("--not available--"), new byte[0]), 0, 0)
+    {
+      public boolean isBuiltIn()
+      {
+        return true;
+      }
+
+      String rawFileNameWithPosition()
+      {
+        return "<source position not available>";
       }
     };
 
@@ -92,6 +117,24 @@ public class SourcePosition extends ANY implements Comparable<SourcePosition>
     this._sourceFile = sourceFile;
     this._line = l;
     this._column = c;
+  }
+
+
+  /**
+   * Create source position for given source file and byte position.
+   *
+   * @param sourceFile the source file
+   *
+   * @param bytePos the byte position within sourceFile
+   */
+  public SourcePosition(SourceFile sourceFile, int bytePos)
+  {
+    if (PRECONDITIONS) require
+      (sourceFile != null);
+
+    this._sourceFile = sourceFile;
+    this._line = sourceFile.lineNum(bytePos);
+    this._column = bytePos - sourceFile.lineStartPos(_line);
   }
 
 
@@ -169,16 +212,30 @@ public class SourcePosition extends ANY implements Comparable<SourcePosition>
   }
 
   /**
+   * Convert this position to a string of the form "<filename>:<line>:<column>"
+   * or "<built-in>" for builtIn position.
+   */
+  String rawFileNameWithPosition()
+  {
+    return fileName() + ":" + _line + ":" + _column;
+  }
+
+  /**
    * Convert this position to a string of the form "<filename>:<line>:<column>:"
    * or "<built-in>" for builtIn position.
    */
   public String fileNameWithPosition()
   {
-    return Terminal.GREEN +
-      (isBuiltIn()
-       ? "<built-in>:"
-       : fileName() + ":" + _line + ":" + _column + ":") +
-      Terminal.REGULAR_COLOR;
+    return Terminal.GREEN + rawFileNameWithPosition() + ":" + Terminal.REGULAR_COLOR;
+  }
+
+
+  /**
+   * Byte position within _sourceFile
+   */
+  public int bytePos()
+  {
+    return _sourceFile.lineStartPos(_line) + _column - 1;
   }
 
 

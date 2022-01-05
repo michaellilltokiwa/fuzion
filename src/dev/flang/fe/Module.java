@@ -79,7 +79,7 @@ public abstract class Module extends ANY
      * All features that have been found to inherit from this feature.  This set
      * is collected during RESOLVING_DECLARATIONS.
      */
-    public Set<AbstractFeature> _heirs = new TreeSet<>();
+    Set<AbstractFeature> _heirs = new TreeSet<>();
 
 
     /**
@@ -87,8 +87,12 @@ public abstract class Module extends ANY
      * does not include redefintions of redefinitions.  This set is collected
      * during RESOLVING_DECLARATIONS.
      */
-    public Set<AbstractFeature> _redefinitions = null;
+    Set<AbstractFeature> _redefinitions = null;
 
+    /**
+     * Cached result of SourceModule.allInnerandinheritedfeatures().
+     */
+    Set<AbstractFeature> _allInnerAndInheritedFeatures = null;
 
     /**
      * offset of this feature's data in .mir file.
@@ -105,12 +109,6 @@ public abstract class Module extends ANY
    * What modules does this module depend on?
    */
   Module[] _dependsOn;
-
-
-  /**
-   * Map from features in this module or in modules it depends on to module-specific data  for this feature.
-   */
-  protected Map<AbstractFeature, FData> _data = new HashMap<>();
 
 
   /*--------------------------  constructors  ---------------------------*/
@@ -160,11 +158,11 @@ public abstract class Module extends ANY
    */
   FData data(AbstractFeature outer)
   {
-    var d = _data.get(outer);
+    var d = (FData) outer._frontEndData;
     if (d == null)
       {
         d = new FData();
-        _data.put(outer, d);
+        outer._frontEndData = d;
       }
     return d;
   }

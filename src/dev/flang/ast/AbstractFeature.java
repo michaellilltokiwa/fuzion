@@ -49,32 +49,7 @@ public abstract class AbstractFeature extends ANY implements Comparable<Abstract
 {
 
 
-  /**
-   * All features that have been found to be directly redefined by this feature.
-   * This does not include redefintions of redefinitions.  Four Features loaded
-   * from source code, this set is collected during RESOLVING_DECLARATIONS.  For
-   * LibraryFeature, this will be loaded from the library module file.
-   */
-  public abstract Set<AbstractFeature> redefines();
-
-
-  /**
-   * NYI: to be removed: Temporary mapping from Feature to corresponding
-   * libraryFeature (if it exists) and back to the ast.Feature.
-   *
-   * As long as the duality of ast.Feature/fe.LibraryFeature exists, a check for
-   * feature equality should be done using sameAs.
-   */
-  public AbstractFeature _libraryFeature = null;
-  public AbstractFeature libraryFeature()
-  {
-    return _libraryFeature == null ? this : _libraryFeature;
-  }
-  public AbstractFeature astFeature() { return this; }
-  public boolean sameAs(AbstractFeature other)
-  {
-    return astFeature() == other.astFeature();
-  }
+  /*------------------------------  enums  ------------------------------*/
 
 
   /**
@@ -99,6 +74,56 @@ public abstract class AbstractFeature extends ANY implements Comparable<Abstract
       return values()[ordinal];
     }
   }
+
+
+  /*----------------------------  variables  ----------------------------*/
+
+
+
+  /**
+   * NYI: to be removed: Temporary mapping from Feature to corresponding
+   * libraryFeature (if it exists) and back to the ast.Feature.
+   *
+   * As long as the duality of ast.Feature/fe.LibraryFeature exists, a check for
+   * feature equality should be done using sameAs.
+   */
+  public AbstractFeature _libraryFeature = null; // NYI: remove when USE_FUM is default
+  public AbstractFeature libraryFeature() // NYI: remove
+  {
+    return _libraryFeature == null ? this : _libraryFeature;
+  }
+  public AbstractFeature astFeature() { return this; } // NYI remove
+
+
+  /**
+   * Reserved fields to be used by dev.flang.air to find used features and to
+   * mark features that are called dynamically.
+   */
+  public SourcePosition _usedAt;
+  public boolean _calledDynamically;
+
+
+  /**
+   * Caching used in front end.
+   */
+  public Object _frontEndData;
+
+  /*-----------------------------  methods  -----------------------------*/
+
+  /**
+   * All features that have been found to be directly redefined by this feature.
+   * This does not include redefintions of redefinitions.  Four Features loaded
+   * from source code, this set is collected during RESOLVING_DECLARATIONS.  For
+   * LibraryFeature, this will be loaded from the library module file.
+   */
+  public abstract Set<AbstractFeature> redefines();
+
+
+  public boolean sameAs(AbstractFeature other) // NYI: remove
+  {
+    return astFeature() == other.astFeature();
+  }
+
 
   /* pre-implemented convenience functions: */
   public boolean isRoutine() { return kind() == Kind.Routine; }
@@ -832,36 +857,6 @@ public abstract class AbstractFeature extends ANY implements Comparable<Abstract
 
     if (POSTCONDITIONS) ensure
       (result != null);
-
-    return result;
-  }
-
-
-  /**
-   * allInnerAndInheritedFeatures returns a complete set of inner features, used
-   * by Clazz.layout and Clazz.hasState.
-   *
-   * @return
-   */
-  public Collection<AbstractFeature> allInnerAndInheritedFeatures(SrcModule mod)
-  {
-    if (PRECONDITIONS) require
-                         (state().atLeast(Feature.State.RESOLVED));
-
-    TreeSet<AbstractFeature> result = new TreeSet<>();
-
-    result.addAll(mod.declaredFeatures(this).values());
-    for (var p : inherits())
-      {
-        var cf = p.calledFeature();
-        check
-          (Errors.count() > 0 || cf != null);
-
-        if (cf != null)
-          {
-            result.addAll(cf.allInnerAndInheritedFeatures(mod));
-          }
-      }
 
     return result;
   }
