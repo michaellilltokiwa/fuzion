@@ -30,6 +30,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.nio.ByteBuffer;
 
+import java.util.ArrayList;
 import java.util.Map;
 import java.util.Set;
 import java.util.SortedMap;
@@ -56,6 +57,7 @@ import dev.flang.util.FuzionConstants;
 import dev.flang.util.HexDump;
 import dev.flang.util.List;
 import dev.flang.util.SourceDir;
+import dev.flang.util.SourceFile;
 import dev.flang.util.SourcePosition;
 
 
@@ -73,14 +75,6 @@ public class LibraryModule extends Module
 
 
   /**
-   * Temporary solution to switch to .fum file data completely.
-   *
-   * NYI: Remove when we have switched to .fum file!
-   */
-  public static boolean USE_FUM = !"false".equals(System.getenv("USE_FUM"));
-
-
-  /**
    * As long as source position is not part of the .fum/MIR file, use this
    * constant as a place holder.
    */
@@ -95,13 +89,6 @@ public class LibraryModule extends Module
 
 
   /*----------------------------  variables  ----------------------------*/
-
-
-  /**
-   * NYI: For now, a LibraryModule is just a wrapper around a SourceModule.
-   * This will change once the source module can actually be saved to a file.
-   */
-  public final SourceModule _srcModule;
 
 
   /**
@@ -151,6 +138,12 @@ public class LibraryModule extends Module
 
 
   /**
+   * Source code files, created on demand
+   */
+  private final ArrayList<SourceFile> _sourceFiles;
+
+
+  /**
    * The universe
    */
   final Feature _universe;
@@ -162,31 +155,22 @@ public class LibraryModule extends Module
   /**
    * Create LibraryModule for given options and sourceDirs.
    */
-  LibraryModule(FrontEndOptions options, String name, SourceDir[] sourceDirs, Path inputFile, String defaultMain, Module[] dependsOn, Feature universe)
-  {
-    super(dependsOn);
-
-    _srcModule = new SourceModule(options, sourceDirs, inputFile, defaultMain, dependsOn, universe);
-    _name = name;
-    _mir = _srcModule.createMIR();
-    _data = _mir._module.data();
-    _universe = universe;
-  }
-
-
-  /**
-   * Create LibraryModule for given options and sourceDirs.
-   */
   LibraryModule(String name, ByteBuffer data, Module[] dependsOn, Feature universe)
   {
     super(dependsOn);
 
-    _srcModule = null;
     _name = name;
     _mir = null;
     _data = data;
     _universe = universe;
     if (DUMP) System.out.println(dump());
+
+    _sourceFiles = new ArrayList<>(sourceFilesCount());
+    var sfc = sourceFilesCount();
+    for (int i = 0; i < sfc; i++)
+      {
+        _sourceFiles.add(null);
+      }
   }
 
   /*-----------------------------  methods  -----------------------------*/
@@ -227,64 +211,20 @@ public class LibraryModule extends Module
    */
   SortedMap<FeatureName, AbstractFeature>declaredFeaturesOrNull(AbstractFeature outer)
   {
-    if (USE_FUM)
-      {
-        return declaredFeatures(outer);
-      }
-    else
-      {
-        var sdf = _srcModule.declaredFeaturesOrNull(outer.astFeature());
-        return sdf == null ? null : libraryFeatures(sdf);
-      }
+    return declaredFeatures(outer);
   }
   SortedMap<FeatureName, AbstractFeature>declaredFeatures(AbstractFeature outer)
   {
-    if (USE_FUM)
+    var result = new TreeMap<FeatureName, AbstractFeature>();
+    if (outer instanceof LibraryFeature lf && lf._libModule == this)
       {
-        var result = new TreeMap<FeatureName, AbstractFeature>();
-        if (outer instanceof LibraryFeature lf && lf._libModule == this)
+        var l = lf.declaredFeatures();
+        for (var d : l)
           {
-            var l = lf.declaredFeatures();
-            for (var d : l)
-              {
-                result.put(d.featureName(), d);
-              }
+            result.put(d.featureName(), d);
           }
-        return result;
-      }
-    else
-      {
-        var sdf = _srcModule.declaredFeaturesOrNull(outer.astFeature());
-        return sdf == null ? new TreeMap<>() : libraryFeatures(sdf);
-      }
-  }
-
-
-  /**
-   * Helper method for declaredFeaturesOrNull and
-   * declaredOrInheritedFeaturesOrNull: Wrap ast.Feature into LibraryFeature.
-   */
-  private SortedMap<FeatureName, AbstractFeature> libraryFeatures(SortedMap<FeatureName, AbstractFeature> from)
-  {
-    SortedMap<FeatureName, AbstractFeature> result = new TreeMap<>();
-    for (var e : from.entrySet())
-      {
-        result.put(e.getKey(), libraryFeature(e.getValue()));
       }
     return result;
-  }
-
-
-  /**
-   * Wrap given Feature into a LibraryFeature unless it is a LibraryFeature
-   * already.  In case f was wrapped before, returns the original wrapper.
-   */
-  LibraryFeature libraryFeature(AbstractFeature f)
-  {
-    return (LibraryFeature) (
-      f instanceof LibraryFeature                               ? f                    :
-      f instanceof Feature astF && astF._libraryFeature != null ? astF._libraryFeature
-                                                                : libraryFeature(_srcModule.data(f)._mirOffset, (Feature) f));
   }
 
 
@@ -293,19 +233,33 @@ public class LibraryModule extends Module
    *
    * @param offset the offset in data()
    *
-   * @param from the original AST Feature. NYI: Remove!
-   *
    * @return the LibraryFeature declared at offset in this module.
    */
-  LibraryFeature libraryFeature(int offset, Feature from)
+  LibraryFeature libraryFeature(int offset)
   {
     var result = _libraryFeatures.get(offset);
     if (result == null)
       {
-        result = new LibraryFeature(this, offset, from);
+        result = new LibraryFeature(this, offset);
         _libraryFeatures.put(offset, result);
       }
     return result;
+  }
+
+
+  /**
+   * Get the feature corresponding to given offset
+   *
+   * @param offset the offset in data(), -1 for 'null', 0 for universe.
+   *
+   * @return the AbstractFeature corresponding to given offset.
+   */
+  AbstractFeature feature(int offset)
+  {
+    return
+      (offset == -1) ? null :
+      (offset ==  0) ? universe()
+                     : libraryFeature(offset);
   }
 
 
@@ -347,7 +301,7 @@ public class LibraryModule extends Module
         var ip = innerFeaturesFeaturesPos(at);
         for (var i = ip; i < ip+is; i = featureNextPos(i))
           {
-            result.add(libraryFeature(i, null));
+            result.add(libraryFeature(i));
           }
         _innerFeatures.put(at, result);
       }
@@ -364,33 +318,25 @@ public class LibraryModule extends Module
    */
   SortedMap<FeatureName, AbstractFeature>declaredOrInheritedFeaturesOrNull(AbstractFeature outer)
   {
-    if (USE_FUM)
+    var res = new TreeMap<FeatureName, AbstractFeature>();
+    if (outer instanceof LibraryFeature olf)
       {
-        var res = new TreeMap<FeatureName, AbstractFeature>();
-        if (outer instanceof LibraryFeature olf)
+        var declared = olf.declaredFeatures();
+        for (var d : declared)
           {
-            var declared = olf.declaredFeatures();
-            for (var d : declared)
-              {
-                res.put(d.featureName(), d);
-              }
-            findInheritedFeatures(res, outer);
+            res.put(d.featureName(), d);
           }
-        else if (outer.isUniverse())
-          {
-            var declared = features();
-            for (var d : declared)
-              {
-                res.put(d.featureName(), d);
-              }
-          }
-        return res;
+        findInheritedFeatures(res, outer);
       }
-    else
+    else if (outer.isUniverse())
       {
-        var sdif = _srcModule.declaredOrInheritedFeaturesOrNull(outer.astFeature());
-        return sdif == null ? null : libraryFeatures(sdif);
+        var declared = features();
+        for (var d : declared)
+          {
+            res.put(d.featureName(), d);
+          }
       }
+    return res;
   }
 
   /**
@@ -527,7 +473,7 @@ public class LibraryModule extends Module
       {
         while (result == null)
           {
-            var o = libraryFeature(i, USE_FUM ? null : _srcModule.featureFromOffset(i));
+            var o = libraryFeature(i);
             if (((featureKind(i) & FuzionConstants.MIR_FILE_KIND_HAS_TYPE_PAREMETERS) != 0) &&
                 offset > i &&
                 offset <= featureResultTypePos(i))
@@ -568,7 +514,7 @@ public class LibraryModule extends Module
   /**
    * Read Type at given position.
    */
-  AbstractType type(int at, SourcePosition pos, AbstractType from)
+  AbstractType type(int at)
   {
     AbstractType result = _libraryTypes.get(at);
     if (result == null)
@@ -588,7 +534,7 @@ public class LibraryModule extends Module
             var k2 = typeKind(at2);
             check
               (k2 == -1 || k2 >= 0);
-            result = type(at2, pos, from);
+            result = type(at2);
             // we do not cache references to types, so don't add this to _libraryTypes for at.
           }
         else
@@ -596,11 +542,11 @@ public class LibraryModule extends Module
             LibraryType res;
             if (k < 0)
               {
-                res = new GenericType(this, at, pos, genericArgument(typeGeneric(at)), from);
+                res = new GenericType(this, at, DUMMY_POS, genericArgument(typeGeneric(at)));
               }
             else
               {
-                var feature = libraryFeature(typeFeature(at), from == null ? null : (Feature) from.featureOfType().astFeature());
+                var feature = libraryFeature(typeFeature(at));
                 var makeRef = typeIsRef(at);
                 var generics = Type.NONE;
                 if (k > 0)
@@ -610,7 +556,7 @@ public class LibraryModule extends Module
                     var gi = 0;
                     while (gi < k)
                       {
-                        generics.add(type(i, pos, from == null ? null : from.generics().get(gi)));
+                        generics.add(type(i));
                         i = typeNextPos(i);
                         gi++;
                       }
@@ -619,8 +565,8 @@ public class LibraryModule extends Module
                   {
                     generics = Type.NONE;
                   }
-                var outer = type(typeOuterPos(at), from == null ? DUMMY_POS : from.outer().pos(), from == null ? null : from.outer());
-                res = new NormalType(this, at, pos, feature, makeRef ? Type.RefOrVal.Ref : Type.RefOrVal.LikeUnderlyingFeature, generics, outer, from);
+                var outer = type(typeOuterPos(at));
+                res = new NormalType(this, at, DUMMY_POS, feature, makeRef ? Type.RefOrVal.Ref : Type.RefOrVal.LikeUnderlyingFeature, generics, outer);
               }
             _libraryTypes.put(at, res);
             result = res;
@@ -764,11 +710,12 @@ Feature
 [options="header",cols="1,1,2,5"]
 |====
    |cond.     | repeat | type          | what
-.5+| true  .5+| 1      | byte          | 0000Tkkk  kkk = kind, T = has type parameters
+.6+| true  .6+| 1      | byte          | 0000Tkkk  kkk = kind, T = has type parameters
                        | Name          | name
                        | int           | arg count
                        | int           | name id
                        | Pos           | source code position
+                       | int           | outer feature index, 0 for outer()==universe
    | T=1      | 1      | TypeArgs      | optional type arguments
    | hasRT    | 1      | Type          | optional result type,
                                        hasRT = !isConstructor && !isChoice
@@ -803,6 +750,8 @@ Feature
    *   |        |        | int           | name id                                       |
    *   |        |        +---------------+-----------------------------------------------+
    *   |        |        | Pos           | source code position                          |
+   *   |        |        +---------------+-----------------------------------------------+
+   *   |        |        | int           | outer feature index, 0 for outer()==universe  |
    *   +--------+--------+---------------+-----------------------------------------------+
    *   | T=1    | 1      | TypeArgs      | optional type arguments                       |
    *   +--------+--------+---------------+-----------------------------------------------+
@@ -928,12 +877,24 @@ Feature
   {
     return featurePositionPos(at) + 4;
   }
+  int featureOuterPos(int at)
+  {
+    return featurePositionNextPos(at);
+  }
+  AbstractFeature featureOuter(int at)
+  {
+    return feature(data().getInt(featureOuterPos(at)));
+  }
+  int featureOuterNextPos(int at)
+  {
+    return featureOuterPos(at) + 4;
+  }
   int featureTypeArgsPos(int at)
   {
     if (PRECONDITIONS) require
       ((featureKind(at) & FuzionConstants.MIR_FILE_KIND_HAS_TYPE_PAREMETERS) != 0);
 
-    return featurePositionNextPos(at);
+    return featureOuterNextPos(at);
   }
   int featureResultTypePos(int at)
   {
@@ -943,7 +904,7 @@ Feature
       }
     else
       {
-        return featurePositionNextPos(at);
+        return featureOuterNextPos(at);
       }
   }
   boolean featureHasResultType(int at)
@@ -1072,21 +1033,6 @@ Feature
       }
     return i;
   }
-  int featureInnerSizePos(int at)
-  {
-    if (USE_FUM) throw new Error("NYI: REMOVE!");
-    return innerFeaturesSizePos(featureInnerFeaturesPos(at));
-  }
-  int featureInnerSize(int at)
-  {
-    if (USE_FUM) throw new Error("NYI: REMOVE!");
-    return innerFeaturesSize(featureInnerFeaturesPos(at));
-  }
-  int featureInnerPos(int at)
-  {
-    if (USE_FUM) throw new Error("NYI: REMOVE!");
-    return innerFeaturesFeaturesPos(featureInnerFeaturesPos(at));
-  }
   int featureNextPos(int at)
   {
     return innerFeaturesNextPos(featureInnerFeaturesPos(at));
@@ -1196,9 +1142,9 @@ TypeArg
   {
     return nameNextPos(typeArgNamePos(at));
   }
-  AbstractType typeArgConstraint(int at, SourcePosition pos, AbstractType from)
+  AbstractType typeArgConstraint(int at)
   {
-    return type(typeArgConstraintPos(at), pos, from);
+    return type(typeArgConstraintPos(at));
   }
   int typeArgNextPos(int at)
   {
@@ -1666,7 +1612,7 @@ Unbox
      (expressionKindRaw(at-1) ==  IR.ExprKind.Unbox.ordinal()         ||
       expressionKindRaw(at-5) == (IR.ExprKind.Unbox.ordinal() | 0x80)     );
 
-    return type(unboxTypePos(at), DUMMY_POS, null);
+    return type(unboxTypePos(at));
   }
   int unboxNeededPos(int at)
   {
@@ -1736,7 +1682,7 @@ Constant
      (expressionKindRaw(at-1) ==  IR.ExprKind.Const.ordinal()         ||
       expressionKindRaw(at-5) == (IR.ExprKind.Const.ordinal() | 0x80)     );
 
-    return type(constTypePos(at), DUMMY_POS, null);
+    return type(constTypePos(at));
   }
   int constLengthPos(int at)
   {
@@ -1863,7 +1809,7 @@ Call
      (expressionKindRaw(at-1) ==  IR.ExprKind.Call.ordinal()         ||
       expressionKindRaw(at-5) == (IR.ExprKind.Call.ordinal() | 0x80)     );
 
-    return type(callTypePos(at), DUMMY_POS, null);
+    return type(callTypePos(at));
   }
   int callNumArgsPos(int at)
   {
@@ -1879,7 +1825,7 @@ Call
     if (PRECONDITIONS) require
       (expressionKindRaw(at-1) ==  IR.ExprKind.Call.ordinal()         ||
        expressionKindRaw(at-5) == (IR.ExprKind.Call.ordinal() | 0x80)       ,
-       libraryFeature(callCalledFeature(at), null).hasOpenGenericsArgList());
+       libraryFeature(callCalledFeature(at)).hasOpenGenericsArgList());
 
     return data().getInt(callNumArgsPos(at));
   }
@@ -1889,7 +1835,7 @@ Call
      (expressionKindRaw(at-1) ==  IR.ExprKind.Call.ordinal()         ||
       expressionKindRaw(at-5) == (IR.ExprKind.Call.ordinal() | 0x80)     );
 
-    var f = libraryFeature(callCalledFeature(at), null);
+    var f = libraryFeature(callCalledFeature(at));
     return f.hasOpenGenericsArgList()
       ? callNumArgsRaw(at)
       : f.arguments().size();
@@ -1901,14 +1847,14 @@ Call
       expressionKindRaw(at-5) == (IR.ExprKind.Call.ordinal() | 0x80)     );
 
     return callNumArgsPos(at) +
-      (libraryFeature(callCalledFeature(at), null).hasOpenGenericsArgList() ? 4 : 0);
+      (libraryFeature(callCalledFeature(at)).hasOpenGenericsArgList() ? 4 : 0);
   }
   int callNumTypeParametersRaw(int at)
   {
     if (PRECONDITIONS) require
       (expressionKindRaw(at-1) ==  IR.ExprKind.Call.ordinal()         ||
        expressionKindRaw(at-5) == (IR.ExprKind.Call.ordinal() | 0x80)    ,
-       libraryFeature(callCalledFeature(at), null).generics().isOpen());
+       libraryFeature(callCalledFeature(at)).generics().isOpen());
 
     return data().getInt(callNumTypeParametersPos(at));
   }
@@ -1918,7 +1864,7 @@ Call
      (expressionKindRaw(at-1) ==  IR.ExprKind.Call.ordinal()         ||
       expressionKindRaw(at-5) == (IR.ExprKind.Call.ordinal() | 0x80)     );
 
-    var f = libraryFeature(callCalledFeature(at), null);
+    var f = libraryFeature(callCalledFeature(at));
     return f.generics().isOpen()
       ? callNumTypeParametersRaw(at)
       : f.generics().list.size();
@@ -1930,7 +1876,7 @@ Call
       expressionKindRaw(at-5) == (IR.ExprKind.Call.ordinal() | 0x80)     );
 
     return callNumTypeParametersPos(at) +
-      (libraryFeature(callCalledFeature(at), null).generics().isOpen() ? 4 : 0);
+      (libraryFeature(callCalledFeature(at)).generics().isOpen() ? 4 : 0);
   }
   int callSelectPos(int at)
   {
@@ -1952,7 +1898,7 @@ Call
     if (PRECONDITIONS) require
       (expressionKindRaw(at-1) ==  IR.ExprKind.Call.ordinal()         ||
        expressionKindRaw(at-5) == (IR.ExprKind.Call.ordinal() | 0x80)    ,
-       libraryFeature(callCalledFeature(at), null).resultType().isOpenGeneric());
+       libraryFeature(callCalledFeature(at)).resultType().isOpenGeneric());
 
     return data().getInt(callSelectPos(at));
   }
@@ -1963,7 +1909,7 @@ Call
       expressionKindRaw(at-5) == (IR.ExprKind.Call.ordinal() | 0x80)     );
 
     var sat = callSelectPos(at);
-    var nat = sat + (libraryFeature(callCalledFeature(at), null).resultType().isOpenGeneric() ? 4 : 0);
+    var nat = sat + (libraryFeature(callCalledFeature(at)).resultType().isOpenGeneric() ? 4 : 0);
 
     return nat;
   }
@@ -2144,7 +2090,7 @@ Case
   }
   AbstractType tagType(int at)
   {
-    return type(tagTypePos(at), DUMMY_POS, null);
+    return type(tagTypePos(at));
   }
   int tagNextPos(int at)
   {
@@ -2260,6 +2206,50 @@ SourceFile
 
 
   /**
+   * Create a Source position instance for the given position in this library file.
+   *
+   * @param pos the position, may be -1 for undefined or 0 for
+   * SourcePosition.builtIn, otherwise a valid index into a source file in this
+   * module.
+   */
+  SourcePosition pos(int pos)
+  {
+    if (pos < 0)
+      {
+        return SourcePosition.notAvailable;
+      }
+    else if (pos == 0)
+      {
+        return SourcePosition.builtIn;
+      }
+    else
+      {
+        var at = sourceFilesFirstSourceFilePos();
+        check
+          (pos > at);
+        var i = 0;
+        while (pos > sourceFileNextPos(at))
+          {
+            at = sourceFileNextPos(at);
+            i++;
+            check
+              (i < sourceFilesCount());
+          }
+        var sf = _sourceFiles.get(i);
+        if (sf == null)
+          {
+            var bb = sourceFileBytes(at);
+            var ba = new byte[bb.limit()]; // NYI: Would be better if SoureFile could use bb directly.
+            bb.get(0, ba);
+            sf = new SourceFile(Path.of(sourceFileName(at)), ba);
+            _sourceFiles.set(i, sf);
+          }
+        return new SourcePosition(sf, pos - sourceFileBytesPos(at));
+      }
+  }
+
+
+  /**
    * Create annotated hex dump of this module file.
    */
   public String dump()
@@ -2310,7 +2300,7 @@ SourceFile
    */
   public String toString()
   {
-    return "LibraryModule for '" + _srcModule + "'";
+    return "LibraryModule for '" + _name + "'";
   }
 
 }

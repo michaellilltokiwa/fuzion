@@ -34,6 +34,7 @@ import java.util.TreeSet;
 import dev.flang.util.ANY;
 import dev.flang.util.Errors;
 import dev.flang.util.FuzionConstants;
+import dev.flang.util.HasSourcePosition;
 import dev.flang.util.List;
 import dev.flang.util.SourcePosition;
 
@@ -45,7 +46,7 @@ import dev.flang.util.SourcePosition;
  *
  * @author Fridtjof Siebert (siebert@tokiwa.software)
  */
-public abstract class AbstractFeature extends ANY implements Comparable<AbstractFeature>
+public abstract class AbstractFeature extends ANY implements Comparable<AbstractFeature>, HasSourcePosition
 {
 
 
@@ -92,14 +93,13 @@ public abstract class AbstractFeature extends ANY implements Comparable<Abstract
   {
     return _libraryFeature == null ? this : _libraryFeature;
   }
-  public AbstractFeature astFeature() { return this; } // NYI remove
 
 
   /**
    * Reserved fields to be used by dev.flang.air to find used features and to
    * mark features that are called dynamically.
    */
-  public SourcePosition _usedAt;
+  public HasSourcePosition _usedAt;
   public boolean _calledDynamically;
 
 
@@ -117,12 +117,6 @@ public abstract class AbstractFeature extends ANY implements Comparable<Abstract
    * LibraryFeature, this will be loaded from the library module file.
    */
   public abstract Set<AbstractFeature> redefines();
-
-
-  public boolean sameAs(AbstractFeature other) // NYI: remove
-  {
-    return astFeature() == other.astFeature();
-  }
 
 
   /* pre-implemented convenience functions: */
@@ -247,7 +241,7 @@ public abstract class AbstractFeature extends ANY implements Comparable<Abstract
             check
               (Errors.count() > 0 || p.calledFeature() != null);
 
-            if (p.calledFeature().sameAs(Types.resolved.f_choice))
+            if (p.calledFeature() == Types.resolved.f_choice)
               {
                 if (lastP != null)
                   {
@@ -315,7 +309,7 @@ public abstract class AbstractFeature extends ANY implements Comparable<Abstract
     Generic result = generics().get(name);
 
     if (POSTCONDITIONS) ensure
-      ((result == null) || (result._name.equals(name) && (result.feature().sameAs(this))));
+      ((result == null) || (result._name.equals(name) && (result.feature() == this)));
     // result == null ==> for all g in generics: !g.name.equals(name)
 
     return result;
@@ -591,10 +585,10 @@ public abstract class AbstractFeature extends ANY implements Comparable<Abstract
   public FeatureName handDown(SrcModule module, AbstractFeature f, FeatureName fn, AbstractCall p, AbstractFeature heir)
   {
     if (PRECONDITIONS) require
-      (module == null || module.declaredOrInheritedFeatures(this).get(fn).sameAs(f),
+      (module == null || module.declaredOrInheritedFeatures(this).get(fn) == f,
        this != heir);
 
-    if (f.outer().sameAs(p.calledFeature())) // NYI: currently does not support inheriting open generic over several levels
+    if (f.outer() == p.calledFeature()) // NYI: currently does not support inheriting open generic over several levels
       {
         fn = f.effectiveName(p.generics());
       }
@@ -702,7 +696,7 @@ public abstract class AbstractFeature extends ANY implements Comparable<Abstract
   public List<AbstractCall> tryFindInheritanceChain(AbstractFeature ancestor)
   {
     List<AbstractCall> result;
-    if (this.sameAs(ancestor))
+    if (this == ancestor)
       {
         result = new List<>();
       }
@@ -764,7 +758,7 @@ public abstract class AbstractFeature extends ANY implements Comparable<Abstract
                          (state().atLeast(Feature.State.LOADED),
        parent != null && parent.state().atLeast(Feature.State.LOADED));
 
-    if (this.sameAs(parent))
+    if (this == parent)
       {
         return true;
       }
@@ -804,14 +798,14 @@ public abstract class AbstractFeature extends ANY implements Comparable<Abstract
   {
     for (var c: inherits())
       {
-        var nc = c.visit(fv, astFeature());
+        var nc = c.visit(fv, this);
         check
           (c == nc); // NYI: This will fail when doing funny stuff like inherit from bool.infix &&, need to check and handle explicitly
       }
     contract().visit(fv, this);
     if (isRoutine())
       {
-        code().visit(fv, astFeature());
+        code().visit(fv, this);
       }
   }
 
@@ -830,7 +824,7 @@ public abstract class AbstractFeature extends ANY implements Comparable<Abstract
     contract().visitStatements(v);
     if (isRoutine())
       {
-        astFeature().code().visitStatements(v);
+        code().visitStatements(v);
       }
   }
 
@@ -863,7 +857,6 @@ public abstract class AbstractFeature extends ANY implements Comparable<Abstract
 
 
   public abstract FeatureName featureName();
-  public abstract SourcePosition pos();
   public abstract FormalGenerics generics();
   public abstract List<AbstractCall> inherits();
   public abstract AbstractFeature outer();
@@ -885,37 +878,6 @@ public abstract class AbstractFeature extends ANY implements Comparable<Abstract
 
   // in FUIR or later
   public abstract Contract contract();
-
-
-  /**
-   * Compare this to other for sorting Feature
-   */
-  public int compareTo(AbstractFeature other)
-  {
-    int result;
-    if (sameAs(other))
-      {
-        result = 0;
-      }
-    else if ((this.outer() == null) &&  (other.outer() != null))
-      {
-        result = -1;
-      }
-    else if ((this.outer() != null) &&  (other.outer() == null))
-      {
-        result = +1;
-      }
-    else
-      {
-        result = (this.outer() != null) ? this.outer().compareTo(other.outer())
-                                       : 0;
-        if (result == 0)
-          {
-            result = featureName().compareTo(other.featureName());
-          }
-      }
-    return result;
-  }
 
 }
 
