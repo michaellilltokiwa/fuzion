@@ -51,12 +51,6 @@ public interface SrcModule
 
 
   /**
-   * During resolution, load all inner classes of this that are
-   * defined in separate files.
-   */
-  void loadInnerFeatures(Feature f);
-
-  /**
    * Find all the inner feature declarations within this feature and set
    * this._outer and, recursively, the outer references of all inner features to
    * the corresponding outer declaring feature.
@@ -77,12 +71,6 @@ public interface SrcModule
   FeaturesAndOuter lookupNoTarget(AbstractFeature thiz, String name, Call call, Assign assign, Destructure destructure);
   void checkTypes(Feature f);
   AbstractFeature lookupFeatureForType(SourcePosition pos, String name, AbstractFeature o, AbstractFeature outerfeat);
-
-
-  /**
-   * Add given feature to the features declared in this SrcModule.
-   */
-  void add(Feature f);
 
 
   /*----------------------  methods needed by AIR  ----------------------*/

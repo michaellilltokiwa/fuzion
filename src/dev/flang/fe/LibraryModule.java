@@ -146,7 +146,7 @@ public class LibraryModule extends Module
   /**
    * The universe
    */
-  final Feature _universe;
+  final AbstractFeature _universe;
 
 
   /*--------------------------  constructors  ---------------------------*/
@@ -155,7 +155,7 @@ public class LibraryModule extends Module
   /**
    * Create LibraryModule for given options and sourceDirs.
    */
-  LibraryModule(String name, ByteBuffer data, Module[] dependsOn, Feature universe)
+  LibraryModule(String name, ByteBuffer data, LibraryModule[] dependsOn, AbstractFeature universe)
   {
     super(dependsOn);
 
@@ -179,7 +179,7 @@ public class LibraryModule extends Module
   /**
    * The universe
    */
-  Feature universe()
+  AbstractFeature universe()
   {
     return _universe;
   }
@@ -223,6 +223,10 @@ public class LibraryModule extends Module
           {
             result.put(d.featureName(), d);
           }
+      }
+    else if (outer.isUniverse())
+      {
+        return featuresMap();
       }
     return result;
   }
@@ -339,6 +343,7 @@ public class LibraryModule extends Module
     return res;
   }
 
+
   /**
    * Find all inherited features and add them to declaredOrInheritedFeatures_.
    * In case an existing feature was found, check if there is a conflict and if
@@ -359,37 +364,18 @@ public class LibraryModule extends Module
 
         if (cf != null)
           {
-            //data(cf)._heirs.add(outer);
-            //_res.resolveDeclarations(cf);
-            if (cf instanceof LibraryFeature clf)
+            var s =
+              ((cf instanceof LibraryFeature clf) ? clf._libModule
+                                                  : this          ).declaredOrInheritedFeatures(cf);
+            for (var fnf : s.entrySet())
               {
-                var s = clf._libModule.declaredOrInheritedFeaturesOrNull(cf);
-                if (s != null)
-                  {
-                    for (var fnf : s.entrySet())
-                      {
-                        var fn = fnf.getKey();
-                        var f = fnf.getValue();
-                        check
-                          (cf != outer);
+                var fn = fnf.getKey();
+                var f = fnf.getValue();
+                check
+                  (cf != outer);
 
-                        var newfn = cf.handDown(null /*this*/, f, fn, p, outer);
-                        addInheritedFeature(set, outer, p.pos(), newfn, f);
-                      }
-                  }
-              }
-            else
-              {
-                for (var fnf : declaredOrInheritedFeatures(cf).entrySet())
-                  {
-                    var fn = fnf.getKey();
-                    var f = fnf.getValue();
-                    check
-                      (cf != outer);
-
-                    var newfn = cf.handDown(null /*this*/, f, fn, p, outer);
-                    addInheritedFeature(set, outer, p.pos(), newfn, f);
-                  }
+                var newfn = cf.handDown(null /*this*/, f, fn, p, outer);
+                addInheritedFeature(set, outer, p.pos(), newfn, f);
               }
           }
       }
