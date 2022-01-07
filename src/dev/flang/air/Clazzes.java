@@ -1274,9 +1274,6 @@ public class Clazzes extends ANY
     _whenCalled_.clear();
     _whenCalledDynamically_.clear();
 
-    _usedFeatures_.clear();
-    _dynamicallyCalledFeatures0_.clear();
-
     universe = new OnDemandClazz(null, true);
     c_void = new OnDemandClazz(() -> Types.resolved.t_void);
     bool = new OnDemandClazz(() -> Types.resolved.t_bool);

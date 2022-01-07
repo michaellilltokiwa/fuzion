@@ -266,7 +266,7 @@ public class LibraryModule extends Module
   /**
    * The features declared within universe by this module
    */
-  List<AbstractFeature> features()
+  public List<AbstractFeature> features()
   {
     return innerFeatures(startPos());
   }

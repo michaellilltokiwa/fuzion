@@ -67,9 +67,9 @@ public class FrontEnd extends ANY
   /**
    * The module we are compiling.
    */
-  private final Module _module;
+  public final Module _module;
 
-  private LibraryModule _stdlib = null;
+  public LibraryModule _stdlib = null;
 
 
   /*--------------------------  constructors  ---------------------------*/
