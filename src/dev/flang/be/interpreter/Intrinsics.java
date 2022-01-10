@@ -162,12 +162,18 @@ public class Intrinsics extends ANY
             var nameI   = constructor ? null : (Instance) args.get(a++);
             var sigI    =                      (Instance) args.get(a++);
             var thizI   = !virtual    ? null : (Instance) args.get(a++);
-            var argz = args.get(a);
+
+            var argz = args.get(a); // of type sys.array<JavaObject>, we need to get field argz.data
+            var argfields = innerClazz.argumentFields();
+            var argsArray = argfields[argfields.length - 1];
+            var sac = argsArray.resultClazz();
+            var argzData = Interpreter.getField(Types.resolved.f_sys_array_data, sac, argz);
+
             String clName =                          (String) JavaInterface.instanceToJavaObject(clNameI);
             String name   = nameI   == null ? null : (String) JavaInterface.instanceToJavaObject(nameI  );
             String sig    =                          (String) JavaInterface.instanceToJavaObject(sigI   );
             Object thiz   = thizI   == null ? null :          JavaInterface.instanceToJavaObject(thizI  );
-            return JavaInterface.call(clName, name, sig, thiz, argz, resultClazz);
+            return JavaInterface.call(clName, name, sig, thiz, argzData, resultClazz);
           };
       }
     else if (n.equals("fuzion.java.arrayLength"))
@@ -605,7 +611,7 @@ public class Intrinsics extends ANY
     else if (n.equals("Object.hashCode" )) { result = (args) -> new i32Value (args.get(0).toString().hashCode()); }
     else if (n.equals("Object.asString" )) { result = (args) -> Interpreter.value(args.get(0).toString());
       // NYI: This could be more useful by giving the object's class, an id, public fields, etc.
-      }
+    }
     else
       {
         Errors.fatal(f.pos(),
@@ -632,7 +638,7 @@ public class Intrinsics extends ANY
   }
 
   static ArrayData sysArrayAlloc(int sz,
-                                Clazz arrayClazz)
+                                 Clazz arrayClazz)
   {
     // NYI: Properly determine generic argument type of array
     var elementType = elementType(arrayClazz);
