@@ -29,18 +29,22 @@
 #
 #  NAME -- the name of the main feature to be tested
 #  FUZION -- the fz command
+#  FUZION_OPTIONS -- options to be passed to $(FUZION)
 
-FUZION = ../../bin/fz
+FUZION_OPTIONS ?=
+FUZION ?= ../../bin/fz
+FUZION_RUN = $(FUZION) $(FUZION_OPTIONS)
 FILE = $(NAME).fz
 
 int:
-	../check_simple_example.sh $(FUZION) $(FILE) || exit 1
+	../check_simple_example.sh "$(FUZION_RUN)" $(FILE) || exit 1
 
 c:
-	../check_simple_example_c.sh $(FUZION) $(FILE) || exit 1
+	../check_simple_example_c.sh "$(FUZION_RUN)" $(FILE) || exit 1
 
 record:
-	../record_simple_example.sh $(FUZION) $(FILE)
+	echo $(FUZION_RUN)
+	../record_simple_example.sh "$(FUZION_RUN)" $(FILE)
 
 record_c:
-	../record_simple_example_c.sh $(FUZION) $(FILE)
+	../record_simple_example_c.sh "$(FUZION_RUN)" $(FILE)

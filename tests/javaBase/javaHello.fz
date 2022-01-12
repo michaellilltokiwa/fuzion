@@ -28,8 +28,7 @@
 #
 # See Makefile for how to start fuzion to run this example.
 #
-javaHello : Java  # inheriting Java makes Java packages visible
-is
+javaHello : Java is
 
   # we can call code in Java package directly using fully
   # qualified class names
@@ -59,7 +58,6 @@ is
   # let's work a bit with Java:
   #
   javaString := java.lang.String.new "Hello Java 🌍!"                          # create Java string, type Java.java.lang.String
-//  javaBytes  := javaString.getBytes java.nio.charset.StandardCharsets.UTF__8   # get its UTF8 bytes, type is fuzion.java.Array<i8>
   javaBytes  := javaString.getBytes "UTF8"                                     # get its UTF8 bytes, type is fuzion.java.Array<i8>
   match javaBytes
     err error => say "got an error: $err"

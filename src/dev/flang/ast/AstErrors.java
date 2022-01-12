@@ -162,6 +162,18 @@ public class AstErrors extends ANY
   }
 
 
+  public static void statementNotAllowedOutsideOfFeatureDeclaration(Stmnt s)
+  {
+    error(s.pos(),
+          "Statements other than feature declarations not allowed here",
+          "Statements require a surrounding features declaration.  The statements " +
+          "are executed when that surrounding feature is called.  Without a surrounding " +
+          "feature, is it not clear when and in which order statements should be executed. " +
+          "The only exception to this is the main source file given as an argument directly " +
+          "to the 'fz' command.");
+  }
+
+
   /**
    * Create an error message for a declaration of a feature using
    * FuzionConstants.RESULT_NAME.
@@ -396,23 +408,47 @@ public class AstErrors extends ANY
           "found " + (actualGenerics.size() == 0 ? "none" : "" + actualGenerics.size() + ": " + s(actualGenerics) + "" ) + ".\n");
   }
 
-  public static void argumentTypeMismatchInRedefinition(AbstractFeature originalFeature, AbstractFeature originalArg,
+  /**
+   * A type that might originally be a generic argument could be a concrete type
+   * when we detect an error. So if we have both, the original type and the
+   * concrete type, we include both in the error message. If both are the same,
+   * only one is shown.
+   *
+   * @param t the concrete type we found a problem with
+   *
+   * @param from the declared type that has become t when generics were
+   * replaced. Might be equal to t.
+   *
+   * @return s(t) if t equals from, s(t) + " (from " + s(from + ")" otherwise.
+   */
+  static String typeWithFrom(AbstractType t, AbstractType from)
+  {
+    return t.compareTo(from) == 0
+      ? s(t)
+      : s(t) + " (from " + s(from) + ")";
+  }
+
+  public static void argumentTypeMismatchInRedefinition(AbstractFeature originalFeature, AbstractFeature originalArg, AbstractType originalArgType,
                                                         AbstractFeature redefinedFeature, AbstractFeature redefinedArg)
   {
     error(redefinedArg.pos(),
           "Wrong argument type in redefined feature",
           "In " + s(redefinedFeature) + " that redefines " + s(originalFeature) + " " +
-          "argument type is " + s(redefinedArg.resultType()) + ", argument type should be " + s(originalArg.resultType()) + " " +
+          "argument type is " + s(redefinedArg.resultType()) + ", argument type should be " +
+          // originalArg.resultType() might be a generic argument that has been replaced by originalArgType:
+          typeWithFrom(originalArgType, originalArg.resultType()) + ".  " +
           "Original argument declared at " + originalArg.pos().show());
   }
 
-  public static void resultTypeMismatchInRedefinition(AbstractFeature originalFeature,
+  public static void resultTypeMismatchInRedefinition(AbstractFeature originalFeature, AbstractType originalType,
                                                       AbstractFeature redefinedFeature)
   {
     error(redefinedFeature.pos(),
           "Wrong result type in redefined feature",
           "In " + s(redefinedFeature) + " that redefines " + s(originalFeature) + " " +
-          "result type is " + s(redefinedFeature.resultType()) + ", result type should be " + s(originalFeature.resultType()) + ". " +
+          "result type is " + s(redefinedFeature.resultType()) + ", result type should be " +
+          // originalFeature.resultType() might be a generic argument that has been replaced by originalType:
+          typeWithFrom(originalType, originalFeature.resultType()) + ".  " +
           "Original feature declared at " + originalFeature.pos().show());
   }
 
@@ -422,7 +458,7 @@ public class AstErrors extends ANY
     var srt = rt == null ? "an unknown type" : s(rt);
     error(res.posOfLast(), "Constructor code should result in type " + st("unit") + "",
           "Type returned by this constructor's implementation is " +srt + "\n" +
-          "To solve this, you could turn this contstructor into a routine by adding a matching result type " +
+          "To solve this, you could turn this constructor into a routine by adding a matching result type " +
           "compatible to " + srt + " or by using " + code("=>") + " instead of " + code("is") + " to "+
           "infer the result type from the result expression.\n" +
           "Alternatively, you could explicitly return " + st("unit") + " as the last statement or " +

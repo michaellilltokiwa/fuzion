@@ -17,19 +17,12 @@
 #
 #  Tokiwa Software GmbH, Germany
 #
-#  Source code of Fuzion standard library feature u8 (no arguments)
+#  Source code of Fuzion test Makefile
 #
 #  Author: Fridtjof Siebert (siebert@tokiwa.software)
 #
 # -----------------------------------------------------------------------
 
-# u8 -- returns value of unit type u8s
-#
-# This is a convenience feature that allows using, e.g., 'u8.sum' to
-# get the the monoid of (u8, infix +) instead of 'u8s.sum'.
-#
-# since this u8 with no arguments is a routine and not a constructor, it
-# does not define a type (which would cause a name clash with u8 with one
-# argument).
-#
-u8 => u8s
+NAME = javaHello
+FUZION_OPTIONS = -unsafeIntrinsics=on -modules=java.base
+include ../simple.mk
