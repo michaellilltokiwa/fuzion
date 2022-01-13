@@ -767,7 +767,7 @@ public class Type extends AbstractType
     if (result == null)
       {
         check
-          (Errors.count() > 0);
+          (this.compareTo(Types.t_ERROR) == 0 || Errors.count() > 0);
 
         result = Types.f_ERROR;
       }
@@ -845,7 +845,7 @@ public class Type extends AbstractType
   public boolean containsError()
   {
     boolean result = false;
-    if (this == Types.t_ERROR)
+    if (this.compareTo(Types.t_ERROR) == 0)
       {
         result = true;
       }
@@ -858,7 +858,7 @@ public class Type extends AbstractType
       }
 
     ensure
-      (!result || Errors.count() > 0);
+      (this.compareTo(Types.t_ERROR) == 0 || !result || Errors.count() > 0);
 
     return result;
   }
