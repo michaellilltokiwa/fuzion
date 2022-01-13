@@ -845,7 +845,7 @@ public class Type extends AbstractType
   public boolean containsError()
   {
     boolean result = false;
-    if (this == Types.t_ERROR)
+    if (this.compareTo(Types.t_ERROR) == 0)
       {
         result = true;
       }
