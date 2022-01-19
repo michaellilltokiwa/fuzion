@@ -145,11 +145,46 @@ public abstract class AbstractFeature extends ANY implements Comparable<Abstract
 
 
   /**
+   * get a reference to the outermost feature.
+   */
+  public AbstractFeature universe()
+  {
+    if (PRECONDITIONS) require
+      (state().atLeast(Feature.State.LOADED));
+
+    AbstractFeature r = this;
+    while (!r.isUniverse())
+      {
+        r = r.outer();
+      }
+    return r;
+  }
+
+
+  /**
    * is this the outermost feature?
    */
   public boolean isUniverse()
   {
     return false;
+  }
+
+
+  /**
+   * Find outer feature whose base name equals name.
+   *
+   * @param name the name of an outer feature we are looking for
+   *
+   * @return the innermost Feature for which base name equals name. Universe if
+   * none found.
+   */
+  public AbstractFeature findOuter(String name)
+  {
+    if (PRECONDITIONS) require
+      (isUniverse() || state().atLeast(Feature.State.FINDING_DECLARATIONS));
+
+    return isUniverse() || name.equals(featureName().baseName()) ? this
+                                                                 : outer().findOuter(name);
   }
 
 
