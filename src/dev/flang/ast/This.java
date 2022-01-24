@@ -37,7 +37,7 @@ import dev.flang.util.SourcePosition;
  *
  * @author Fridtjof Siebert (siebert@tokiwa.software)
  */
-public class This extends Expr
+public class This extends ExprWithPos
 {
 
 
@@ -233,7 +233,7 @@ public class This extends Expr
     var f = this.feature_;
     if (f.isUniverse())
       {
-        getOuter = new Universe(pos);
+        getOuter = new Universe();
       }
     else
       {
@@ -242,15 +242,16 @@ public class This extends Expr
          * before outer is set up.
          */
         var cur = cur_ == null ? outer : cur_;
-        getOuter = new Current(pos, cur.thisType());
+        getOuter = new Current(pos(), cur.thisType());
         while (cur != f)
           {
             var or = cur.outerRef();
-            Expr c = new Call(pos, or.featureName().baseName(), Call.NO_GENERICS, Expr.NO_EXPRS, getOuter, or, null)
+            Expr c = new Call(pos(), or.featureName().baseName(), Call.NO_GENERICS, Expr.NO_EXPRS, getOuter, or, null)
               .resolveTypes(res, outer);
             if (cur.isOuterRefAdrOfValue())
               {
-                c = new Unbox(pos, c, cur.outer().thisType(), cur.outer());
+                c = new Unbox(c, cur.outer().thisType(), cur.outer())
+                  { public SourcePosition pos() { return This.this.pos(); } };
               }
             getOuter = c;
             cur = cur.outer();

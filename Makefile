@@ -55,8 +55,12 @@ JAVA_FILES_UTIL_UNICODE = \
           $(SRC)/dev/flang/util/unicode/ParseUnicodeData.java \
 
 JAVA_FILES_AST = \
+          $(SRC)/dev/flang/ast/AbstractAssign.java \
+          $(SRC)/dev/flang/ast/AbstractBlock.java \
           $(SRC)/dev/flang/ast/AbstractCall.java \
           $(SRC)/dev/flang/ast/AbstractCase.java \
+          $(SRC)/dev/flang/ast/AbstractConstant.java \
+          $(SRC)/dev/flang/ast/AbstractCurrent.java \
           $(SRC)/dev/flang/ast/AbstractFeature.java \
           $(SRC)/dev/flang/ast/AbstractMatch.java \
           $(SRC)/dev/flang/ast/AbstractType.java \
@@ -75,6 +79,7 @@ JAVA_FILES_AST = \
           $(SRC)/dev/flang/ast/Current.java \
           $(SRC)/dev/flang/ast/Destructure.java \
           $(SRC)/dev/flang/ast/Expr.java \
+          $(SRC)/dev/flang/ast/ExprWithPos.java \
           $(SRC)/dev/flang/ast/Feature.java \
           $(SRC)/dev/flang/ast/FeatureName.java \
           $(SRC)/dev/flang/ast/FeatureVisitor.java \

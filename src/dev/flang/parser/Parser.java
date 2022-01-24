@@ -1374,15 +1374,16 @@ actualArgs  : actualsList               // must be in same line as name of calle
   boolean endsActuals(Indentation in)
   {
     return
-      (in != null) ? currentAtMinIndent() == Token.t_indentationLimit ||
-                     endsActuals(currentNoLimit()) ||
-                     !in.ok()
-                   : endsActuals(current());
+      isOperator('.') ||
+      ((in != null) ? currentAtMinIndent() == Token.t_indentationLimit ||
+                      endsActuals(currentNoLimit()) ||
+                      !in.ok()
+                    : endsActuals(current()));
   }
 
 
   /**
-   * Does the given current tokenl end a list of space separated actual arguments to a
+   * Does the given current token end a list of space separated actual arguments to a
    * call.
    *
    * @param t the token

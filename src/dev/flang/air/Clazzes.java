@@ -33,16 +33,16 @@ import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
 
+import dev.flang.ast.AbstractAssign; // NYI: remove dependency!
+import dev.flang.ast.AbstractBlock; // NYI: remove dependency!
 import dev.flang.ast.AbstractCall; // NYI: remove dependency!
 import dev.flang.ast.AbstractCase; // NYI: remove dependency!
+import dev.flang.ast.AbstractConstant; // NYI: remove dependency!
+import dev.flang.ast.AbstractCurrent; // NYI: remove dependency!
 import dev.flang.ast.AbstractFeature; // NYI: remove dependency!
 import dev.flang.ast.AbstractMatch; // NYI: remove dependency!
 import dev.flang.ast.AbstractType; // NYI: remove dependency!
-import dev.flang.ast.Assign; // NYI: remove dependency!
-import dev.flang.ast.Block; // NYI: remove dependency!
 import dev.flang.ast.Box; // NYI: remove dependency!
-import dev.flang.ast.Constant; // NYI: remove dependency!
-import dev.flang.ast.Current; // NYI: remove dependency!
 import dev.flang.ast.Expr; // NYI: remove dependency!
 import dev.flang.ast.Feature; // NYI: remove dependency!
 import dev.flang.ast.If; // NYI: remove dependency!
@@ -349,10 +349,13 @@ public class Clazzes extends ANY
                 clazzesToBeVisited.add(result);
               }
             result.registerAsHeir();
-            _options_.verbosePrintln(3, "GLOBAL CLAZZ: " + result);
-            if (_options_.verbose(10))
+            if (_options_.verbose(3))
               {
-                Thread.dumpStack();
+                _options_.verbosePrintln(3, "GLOBAL CLAZZ: " + result);
+                if (_options_.verbose(10))
+                  {
+                    Thread.dumpStack();
+                  }
               }
             result.dependencies();
           }
@@ -681,7 +684,7 @@ public class Clazzes extends ANY
   /**
    * Find all static clazzes for this case and store them in outerClazz.
    */
-  public static void findClazzes(Assign a, Clazz outerClazz)
+  public static void findClazzes(AbstractAssign a, Clazz outerClazz)
   {
     if (PRECONDITIONS) require
       (a != null, outerClazz != null);
@@ -701,7 +704,7 @@ public class Clazzes extends ANY
         if (isUsed(a._assignedField, sClazz))
           {
             var vc = sClazz.asValue();
-            var fc = vc.lookup(a._assignedField, AbstractCall.NO_GENERICS, a.pos());
+            var fc = vc.lookup(a._assignedField, AbstractCall.NO_GENERICS, a);
             outerClazz.setRuntimeClazz(a.tid_ + 1, fc);
             propagateExpectedClazz(a._value, fc.resultClazz(), outerClazz);
           }
@@ -742,10 +745,10 @@ public class Clazzes extends ANY
         outerClazz.setRuntimeClazz(b._valAndRefClazzId + 1, rc);
         if (vc != rc)
           {
-            rc.instantiated(b.pos());
+            rc.instantiated(b);
           }
       }
-    else if (e instanceof Block b)
+    else if (e instanceof AbstractBlock b)
       {
         var s = b.statements_;
         if (!s.isEmpty() && s.get(s.size()-1) instanceof Expr e0)
@@ -815,7 +818,7 @@ public class Clazzes extends ANY
       }
     if (!cf.isChoice() && tclazz != c_void.get())
       {
-        var innerClazz = tclazz.lookup(cf, c.select(), outerClazz.actualGenerics(c.generics()), c.pos, c.isInheritanceCall());
+        var innerClazz = tclazz.lookup(cf, c.select(), outerClazz.actualGenerics(c.generics()), c, c.isInheritanceCall());
         if (c.sid_ < 0)
           {
             c.sid_ = getRuntimeClazzIds(2);
@@ -832,7 +835,7 @@ public class Clazzes extends ANY
                          innerClazz._isCalledDirectly = true;  // NYI: Check why this is needed
                          if (!c.isInheritanceCall())
                            {
-                             innerClazz.instantiated(c.pos());
+                             innerClazz.instantiated(c);
                            }
                          if (!ic && innerClazz.isCalled())
                            {
@@ -937,7 +940,7 @@ public class Clazzes extends ANY
       }
     outerClazz.setRuntimeClazz(t._valAndTaggedClazzId    , vc);
     outerClazz.setRuntimeClazz(t._valAndTaggedClazzId + 1, tc);
-    tc.instantiated(t.pos());
+    tc.instantiated(t);
   }
 
 
@@ -951,11 +954,11 @@ public class Clazzes extends ANY
       {
         i._arrayClazzId = getRuntimeClazzIds(2);
       }
-    Clazz sa = ac.lookup(Types.resolved.f_array_internalArray, AbstractCall.NO_GENERICS, i.pos()).resultClazz();
-    sa.instantiated(i.pos());
+    Clazz sa = ac.lookup(Types.resolved.f_array_internalArray, AbstractCall.NO_GENERICS, i).resultClazz();
+    sa.instantiated(i);
     outerClazz.setRuntimeClazz(i._arrayClazzId    , ac);
     outerClazz.setRuntimeClazz(i._arrayClazzId + 1, sa);
-    ac.instantiated(i.pos());
+    ac.instantiated(i);
     var ec = outerClazz.actualClazz(i.elementType());
     for (var e : i._elements)
       {
@@ -979,7 +982,7 @@ public class Clazzes extends ANY
       {
         result = clazz(u.adr_, outerClazz);
       }
-    else if (e instanceof Block b)
+    else if (e instanceof AbstractBlock b)
       {
         Expr resExpr = b.resultExpression();
         result = resExpr != null ? clazz(resExpr, outerClazz)
@@ -998,7 +1001,7 @@ public class Clazzes extends ANY
             var inner = tclazz.lookup(c.calledFeature(),
                                       c.select(),
                                       outerClazz.actualGenerics(c.generics()),
-                                      c.pos(),
+                                      c,
                                       false);
             result = inner.resultClazz();
           }
@@ -1007,7 +1010,7 @@ public class Clazzes extends ANY
             result = tclazz;
           }
       }
-    else if (e instanceof Current c)
+    else if (e instanceof AbstractCurrent c)
       {
         result = outerClazz;
       }
@@ -1032,7 +1035,7 @@ public class Clazzes extends ANY
         result = universe.get();
       }
 
-    else if (e instanceof Constant c)
+    else if (e instanceof AbstractConstant c)
       {
         result = outerClazz.actualClazz(c.type());
         if (result == string.get())

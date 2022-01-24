@@ -30,9 +30,9 @@ import java.util.Collections;
 import java.util.Stack;
 
 import dev.flang.ast.AbstractCall;
+import dev.flang.ast.AbstractCurrent;
 import dev.flang.ast.AbstractFeature;
 import dev.flang.ast.AbstractType;
-import dev.flang.ast.Current;
 import dev.flang.ast.Expr;
 import dev.flang.ast.FeatureVisitor;
 import dev.flang.ast.Types;
@@ -48,7 +48,7 @@ import dev.flang.util.SourcePosition;
  *
  * @author Fridtjof Siebert (siebert@tokiwa.software)
  */
-public class LibraryCall extends AbstractCall
+public abstract class LibraryCall extends AbstractCall
 {
 
 
@@ -81,9 +81,8 @@ public class LibraryCall extends AbstractCall
   /**
    * Create LibraryCall
    */
-  LibraryCall(LibraryModule lib, int index, Stack<Expr> s, SourcePosition pos)
+  LibraryCall(LibraryModule lib, int index, Stack<Expr> s)
   {
-    super(pos);
     _libModule = lib;
     _index = index;
     _type = lib.callType(index);
@@ -113,7 +112,7 @@ public class LibraryCall extends AbstractCall
     var f = lib.libraryFeature(feat);
     if (f.outer().isUniverse())
       {
-        target = new Universe(pos());
+        target = new Universe();
       }
     else
       {
@@ -169,7 +168,7 @@ public class LibraryCall extends AbstractCall
   public int select() { return _select; }
   public boolean isDynamic()
   {
-    return calledFeature().isDynamic() && !(target() instanceof Current);
+    return calledFeature().isDynamic() && !(target() instanceof AbstractCurrent);
   }
   boolean _isInheritanceCall = false;
   public boolean isInheritanceCall()

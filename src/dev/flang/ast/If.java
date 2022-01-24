@@ -38,7 +38,7 @@ import dev.flang.util.SourcePosition;
  *
  * @author Fridtjof Siebert (siebert@tokiwa.software)
  */
-public class If extends Expr
+public class If extends ExprWithPos
 {
 
 
@@ -216,7 +216,7 @@ public class If extends Expr
       }
     if (result == Types.t_UNDEFINED)
       {
-        new IncompatibleResultsOnBranches(pos,
+        new IncompatibleResultsOnBranches(pos(),
                                           "Incompatible types in branches of if statement",
                                           branches());
         result = Types.t_ERROR;
@@ -273,7 +273,7 @@ public class If extends Expr
     var t = cond.type();
     if (!Types.resolved.t_bool.isAssignableFrom(t))
       {
-        AstErrors.ifConditionMustBeBool(cond.pos, t);
+        AstErrors.ifConditionMustBeBool(cond.pos(), t);
       }
   }
 

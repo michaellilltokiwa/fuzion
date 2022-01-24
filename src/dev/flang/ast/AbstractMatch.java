@@ -66,12 +66,9 @@ public abstract class AbstractMatch extends Expr
 
   /**
    * Constructor for a AbstractMatch
-   *
-   * @param pos the soucecode position, used for error messages.
    */
-  public AbstractMatch(SourcePosition pos)
+  public AbstractMatch()
   {
-    super(pos);
   }
 
 
@@ -145,7 +142,7 @@ public abstract class AbstractMatch extends Expr
       }
     if (result == Types.t_UNDEFINED)
       {
-        new IncompatibleResultsOnBranches(pos,
+        new IncompatibleResultsOnBranches(pos(),
                                           "Incompatible types in cases of match statement",
                                           new Iterator<Expr>()
                                           {

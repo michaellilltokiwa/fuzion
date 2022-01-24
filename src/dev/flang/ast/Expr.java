@@ -28,6 +28,7 @@ package dev.flang.ast;
 
 import dev.flang.util.ANY;
 import dev.flang.util.Errors;
+import dev.flang.util.HasSourcePosition;
 import dev.flang.util.List;
 import dev.flang.util.SourcePosition;
 
@@ -37,7 +38,7 @@ import dev.flang.util.SourcePosition;
  *
  * @author Fridtjof Siebert (siebert@tokiwa.software)
  */
-public abstract class Expr extends ANY implements Stmnt
+public abstract class Expr extends ANY implements Stmnt, HasSourcePosition
 {
 
   /*----------------------------  constants  ----------------------------*/
@@ -61,38 +62,17 @@ public abstract class Expr extends ANY implements Stmnt
   /*----------------------------  variables  ----------------------------*/
 
 
-  /**
-   * The soucecode position of this expression, used for error messages.
-   */
-  public final SourcePosition pos;
-
-
   /*--------------------------  constructors  ---------------------------*/
 
 
   /**
-   * Constructor for an Expression at the given source code postition.
-   *
-   * @param pos the soucecode position, used for error messages.
+   * Constructor for an Expression.
    */
-  public Expr(SourcePosition pos)
+  public Expr()
   {
-    if (PRECONDITIONS) require
-      (pos != null);
-
-    this.pos = pos;
   }
 
   /*-----------------------------  methods  -----------------------------*/
-
-
-  /**
-   * The soucecode position of this expression, used for error messages.
-   */
-  public SourcePosition pos()
-  {
-    return pos;
-  }
 
 
   /**
@@ -155,7 +135,7 @@ public abstract class Expr extends ANY implements Stmnt
    */
   SourcePosition posOfLast()
   {
-    return pos;
+    return pos();
   }
 
 
@@ -209,7 +189,7 @@ public abstract class Expr extends ANY implements Stmnt
    */
   Stmnt assignToField(Resolution res, AbstractFeature outer, Feature r)
   {
-    return new Assign(res, pos, r, this, outer);
+    return new Assign(res, pos(), r, this, outer);
   }
 
 
@@ -241,6 +221,7 @@ public abstract class Expr extends ANY implements Stmnt
     var result = this;
     if (t.compareTo(Types.resolved.t_void) != 0)
       {
+        var pos = pos();
         Feature r = new Feature(res,
                                 pos,
                                 Consts.VISIBILITY_INVISIBLE,
@@ -250,7 +231,7 @@ public abstract class Expr extends ANY implements Stmnt
         r.scheduleForResolution(res);
         res.resolveTypes();
         result = new Block(pos, pos, new List<>(assignToField(res, outer, r),
-                                                new Call(pos, new Current(pos, outer.thisType()), r).resolveTypes(res, outer)));
+                                                    new Call(pos, new Current(pos, outer.thisType()), r).resolveTypes(res, outer)));
       }
     return result;
   }

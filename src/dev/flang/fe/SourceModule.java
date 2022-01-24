@@ -42,10 +42,11 @@ import java.util.SortedMap;
 import java.util.TreeMap;
 import java.util.TreeSet;
 
+import dev.flang.ast.AbstractAssign;
+import dev.flang.ast.AbstractBlock;
 import dev.flang.ast.AbstractFeature;
 import dev.flang.ast.AbstractType;
 import dev.flang.ast.AstErrors;
-import dev.flang.ast.Assign;
 import dev.flang.ast.Block;
 import dev.flang.ast.Call;
 import dev.flang.ast.Consts;
@@ -172,7 +173,7 @@ public class SourceModule extends Module implements SrcModule, MirModule
     if (p != null)
       {
         var stmnts = parseFile(p);
-        ((Block) _universe.code()).statements_.addAll(stmnts);
+        ((AbstractBlock) _universe.code()).statements_.addAll(stmnts);
         for (var s : stmnts)
           {
             if (s instanceof Feature f)
@@ -245,7 +246,7 @@ public class SourceModule extends Module implements SrcModule, MirModule
                            (name, ref) -> new NormalType(stdlib,
                                                          -1,
                                                          SourcePosition.builtIn,
-                                                         lookupFeatureForType(SourcePosition.builtIn, name, _universe, _universe),
+                                                         lookupFeatureForType(SourcePosition.builtIn, name, _universe),
                                                          ref ? Type.RefOrVal.Ref : Type.RefOrVal.LikeUnderlyingFeature,
                                                          Type.NONE,
                                                          _universe.thisType()),
@@ -456,13 +457,7 @@ public class SourceModule extends Module implements SrcModule, MirModule
         AstErrors.qualifiedDeclarationNotAllowedForField(inner);
       }
 
-    // q is something like 'a.b.c.d', so first find 'a'
-    var result = outer.findOuter(inner._qname.get(0));
-
-    // now result is 'a' or '#universe', so we iterate 'b.c' or 'a.b.c' to
-    // find 'c'
-    var at = result.isUniverse() ? 0 : 1;
-    setOuterAndAddInnerForQualifiedRec(inner, result, outer, at);
+    setOuterAndAddInnerForQualifiedRec(inner, 0, outer);
   }
 
 
@@ -475,30 +470,28 @@ public class SourceModule extends Module implements SrcModule, MirModule
    *
    * @param inner the feature declared with qualified name.
    *
-   * @param outer the surrounding feature
+   * @param outer the outer we search the current qualified name in
+   *
+   * @param at current index in inner._qname
    */
-  void setOuterAndAddInnerForQualifiedRec(Feature inner, AbstractFeature result, AbstractFeature outer, int at)
+  private void setOuterAndAddInnerForQualifiedRec(Feature inner, int at, AbstractFeature outer)
   {
-    var q = inner._qname;
-    while (at < q.size()-1 && result != Types.f_ERROR && result != null)
-      {
-        if ((result instanceof Feature rf) && !rf.state().atLeast(Feature.State.RESOLVED_DECLARATIONS) && !rf.isUniverse())
-          {
-            var fresult = result;
-            var fat = at;
-            rf.whenResolvedDeclarations(() -> setOuterAndAddInnerForQualifiedRec(inner, fresult, outer, fat));
-            result = null;
-          }
-        else
-          {
-            result = lookupFeatureForType(inner.pos(), q.get(at), result, outer);
-            at++;
-          }
-      }
-    if (result != null)
-      {
-        setOuterAndAddInner(inner, result);
-      }
+    outer.whenResolvedDeclarations
+      (() ->
+       {
+         var q = inner._qname;
+         var o = lookupFeatureForType(inner.pos(), q.get(at), outer);
+         if (at < q.size()-2)
+           {
+             setOuterAndAddInnerForQualifiedRec(inner, at+1, o);
+           }
+         else
+           {
+             setOuterAndAddInner(inner, o);
+             _res.resolveDeclarations(o);
+             inner.scheduleForResolution(_res);
+           }
+       });
   }
 
 
@@ -612,7 +605,7 @@ public class SourceModule extends Module implements SrcModule, MirModule
         for (var m : _dependsOn)
           { // NYI: properly obtain set of declared features from m, do we need
             // to take care for the order and dependencies between modules?
-            var md = m.declaredFeaturesOrNull(outer);
+            var md = m.declaredFeatures(outer);
             if (md != null)
               {
                 for (var e : md.entrySet())
@@ -627,18 +620,6 @@ public class SourceModule extends Module implements SrcModule, MirModule
 
 
   /**
-   * Get declared features for given outer Feature as seen by this module.
-   * Result is null if outer has no declared features in this module.
-   *
-   * @param outer the declaring feature
-   */
-  SortedMap<FeatureName, AbstractFeature>declaredFeaturesOrNull(AbstractFeature outer)
-  {
-    return declaredFeatures(outer);
-  }
-
-
-  /**
    * Get declared and inherited features for given outer Feature as seen by this
    * module.  Result may be null if this module does not contribute anything to
    * outer.
@@ -648,7 +629,7 @@ public class SourceModule extends Module implements SrcModule, MirModule
   SortedMap<FeatureName, AbstractFeature>declaredOrInheritedFeaturesOrNull(AbstractFeature outer)
   {
     return outer.isUniverse()
-      ? declaredFeaturesOrNull(outer)
+      ? declaredFeatures(outer)
       : data(outer)._declaredOrInheritedFeatures;
   }
 
@@ -1010,7 +991,7 @@ public class SourceModule extends Module implements SrcModule, MirModule
    * @return in case we found features visible in the call's scope, the features
    * together with the outer feature where they were found.
    */
-  public FeaturesAndOuter lookupNoTarget(AbstractFeature outer, String name, Call call, Assign assign, Destructure destructure)
+  public FeaturesAndOuter lookupNoTarget(AbstractFeature outer, String name, Call call, AbstractAssign assign, Destructure destructure)
   {
     if (PRECONDITIONS) require
       (!(outer instanceof Feature of) || of.state().atLeast(Feature.State.LOADING));
@@ -1081,10 +1062,8 @@ public class SourceModule extends Module implements SrcModule, MirModule
    * @param name the name of the type
    *
    * @param o the outer feature of the type
-   *
-   * @param outerfeat the outer feature that contains (uses) the type.
    */
-  public AbstractFeature lookupFeatureForType(SourcePosition pos, String name, AbstractFeature o, AbstractFeature outerfeat)
+  public AbstractFeature lookupFeatureForType(SourcePosition pos, String name, AbstractFeature o)
   {
     AbstractFeature result = null;
     var type_fs = new List<AbstractFeature>();
@@ -1119,7 +1098,7 @@ public class SourceModule extends Module implements SrcModule, MirModule
         result = Types.f_ERROR;
         if (name != Types.ERROR_NAME)
           {
-            AstErrors.typeNotFound(pos, name, orig_o, outerfeat, nontype_fs);
+            AstErrors.typeNotFound(pos, name, orig_o, nontype_fs);
           }
       }
     return result;

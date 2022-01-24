@@ -37,7 +37,7 @@ import dev.flang.util.SourcePosition;
  *
  * @author Fridtjof Siebert (siebert@tokiwa.software)
  */
-public class InlineArray extends Expr
+public class InlineArray extends ExprWithPos
 {
 
 
@@ -295,7 +295,7 @@ public class InlineArray extends Expr
         var sysT         = new Type(pos(), "sys", Type.NONE, null);
         var sysArrayT    = new Type(pos(), "array", eT, sysT);
         var sysArrayName = "#inlineArraySys" + (_id_++);
-        var sysArrayVar  = new Feature(pos, Consts.VISIBILITY_LOCAL, sysArrayT, sysArrayName, null, outer);
+        var sysArrayVar  = new Feature(pos(), Consts.VISIBILITY_LOCAL, sysArrayT, sysArrayName, null, outer);
         res._module.findDeclarations(sysArrayVar, outer);
         res.resolveDeclarations(sysArrayVar);
         res.resolveTypes();

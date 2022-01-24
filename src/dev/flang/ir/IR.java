@@ -26,14 +26,15 @@ Fuzion language implementation.  If not, see <https://www.gnu.org/licenses/>.
 
 package dev.flang.ir;
 
+import dev.flang.ast.AbstractAssign; // NYI: remove dependency
+import dev.flang.ast.AbstractBlock; // NYI: remove dependency
 import dev.flang.ast.AbstractCall; // NYI: remove dependency
+import dev.flang.ast.AbstractConstant; // NYI: remove dependency
+import dev.flang.ast.AbstractCurrent; // NYI: remove dependency
 import dev.flang.ast.AbstractMatch; // NYI: remove dependency
-import dev.flang.ast.Assign; // NYI: remove dependency
 import dev.flang.ast.Block; // NYI: remove dependency
 import dev.flang.ast.Box; // NYI: remove dependency
 import dev.flang.ast.Check; // NYI: remove dependency
-import dev.flang.ast.Constant; // NYI: remove dependency
-import dev.flang.ast.Current; // NYI: remove dependency
 import dev.flang.ast.Expr; // NYI: remove dependency
 import dev.flang.ast.Feature; // NYI: remove dependency
 import dev.flang.ast.If; // NYI: remove dependency
@@ -188,7 +189,7 @@ public class IR extends ANY
       (l != null,
        s != null);
 
-    if (s instanceof Assign a)
+    if (s instanceof AbstractAssign a)
       {
         toStack(l, a._value);
         toStack(l, a._target);
@@ -207,7 +208,7 @@ public class IR extends ANY
         toStack(l, b._value);
         l.add(b);
       }
-    else if (s instanceof Block b)
+    else if (s instanceof AbstractBlock b)
       {
         // for (var st : b.statements_)  -- not possible since we need index i
         for (int i=0; i<b.statements_.size(); i++)
@@ -216,11 +217,11 @@ public class IR extends ANY
             toStack(l, st, dumpResult || i < b.statements_.size()-1);
           }
       }
-    else if (s instanceof Constant)
+    else if (s instanceof AbstractConstant)
       {
         l.add(s);
       }
-    else if (s instanceof Current)
+    else if (s instanceof AbstractCurrent)
       {
         l.add(ExprKind.Current);
       }
@@ -342,7 +343,7 @@ public class IR extends ANY
       {
         result = ExprKind.Comment;
       }
-    else if (e instanceof Assign)
+    else if (e instanceof AbstractAssign)
       {
         result = ExprKind.Assign;
       }
@@ -367,8 +368,8 @@ public class IR extends ANY
       {
         result = ExprKind.Tag;
       }
-    else if (e instanceof Constant    ||
-             e instanceof InlineArray   )
+    else if (e instanceof AbstractConstant ||
+             e instanceof InlineArray         )
       {
         result = ExprKind.Const;
       }

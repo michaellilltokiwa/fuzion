@@ -34,18 +34,22 @@ import dev.flang.util.SourcePosition;
 
 
 /**
- * Block <description>
+ * Block represents a Block of statements
  *
  * @author Fridtjof Siebert (siebert@tokiwa.software)
  */
-public class Block extends Expr
+public class Block extends AbstractBlock
 {
 
 
   /*----------------------------  variables  ----------------------------*/
 
 
-  public List<Stmnt> statements_;
+  /**
+   * The soucecode position of this expression, used for error messages.
+   */
+  private final SourcePosition _pos;
+
 
   SourcePosition closingBracePos_;
 
@@ -83,8 +87,8 @@ public class Block extends Expr
                 List<Stmnt> s,
                 boolean newScope)
   {
-    super(pos);
-    this.statements_ = s;
+    super(s);
+    this._pos = pos;
     this.closingBracePos_ = closingBracePos;
     this._newScope = newScope;
   }
@@ -195,6 +199,15 @@ public class Block extends Expr
 
 
   /**
+   * The soucecode position of this expression, used for error messages.
+   */
+  public SourcePosition pos()
+  {
+    return _pos;
+  }
+
+
+  /**
    * visit all the features, expressions, statements within this feature.
    *
    * @param v the visitor instance that defines an action to be performed on
@@ -214,94 +227,6 @@ public class Block extends Expr
         i.set(s.visit(v, outer));
       }
     v.actionAfter(this, outer);
-    return this;
-  }
-
-
-  /**
-   * visit all the statements within this Block.
-   *
-   * @param v the visitor instance that defines an action to be performed on
-   * visited statements
-   */
-  public void visitStatements(StatementVisitor v)
-  {
-    super.visitStatements(v);
-    for (var s : statements_)
-      {
-        s.visitStatements(v);
-      }
-  }
-
-
-  /**
-   * resultExpressionIndex returns the index of the last non-NOP statement of
-   * this block if it is an expression, -1 if the block is empty or the last
-   * non-NOP statement is not an Expr.
-   *
-   * @return the index of the Expr that produces this Block's result, -1 if none
-   * exists.
-   */
-  private int resultExpressionIndex()
-  {
-    var i = statements_.size() - 1;
-    while (i >= 0 && (statements_.get(i) instanceof Nop))
-      {
-        i--;
-      }
-    return (i >= 0 && (statements_.get(i) instanceof Expr))
-      ? i
-      : -1;
-  }
-
-
-  /**
-   * resultExpression returns the last non-NOP statement of this block if it is
-   * an expression, null if the block is empty or the last non-NOP statement is
-   * not an Expr.
-   *
-   * @return the Expr that produces this Block's result, or null if none.
-   */
-  public Expr resultExpression()
-  {
-    var i = resultExpressionIndex();
-    return i >= 0
-      ? (Expr) statements_.get(i)
-      : null;
-  }
-
-
-  /**
-   * removeResultExpression removes and returns the last non-NOP statement of
-   * this block if it is an expression.  Does nothing an returns null if the
-   * block is empty or the last non-NOP statement is not an Expr.
-   *
-   * @return the Expr that produces this Block's result
-   */
-  private Expr removeResultExpression()
-  {
-    var i = resultExpressionIndex();
-    return i >= 0
-      ? (Expr) statements_.remove(i)
-      : null;
-  }
-
-
-  /**
-   * Check if this value might need boxing and wrap this into Box() if this is
-   * the case.
-   *
-   * @param frmlT the formal type this is assigned to.
-   *
-   * @return this or an instance of Box wrapping this.
-   */
-  Expr box(AbstractType frmlT)
-  {
-    var r = removeResultExpression();
-    if (r != null)
-      {
-        statements_.add(r.box(frmlT));
-      }
     return this;
   }
 
@@ -360,10 +285,46 @@ public class Block extends Expr
     Expr resExpr = resultExpression();
     if (resExpr != null)
       {
-        result = resExpr.pos;
+        result = resExpr.pos();
       }
     return result;
   }
+
+
+  /**
+   * removeResultExpression removes and returns the last non-NOP statement of
+   * this block if it is an expression.  Does nothing an returns null if the
+   * block is empty or the last non-NOP statement is not an Expr.
+   *
+   * @return the Expr that produces this Block's result
+   */
+  private Expr removeResultExpression()
+  {
+    var i = resultExpressionIndex();
+    return i >= 0
+      ? (Expr) statements_.remove(i)
+      : null;
+  }
+
+
+  /**
+   * Check if this value might need boxing and wrap this into Box() if this is
+   * the case.
+   *
+   * @param frmlT the formal type this is assigned to.
+   *
+   * @return this or an instance of Box wrapping this.
+   */
+  Expr box(AbstractType frmlT)
+  {
+    var r = removeResultExpression();
+    if (r != null)
+      {
+        statements_.add(r.box(frmlT));
+      }
+    return this;
+  }
+
 
 
   /**
@@ -431,7 +392,7 @@ public class Block extends Expr
     if (type.compareTo(Types.resolved.t_unit) == 0 && hasImplicitResult())
       { // return unit if this is expected even if we would implicitly return
         // something else:
-        statements_.add(new Block(pos, new List<>()));
+        statements_.add(new Block(pos(), new List<>()));
       }
     Expr resExpr = removeResultExpression();
     if (resExpr != null)
@@ -439,21 +400,6 @@ public class Block extends Expr
         statements_.add(resExpr.propagateExpectedType(res, outer, type));
       }
     return this;
-  }
-
-
-  /**
-   * Does this statement consist of nothing but declarations? I.e., it has no
-   * code that actually would be executed at runtime.
-   */
-  public boolean containsOnlyDeclarations()
-  {
-    boolean result = true;
-    for (Stmnt s : statements_)
-      {
-        result = result && s.containsOnlyDeclarations();
-      }
-    return result;
   }
 
 
@@ -468,42 +414,6 @@ public class Block extends Expr
     return expr != null && expr.producesResult();
   }
 
-
-  /**
-   * toString
-   *
-   * @return
-   */
-  public String toString()
-  {
-    return new StringBuilder().append("{\n").append(toString("  ")).append("}").toString();
-  }
-
-
-  /**
-   * toString
-   *
-   * @return
-   */
-  public String toString(String prefix)
-  {
-    String s = statements_.toString("\n");
-    StringBuilder sb = new StringBuilder();
-    if (s.length() > 0)
-      {
-        sb.append(prefix);
-      }
-    for (int i=0; i<s.length(); i++)
-      {
-        var c = s.charAt(i);
-        sb.append(c);
-        if (c == '\n' && i < s.length()-1)
-          {
-            sb.append(prefix);
-          }
-      }
-    return sb.toString();
-  }
 
 }
 

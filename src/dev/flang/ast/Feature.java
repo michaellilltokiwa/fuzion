@@ -396,7 +396,7 @@ public class Feature extends AbstractFeature implements Stmnt
                        new List<Feature>(),
                        i,
                        c,
-                       new Impl(b.pos, b, Impl.Kind.Routine))
+                       new Impl(b.pos(), b, Impl.Kind.Routine))
       {
         boolean isAnonymousInnerFeature()
         {
@@ -1063,7 +1063,7 @@ public class Feature extends AbstractFeature implements Stmnt
        i != null);
 
     var parent = p.calledFeature();
-    String inh = "    inherits " + parent.qualifiedName() + " at " + p.pos.show() + "\n";
+    String inh = "    inherits " + parent.qualifiedName() + " at " + p.pos().show() + "\n";
     if (_detectedCyclicInheritance)
       { // the cycle closes while returning from recursion in resolveInheritance, so show the error:
         StringBuilder cycle = new StringBuilder(inh);
@@ -1225,10 +1225,11 @@ public class Feature extends AbstractFeature implements Stmnt
       {
         res = r;
       }
-    public void         action(Assign       a, AbstractFeature outer) {        a.resolveTypes(res, outer); }
+    public void         action(AbstractAssign a, AbstractFeature outer) {        a.resolveTypes(res, outer); }
     public Call         action(Call         c, AbstractFeature outer) { return c.resolveTypes(res, outer); }
     public Stmnt        action(Destructure  d, AbstractFeature outer) { return d.resolveTypes(res, outer); }
-    public Stmnt        action(Feature      f, AbstractFeature outer) { return f.resolveTypes(res, outer); }
+    public Stmnt        action(Feature      f, AbstractFeature outer) { /* use f.outer() since qualified feature name may result in different outer! */
+                                                                        return f.resolveTypes(res, f.outer() ); }
     public Function     action(Function     f, AbstractFeature outer) {        f.resolveTypes(res, outer); return f; }
     public void         action(Generic      g, AbstractFeature outer) {        g.resolveTypes(res, outer); }
     public void         action(Match        m, AbstractFeature outer) {        m.resolveTypes(res, outer); }
@@ -1385,7 +1386,7 @@ public class Feature extends AbstractFeature implements Stmnt
         StringBuilder accesses = new StringBuilder();
         for (var c: closureAccesses)
           {
-            accesses.append(c.pos.show()).append("\n");
+            accesses.append(c.pos().show()).append("\n");
           }
         AstErrors.choiceMustNotAccessSurroundingScope(errorPos, accesses.toString());
       }
@@ -1508,7 +1509,7 @@ public class Feature extends AbstractFeature implements Stmnt
     checkNoClosureAccesses(res, _pos);
     for (var p : _inherits)
       {
-        p.calledFeature().checkNoClosureAccesses(res, p.pos);
+        p.calledFeature().checkNoClosureAccesses(res, p.pos());
       }
 
     choiceTag_ = new Feature(res,
@@ -1551,7 +1552,7 @@ public class Feature extends AbstractFeature implements Stmnt
 
         if (cf != null && cf.isChoice() && cf != Types.resolved.f_choice)
           {
-            AstErrors.cannotInheritFromChoice(p.pos);
+            AstErrors.cannotInheritFromChoice(p.pos());
           }
       }
     if (isChoice())
@@ -1608,7 +1609,7 @@ public class Feature extends AbstractFeature implements Stmnt
          * that i32 will be the type for "a".
          */
         visit(new FeatureVisitor() {
-            public void  action(Assign   a, AbstractFeature outer) { a.propagateExpectedType(res, outer); }
+            public void  action(AbstractAssign a, AbstractFeature outer) { a.propagateExpectedType(res, outer); }
             public Call  action(Call     c, AbstractFeature outer) { c.propagateExpectedType(res, outer); return c; }
             public void  action(Cond     c, AbstractFeature outer) { c.propagateExpectedType(res, outer); }
             public void  action(Impl     i, AbstractFeature outer) { i.propagateExpectedType(res, outer); }
@@ -1641,7 +1642,7 @@ public class Feature extends AbstractFeature implements Stmnt
         _state = State.BOXING;
 
         visit(new FeatureVisitor() {
-            public void  action(Assign      a, AbstractFeature outer) { a.box(outer);           }
+            public void  action(AbstractAssign a, AbstractFeature outer) { a.box(outer);           }
             public Call  action(Call        c, AbstractFeature outer) { c.box(outer); return c; }
             public Expr  action(InlineArray i, AbstractFeature outer) { i.box(outer); return i; }
           });
@@ -1689,7 +1690,7 @@ public class Feature extends AbstractFeature implements Stmnt
         (_state == State.CHECKING_TYPES2)    )
       {
         visit(new FeatureVisitor() {
-            public void  action(Assign      a, AbstractFeature outer) { a.checkTypes(res);             }
+            public void  action(AbstractAssign a, AbstractFeature outer) { a.checkTypes(res);             }
             public Call  action(Call        c, AbstractFeature outer) { c.checkTypes(outer); return c; }
             public void  action(If          i, AbstractFeature outer) { i.checkTypes();                }
             public Expr  action(InlineArray i, AbstractFeature outer) { i.checkTypes();      return i; }
@@ -1800,26 +1801,6 @@ public class Feature extends AbstractFeature implements Stmnt
    */
   public Stmnt visit(FeatureVisitor v, AbstractFeature outer)
   {
-    /**
-     * Tricky: If this is a feature declared with a qualified name such as
-     * g.if in the following code
-     *
-     *   g is
-     *     h is
-     *       g.f is say "g.f"
-     *
-     * then outer is 'h', but this.outer() is the actual qualified outer feature
-     * 'g'. So we continue with 'g' in this case:
-     *
-     * NYI: Need to check for which FeatureVisitors this special handling is
-     * actually needed and what it does. We might move this action to setOuter()
-     * or perform it right after setting the state to LOADED.
-     */
-    var to = this._state.atLeast(State.LOADED) ? this.outer() : outer;
-
-    check
-      (to == outer || this._qname.size() > 1);
-
     // impl.initialValue is code executed by outer, not by this. So we visit it
     // here, while impl.code is visited when impl.visit is called with this as
     // outer argument.
@@ -1829,9 +1810,9 @@ public class Feature extends AbstractFeature implements Stmnt
          * RESOLVING_TYPES phase: */
         !outer.state().atLeast(State.RESOLVING_SUGAR1))
       {
-        _impl._initialValue = _impl._initialValue.visit(v, to);
+        _impl._initialValue = _impl._initialValue.visit(v, outer);
       }
-    return v.action(this, to);
+    return v.action(this, outer);
   }
 
 
@@ -1873,7 +1854,7 @@ public class Feature extends AbstractFeature implements Stmnt
            (this,
             new Assign(res, _pos, this, _impl._initialValue, outer)
             {
-              public Assign visit(FeatureVisitor v, AbstractFeature outer)
+              public AbstractAssign visit(FeatureVisitor v, AbstractFeature outer)
               {
                 /* During findFieldDefInScope, we check field uses in impl, but
                  * we have to avoid doing this again in this assignment since a declaration
@@ -1924,7 +1905,7 @@ public class Feature extends AbstractFeature implements Stmnt
    * @return in case we found a feature visible in the call's or assign's scope,
    * this is the feature.
    */
-  public Feature findFieldDefInScope(String name, Call call, Assign assign, Destructure destructure, AbstractFeature inner)
+  public Feature findFieldDefInScope(String name, Call call, AbstractAssign assign, Destructure destructure, AbstractFeature inner)
   {
     if (PRECONDITIONS) require
       (name != null,
@@ -1980,7 +1961,7 @@ public class Feature extends AbstractFeature implements Stmnt
             }
           return c;
         }
-        public void action(Assign a, AbstractFeature outer)
+        public void action(AbstractAssign a, AbstractFeature outer)
         {
           if (a == assign)
             { // Found the assign, so we got the result!

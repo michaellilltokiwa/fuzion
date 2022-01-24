@@ -20,22 +20,23 @@ Fuzion language implementation.  If not, see <https://www.gnu.org/licenses/>.
  *
  * Tokiwa Software GmbH, Germany
  *
- * Source of class SourceConstant
+ * Source of class AbstractCurrent
  *
  *---------------------------------------------------------------------*/
 
 package dev.flang.ast;
 
+import java.util.Iterator;
+
 import dev.flang.util.SourcePosition;
 
 
 /**
- * Constant represents a constant in the source code such as '3.14', 'true',
- * '"Hello"'.
+ * AbstractCurrent is an expression that returns the current object
  *
  * @author Fridtjof Siebert (siebert@tokiwa.software)
  */
-public abstract class Constant extends AbstractConstant
+public abstract class AbstractCurrent extends Expr
 {
 
 
@@ -43,25 +44,25 @@ public abstract class Constant extends AbstractConstant
 
 
   /**
-   * The soucecode position of this expression, used for error messages.
+   * The type of this, set during resolveTypes.
    */
-  private final SourcePosition _pos;
+  private AbstractType type_ = null;
 
 
   /*--------------------------  constructors  ---------------------------*/
 
 
   /**
-   * Constructor for a Constant at the given source code postition.
+   * Constructor
    *
-   * @param pos the soucecode position, used for error messages.
+   * @param t the result type
    */
-  public Constant(SourcePosition pos)
+  public AbstractCurrent(AbstractType t)
   {
     if (PRECONDITIONS) require
-      (pos != null);
+      (t != null);
 
-    this._pos = pos;
+    this.type_ = t;
   }
 
 
@@ -69,11 +70,42 @@ public abstract class Constant extends AbstractConstant
 
 
   /**
-   * The soucecode position of this expression, used for error messages.
+   * typeOrNull returns the type of this expression or null if the type is still
+   * unknown, i.e., before or during type resolution.
+   *
+   * @return this Expr's type or null if not known.
    */
-  public SourcePosition pos()
+  public AbstractType typeOrNull()
   {
-    return this._pos;
+    return type_;
+  }
+
+
+  /**
+   * visit all the features, expressions, statements within this feature.
+   *
+   * @param v the visitor instance that defines an action to be performed on
+   * visited objects.
+   *
+   * @param outer the feature surrounding this expression.
+   *
+   * @return this.
+   */
+  public AbstractCurrent visit(FeatureVisitor v, AbstractFeature outer)
+  {
+    type_ = type_ instanceof Type tt ? tt.visit(v, outer) : type_;
+    return this;
+  }
+
+
+  /**
+   * toString
+   *
+   * @return
+   */
+  public String toString()
+  {
+    return type_.featureOfType().featureName().baseName() + ".this";
   }
 
 }

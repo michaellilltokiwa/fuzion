@@ -34,16 +34,17 @@ import java.util.Map;
 import java.util.TreeSet;
 import java.util.TreeMap;
 
+import dev.flang.ast.AbstractAssign;
+import dev.flang.ast.AbstractBlock;
+import dev.flang.ast.AbstractCurrent;
 import dev.flang.ast.AbstractFeature;
 import dev.flang.ast.AbstractMatch;
 import dev.flang.ast.AbstractType;
-import dev.flang.ast.Assign;
 import dev.flang.ast.Block;
 import dev.flang.ast.Box;
 import dev.flang.ast.Call;
 import dev.flang.ast.Check;
 import dev.flang.ast.Constant;
-import dev.flang.ast.Current;
 import dev.flang.ast.Expr;
 import dev.flang.ast.Feature;
 import dev.flang.ast.FormalGenerics;
@@ -147,7 +148,7 @@ class LibraryOut extends DataOut
    */
   void innerFeatures(AbstractFeature f)
   {
-    var m = _sourceModule.declaredFeaturesOrNull(f);
+    var m = _sourceModule.declaredFeatures(f);
     if (m == null)
       {
         writeInt(0);
@@ -549,7 +550,7 @@ class LibraryOut extends DataOut
    */
   SourcePosition expressions(Stmnt s, boolean dumpResult, SourcePosition lastPos)
   {
-    if (s instanceof Assign a)
+    if (s instanceof AbstractAssign a)
       {
         lastPos = expressions(a._value, lastPos);
         lastPos = expressions(a._target, lastPos);
@@ -588,7 +589,7 @@ class LibraryOut extends DataOut
         lastPos = expressions(b._value, lastPos);
         lastPos = exprKindAndPos(IR.ExprKind.Box, lastPos, s.pos());
       }
-    else if (s instanceof Block b)
+    else if (s instanceof AbstractBlock b)
       {
         int i = 0;
         for (var st : b.statements_)
@@ -630,7 +631,7 @@ class LibraryOut extends DataOut
         writeInt(d.length);
         write(d);
       }
-    else if (s instanceof Current)
+    else if (s instanceof AbstractCurrent)
       {
         lastPos = exprKindAndPos(IR.ExprKind.Current, lastPos, s.pos());
       }

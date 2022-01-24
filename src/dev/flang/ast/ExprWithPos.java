@@ -20,7 +20,7 @@ Fuzion language implementation.  If not, see <https://www.gnu.org/licenses/>.
  *
  * Tokiwa Software GmbH, Germany
  *
- * Source of class SourceConstant
+ * Source of class ExprWithPos
  *
  *---------------------------------------------------------------------*/
 
@@ -30,12 +30,12 @@ import dev.flang.util.SourcePosition;
 
 
 /**
- * Constant represents a constant in the source code such as '3.14', 'true',
- * '"Hello"'.
+ * ExprWithPos is an Expr created by the source code parser that stores its
+ * position in a field.
  *
  * @author Fridtjof Siebert (siebert@tokiwa.software)
  */
-public abstract class Constant extends AbstractConstant
+abstract class ExprWithPos extends Expr
 {
 
 
@@ -52,15 +52,12 @@ public abstract class Constant extends AbstractConstant
 
 
   /**
-   * Constructor for a Constant at the given source code postition.
+   * Constructor
    *
-   * @param pos the soucecode position, used for error messages.
+   * @param pos the position
    */
-  public Constant(SourcePosition pos)
+  ExprWithPos(SourcePosition pos)
   {
-    if (PRECONDITIONS) require
-      (pos != null);
-
     this._pos = pos;
   }
 
@@ -73,7 +70,7 @@ public abstract class Constant extends AbstractConstant
    */
   public SourcePosition pos()
   {
-    return this._pos;
+    return _pos;
   }
 
 }
