@@ -116,6 +116,12 @@ public class LibraryFeature extends AbstractFeature
 
 
   /**
+   * cached result of innerFeatures()
+   */
+  List<AbstractFeature> _innerFeatures;
+
+
+  /**
    * cached result of outer()
    */
   AbstractFeature _outer = null;
@@ -212,47 +218,16 @@ public class LibraryFeature extends AbstractFeature
 
 
   /**
-   * Helper method for outer() to find the outer feature of this festure
-   * starting with outer which is defined in _libModule.data() at offset 'at'.
-   *
-   * @param outer the 'current' outer feature that is declared at 'at'
-   *
-   * @param at the position of outer's inner feature declarations within
-   * _libModule.data()
-   *
-   * @return the outer feature found or null if outer is not an outer feature of
-   * this.
+   * The inner features declared within this feature's module file.
    */
-  private AbstractFeature findOuter(AbstractFeature outer, int at)
+  List<AbstractFeature> innerFeatures()
   {
-    if (PRECONDITIONS) require
-      (outer != null,
-       at >= 0,
-       at < _libModule.data().limit());
-
-    AbstractFeature result = null;
-    var sz = _libModule.innerFeaturesSize(at);
-    check
-      (at+4+sz <= _libModule.data().limit());
-    var i = _libModule.innerFeaturesFeaturesPos(at);
-    if (i <= _index && _index < i+sz)
+    var result = _innerFeatures;
+    if (result == null)
       {
-        while (result == null)
-          {
-            if (i == _index)
-              {
-                result = outer;
-              }
-            else
-              {
-                var o = _libModule.libraryFeature(i);
-                check
-                  (o != null);
-                var inner = _libModule.featureInnerFeaturesPos(i);
-                result = findOuter(o, inner);
-                i = _libModule.featureNextPos(i);
-              }
-          }
+        var i = _libModule.featureInnerFeaturesPos(_index);
+        result = _libModule.innerFeatures(i);
+        _innerFeatures = result;
       }
     return result;
   }
@@ -263,8 +238,7 @@ public class LibraryFeature extends AbstractFeature
    */
   List<AbstractFeature> declaredFeatures()
   {
-    var i = _libModule.featureInnerFeaturesPos(_index);
-    return _libModule.innerFeatures(i);
+    return innerFeatures();
   }
 
 
@@ -276,7 +250,7 @@ public class LibraryFeature extends AbstractFeature
     if (_arguments == null)
       {
         _arguments = new List<AbstractFeature>();
-        var i = _libModule.innerFeatures(_libModule.featureInnerFeaturesPos(_index));
+        var i = innerFeatures();
         var n = _libModule.featureArgCount(_index);
         while (_arguments.size() < n)
           {
@@ -298,13 +272,13 @@ public class LibraryFeature extends AbstractFeature
     AbstractFeature result = _resultField;
     if (result == null && hasResultField())
       {
-        var i = _libModule.innerFeatures(_libModule.featureInnerFeaturesPos(_index));
+        var i = innerFeatures();
         var n = _libModule.featureArgCount(_index);
         result = i.get(n);
         _resultField = result;
       }
 
-    check
+    if (CHECKS) check
       (hasResultField() == (result != null));
 
     return result;
@@ -321,13 +295,13 @@ public class LibraryFeature extends AbstractFeature
     AbstractFeature result = _outerRef;
     if (result == null && hasOuterRef())
       {
-        var i = _libModule.innerFeatures(_libModule.featureInnerFeaturesPos(_index));
+        var i = innerFeatures();
         var n = _libModule.featureArgCount(_index) + (hasResultField() ? 1 : 0);
         result = i.get(n);
         _outerRef = result;
       }
 
-    check
+    if (CHECKS) check
       (hasOuterRef() == (result != null));
 
     return result;
@@ -346,11 +320,11 @@ public class LibraryFeature extends AbstractFeature
     AbstractFeature result = null;
     if (isChoice())
       {
-        var i = _libModule.innerFeatures(_libModule.featureInnerFeaturesPos(_index));
-        result = i.get(1);  // first entry is outer ref. NYI: Remove outer ref from choice!
+        var i = innerFeatures();
+        result = i.get(0);  // first entry is outer ref.
       }
 
-    check
+    if (CHECKS) check
       (isChoice() == (result != null));
 
     return result;
@@ -367,7 +341,7 @@ public class LibraryFeature extends AbstractFeature
   public AbstractFeature get(String name)
   {
     AbstractFeature result = null;
-    var i = _libModule.innerFeatures(_libModule.featureInnerFeaturesPos(_index));
+    var i = innerFeatures();
     for (var r : i)
       {
         var rn = r.featureName();
@@ -582,7 +556,7 @@ public class LibraryFeature extends AbstractFeature
       {
         var s = new Stack<Expr>();
         code(at, s, -1);
-        check
+        if (CHECKS) check
           (s.size() == 1);
         res = s.pop();
         _libModule._code1.put(at, res);
@@ -601,7 +575,7 @@ public class LibraryFeature extends AbstractFeature
       {
         var s = new Stack<Expr>();
         res = code(at, s, -1);
-        check
+        if (CHECKS) check
           (s.size() == 0);
         _libModule._code.put(at, res);
       }
@@ -750,7 +724,7 @@ public class LibraryFeature extends AbstractFeature
           }
         if (x != null)
           {
-            check
+            if (CHECKS) check
               (c == null);
             if (!l.isEmpty())
               {

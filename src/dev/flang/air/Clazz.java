@@ -143,7 +143,7 @@ public class Clazz extends ANY implements Comparable<Clazz>
    * Cached result of choiceGenerics(), only used if isChoice() and
    * !isChoiceOfOnlyRefs().
    */
-  public ArrayList<Clazz> choiceGenerics_;
+  public ArrayList<Clazz> _choiceGenerics;
 
 
   /**
@@ -345,10 +345,6 @@ public class Clazz extends ANY implements Comparable<Clazz>
      */
     this._outer = normalizeOuter(actualType, outer);
 
-    if (isChoice())
-      {
-        choiceGenerics_ = choiceGenerics();
-      }
     this._dynamicBinding = null;
   }
 
@@ -362,6 +358,7 @@ public class Clazz extends ANY implements Comparable<Clazz>
    */
   void dependencies()
   {
+    _choiceGenerics = determineChoiceGenerics();
     _resultClazz = determineResultClazz();
     _resultField = determineResultField();
     _argumentFields = determineArgumentFields();
@@ -547,7 +544,7 @@ public class Clazz extends ANY implements Comparable<Clazz>
     if (t.isOpenGeneric())
       {
         var types = replaceOpen(t);
-        check
+        if (CHECKS) check
           (Errors.count() > 0 || select >= 0 && select < types.size());
         t = 0 <= select && select < types.size() ? types.get(select) : Types.t_ERROR;
       }
@@ -859,7 +856,7 @@ public class Clazz extends ANY implements Comparable<Clazz>
     if (tf != Types.f_ERROR && f != Types.f_ERROR && tf != Types.resolved.f_void)
       {
         var chain = tf.findInheritanceChain(f.outer());
-        check
+        if (CHECKS) check
           (chain != null || Errors.count() > 0);
         if (chain != null)
           {
@@ -956,7 +953,7 @@ public class Clazz extends ANY implements Comparable<Clazz>
                 innerClazzes = new Clazz[replaceOpen(f.resultType()).size()];
                 _inner.put(f, innerClazzes);
               }
-            check
+            if (CHECKS) check
               (Errors.count() > 0 || select < innerClazzes.length);
             innerClazz = select < innerClazzes.length ? innerClazzes[select] : Clazzes.error.get();
           }
@@ -964,7 +961,7 @@ public class Clazz extends ANY implements Comparable<Clazz>
     if (innerClazz == null)
       {
         AbstractFeature af = findRedefinition(f);
-        check
+        if (CHECKS) check
           (Errors.count() > 0 || af != null);
 
         if (f == Types.f_ERROR || af == null)
@@ -1008,7 +1005,7 @@ public class Clazz extends ANY implements Comparable<Clazz>
                     clazzForFieldX(f, select);
                   }
               }
-            check
+            if (CHECKS) check
               (innerClazz._type == Types.t_ERROR || innerClazz._type.featureOfType() == af);
           }
       }
@@ -1033,7 +1030,7 @@ public class Clazz extends ANY implements Comparable<Clazz>
    */
   public Clazz clazzForFieldX(AbstractFeature field, int select)
   {
-    check
+    if (CHECKS) check
       (Errors.count() > 0 || field.isField(),
        Errors.count() > 0 || feature().inheritsFrom(field.outer()));
 
@@ -1041,7 +1038,7 @@ public class Clazz extends ANY implements Comparable<Clazz>
     if (result == null)
       {
         var fo = field.outer();
-        check
+        if (CHECKS) check
           (Errors.count() > 0 || fo != null);
 
         result =
@@ -1189,7 +1186,7 @@ public class Clazz extends ANY implements Comparable<Clazz>
             var a = c.actuals().get(i);
             if (i >= cf.arguments().size())
               {
-                check
+                if (CHECKS) check
                   (Errors.count() > 0);
               }
             else
@@ -1204,7 +1201,7 @@ public class Clazz extends ANY implements Comparable<Clazz>
               }
           }
 
-        check
+        if (CHECKS) check
           (Errors.count() > 0 || cf != null);
 
         if (cf != null)
@@ -1357,9 +1354,9 @@ public class Clazz extends ANY implements Comparable<Clazz>
   {
     boolean hasRefs = false;
 
-    if (choiceGenerics_ != null)
+    if (_choiceGenerics != null)
       {
-        for (Clazz c : choiceGenerics_)
+        for (Clazz c : _choiceGenerics)
           {
             hasRefs = hasRefs || c.isRef();
           }
@@ -1381,9 +1378,9 @@ public class Clazz extends ANY implements Comparable<Clazz>
   {
     boolean hasNonRefsWithState = false;
 
-    if (choiceGenerics_ != null)
+    if (_choiceGenerics != null)
       {
-        for (Clazz c : choiceGenerics_)
+        for (Clazz c : _choiceGenerics)
           {
             hasNonRefsWithState = hasNonRefsWithState || (!c.isRef() && !c.isUnitType() && !c.isVoidType());
           }
@@ -1399,18 +1396,39 @@ public class Clazz extends ANY implements Comparable<Clazz>
    * @return the actual clazzes of this choice clazz, in the order they appear
    * as actual generics.
    */
+  private ArrayList<Clazz> determineChoiceGenerics()
+  {
+    ArrayList<Clazz> result;
+
+    if (isChoice())
+      {
+        result = new ArrayList<>();
+        for (var t : actualGenerics(feature().choiceGenerics()))
+          {
+            result.add(actualClazz(t));
+          }
+      }
+    else
+      {
+        result = null;
+      }
+
+    return result;
+  }
+
+
+  /**
+   * Obtain the actual classes of a choice.
+   *
+   * @return the actual clazzes of this choice clazz, in the order they appear
+   * as actual generics.
+   */
   public ArrayList<Clazz> choiceGenerics()
   {
     if (PRECONDITIONS) require
       (isChoice());
 
-    ArrayList<Clazz> result = new ArrayList<>();
-    for (var t : actualGenerics(feature().choiceGenerics()))
-      {
-        result.add(actualClazz(t));
-      }
-
-    return result;
+    return _choiceGenerics;
   }
 
 
@@ -1427,17 +1445,17 @@ public class Clazz extends ANY implements Comparable<Clazz>
 
     int result = -1;
     int index = 0;
-    for (Clazz g : choiceGenerics_)
+    for (Clazz g : _choiceGenerics)
       {
         if (g._type.isAssignableFrom(staticTypeOfValue))
           {
-            check
+            if (CHECKS) check
               (result < 0);
             result = index;
           }
         index++;
       }
-    check
+    if (CHECKS) check
       (result >= 0);
 
     return result;
@@ -1454,9 +1472,9 @@ public class Clazz extends ANY implements Comparable<Clazz>
     if (PRECONDITIONS) require
       (isChoice(),
        id >= 0,
-       id <  choiceGenerics_.size());
+       id <  _choiceGenerics.size());
 
-    return choiceGenerics_.get(id);
+    return _choiceGenerics.get(id);
   }
 
 
@@ -1678,7 +1696,7 @@ public class Clazz extends ANY implements Comparable<Clazz>
           {
             outer = Clazzes.clazz(target, this);
           }
-        check
+        if (CHECKS) check
           (result == null || result == outer);
 
         result = outer;
@@ -1712,7 +1730,7 @@ public class Clazz extends ANY implements Comparable<Clazz>
    */
   private int depth(AbstractFeature f)
   {
-    check
+    if (CHECKS) check
       (Errors.count() > 0 || f.isUniverse() || f.outer() != null);
 
     return f.isUniverse() || (f.outer() == null)
@@ -2028,7 +2046,7 @@ public class Clazz extends ANY implements Comparable<Clazz>
       }
     else
       {
-        check
+        if (CHECKS) check
           (Errors.count() >= 0);
         return new List<>();
       }
