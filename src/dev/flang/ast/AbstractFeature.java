@@ -241,16 +241,8 @@ public abstract class AbstractFeature extends ANY implements Comparable<Abstract
    */
   public boolean isOuterRef()
   {
-    return featureName().baseName().startsWith(FuzionConstants.OUTER_REF_PREFIX);
-  }
-
-
-  /**
-   * Is this a tag field created for a choice-type?
-   */
-  boolean isChoiceTag()
-  {
-    return featureName().baseName().startsWith(FuzionConstants.CHOICE_TAG_NAME);
+    var o = outer();
+    return o != null && o.outerRef() == this;
   }
 
 
@@ -890,7 +882,11 @@ public abstract class AbstractFeature extends ANY implements Comparable<Abstract
    */
   public boolean hasOuterRef()
   {
-    return !isField() && !isChoice() && !isUniverse() && (this != Types.f_ERROR);
+    return
+      !isField() &&
+      // !isChoice() &&   NYI: choice shouuld not have an outer ref!
+      !isUniverse() &&
+      (this != Types.f_ERROR);
   }
 
 

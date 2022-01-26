@@ -60,6 +60,13 @@ public class FeatureName extends ANY implements Comparable<FeatureName>
 
 
   /**
+   * Global map of all base names to one FeatureName instance.  This is used to
+   * set _baseNameId to avoid string comparison.
+   */
+  private static final Map<String, FeatureName> _allBaseNames_ = new TreeMap<>();
+
+
+  /**
    * Global map of all FeatureName instances
    */
   private static final Map<FeatureName, FeatureName> _all_ = new TreeMap<>();
@@ -87,6 +94,12 @@ public class FeatureName extends ANY implements Comparable<FeatureName>
   public final int _id;
 
 
+  /**
+   * A unique id for each _baseName to avoid string comparison and use int
+   * comparison instead.
+   */
+  private int _baseNameId = 0;
+
   /*--------------------------  constructors  ---------------------------*/
 
 
@@ -95,9 +108,12 @@ public class FeatureName extends ANY implements Comparable<FeatureName>
    */
   private FeatureName(String baseName, int argCount, int id)
   {
+    if (PRECONDITIONS) require
+      (argCount == 0 || id == 0 || id == Integer.MAX_VALUE);
+
     _baseName = baseName;
     _argCount = argCount;
-    _id    = id;
+    _id       = id;
   }
 
 
@@ -135,6 +151,31 @@ public class FeatureName extends ANY implements Comparable<FeatureName>
 
 
   /**
+   * Get the unique element (globalIndex, argCount, id) for a feature without a
+   * name (such as outer refs, choice tags, loops).
+   *
+   * @param globalIndex a global, unique index into a module file
+   *
+   * @param argcount the argument count
+   *
+   * @param id the additional id
+   */
+  public static FeatureName get(int globalIndex, int argCount, int id)
+  {
+    if (PRECONDITIONS) require
+      (globalIndex > 0,
+       argCount >= 0,
+       argCount < Integer.MAX_VALUE,  // not <= to allow MAX_VALUE to be used in getAll
+       id >= 0,
+       id < Integer.MAX_VALUE); // not <= to allow MAX_VALUE to be used in getAll
+
+    var result = new FeatureName("", argCount, id);
+    result._baseNameId = -globalIndex;
+    return result;
+  }
+
+
+  /**
    * Get the unique element (baseName, argCount).
    */
   private static FeatureName get0(String baseName, int argCount, int id)
@@ -144,6 +185,16 @@ public class FeatureName extends ANY implements Comparable<FeatureName>
        argCount >= 0);
 
     FeatureName n = new FeatureName(baseName, argCount, id);
+    var bn = _allBaseNames_.get(baseName);
+    if (bn == null)
+      {
+        n._baseNameId = _allBaseNames_.size() + 100;
+        _allBaseNames_.put(baseName, n);
+      }
+    else
+      {
+        n._baseNameId = bn._baseNameId;
+      }
     FeatureName result = _all_.get(n);
     if (result == null)
       {
@@ -183,12 +234,15 @@ public class FeatureName extends ANY implements Comparable<FeatureName>
 
   public int compareTo(FeatureName o)
   {
-    int result = _baseName.compareTo(o._baseName);
+    if (PRECONDITIONS) require
+      (_baseNameId != 0,
+       o._baseNameId != 0);
+
+    int result =_baseNameId - o._baseNameId;
     return
-        result != 0             ? result
-      : _argCount < o._argCount ? -1 : _argCount > o._argCount ? +1
-      : _id       < o._id       ? -1 : _id       > o._id       ? +1
-                                : 0;
+        result != 0              ? result
+      : _argCount != o._argCount ? _argCount - o._argCount
+                                 : _id - o._id;
   }
 
 
@@ -200,7 +254,7 @@ public class FeatureName extends ANY implements Comparable<FeatureName>
 
   public String baseName()
   {
-    return _baseName;
+    return _baseNameId < 0 ? "@"+(-_baseNameId) : _baseName;
   }
 
 
