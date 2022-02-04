@@ -135,7 +135,7 @@ public class Feature extends AbstractFeature implements Stmnt
 
 
   /**
-   * The soucecode position of this feature's return type, if given explicitly.
+   * The sourcecode position of this feature's return type, if given explicitly.
    */
   private final SourcePosition _posOfReturnType;
 
@@ -377,7 +377,7 @@ public class Feature extends AbstractFeature implements Stmnt
   /**
    * Create an anonymous feature
    *
-   * @param pos the soucecode position, used for error messages.
+   * @param pos the sourcecode position, used for error messages.
    *
    * @param r the result type
    *
@@ -417,7 +417,7 @@ public class Feature extends AbstractFeature implements Stmnt
    * Constructor for automatically generated variables (result,
    * outer).
    *
-   * @param pos the soucecode position, used for error messages.
+   * @param pos the sourcecode position, used for error messages.
    *
    * @param v the visibility
    *
@@ -449,7 +449,7 @@ public class Feature extends AbstractFeature implements Stmnt
    * Constructor for field within a case of a match, e.g. the field "a" in "x ?
    * A a => ".
    *
-   * @param pos the soucecode position, used for error messages.
+   * @param pos the sourcecode position, used for error messages.
    *
    * @param v the visibility
    *
@@ -474,7 +474,7 @@ public class Feature extends AbstractFeature implements Stmnt
   /**
    * Loop index variable field
    *
-   * @param pos the soucecode position, used for error messages.
+   * @param pos the sourcecode position, used for error messages.
    *
    * @param v the visibility
    *
@@ -514,7 +514,7 @@ public class Feature extends AbstractFeature implements Stmnt
   /**
    * Constructor for argument features
    *
-   * @param pos the soucecode position, used for error messages.
+   * @param pos the sourcecode position, used for error messages.
    *
    * @param v the visibility
    *
@@ -556,7 +556,7 @@ public class Feature extends AbstractFeature implements Stmnt
   /**
    * Constructor for function features
    *
-   * @param pos the soucecode position, used for error messages.
+   * @param pos the sourcecode position, used for error messages.
    *
    * @param r the result type
    *
@@ -596,7 +596,7 @@ public class Feature extends AbstractFeature implements Stmnt
    * Constructor
    *
    * @param pos the sourcecode position, used for error messages.
-   * 
+   *
    * @param nextPos sourcecode position of the first token after this feature
    *
    * @param v the visibility
@@ -704,7 +704,7 @@ public class Feature extends AbstractFeature implements Stmnt
 
 
   /**
-   * The soucecode position of this statment, used for error messages.
+   * The sourcecode position of this statment, used for error messages.
    */
   public SourcePosition pos()
   {

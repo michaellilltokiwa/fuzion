@@ -69,8 +69,8 @@ public class FList extends ANY implements Stmnt
   /**
    * Constructor
    *
-   * @param pos the soucecode position, used for error messages.
-   * 
+   * @param pos the sourcecode position, used for error messages.
+   *
    * @param nextPos sourcecode position of the first token after this feature
    *
    * @param v
@@ -113,7 +113,7 @@ public class FList extends ANY implements Stmnt
 
 
   /**
-   * The soucecode position of this statment, used for error messages.
+   * The sourcecode position of this statment, used for error messages.
    */
   public SourcePosition pos()
   {
