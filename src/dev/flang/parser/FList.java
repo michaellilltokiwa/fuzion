@@ -70,6 +70,8 @@ public class FList extends ANY implements Stmnt
    * Constructor
    *
    * @param pos the soucecode position, used for error messages.
+   * 
+   * @param nextPos sourcecode position of the first token after this feature
    *
    * @param v
    *
@@ -90,6 +92,7 @@ public class FList extends ANY implements Stmnt
    * @param p
    */
   public FList(SourcePosition pos,
+               SourcePosition nextPos,
                Visi v,
                int m,
                ReturnType r,
@@ -101,7 +104,7 @@ public class FList extends ANY implements Stmnt
                Impl p) {
     for (List<String> n : qnames)
       {
-        _list.add(new Feature(pos, v,m,r,n,g,a,i,c,p));
+        _list.add(new Feature(pos,nextPos, v,m,r,n,g,a,i,c,p));
       }
   }
 

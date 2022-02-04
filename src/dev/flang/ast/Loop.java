@@ -337,6 +337,7 @@ public class Loop extends ANY
       }
     var p = block.pos();
     Feature loop = new Feature(p,
+                               SourcePosition.notAvailable,
                                Consts.VISIBILITY_INVISIBLE,
                                Consts.MODIFIER_FINAL,
                                NoType.INSTANCE,
@@ -477,6 +478,7 @@ public class Loop extends ANY
       {
         var name = _rawLoopName + "else" + ei;
         _loopElse[ei] = new Feature(_elsePos,
+                                    SourcePosition.notAvailable,
                                     Consts.VISIBILITY_INVISIBLE,
                                     Consts.MODIFIER_FINAL,
                                     NoType.INSTANCE,
@@ -582,6 +584,7 @@ public class Loop extends ANY
             var p = f.pos();
             Call asStream = new Call(p, f.impl()._initialValue, "asStream");
             Feature stream = new Feature(p,
+                                         SourcePosition.notAvailable,
                                          Consts.VISIBILITY_INVISIBLE,
                                          /* modifiers */   0,
                                          /* return type */ NoType.INSTANCE,

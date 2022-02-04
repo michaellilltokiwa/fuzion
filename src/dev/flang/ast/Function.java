@@ -304,6 +304,7 @@ public class Function extends ExprWithPos
     List<Stmnt> statements = new List<Stmnt>(f);
     String wrapperName = FuzionConstants.LAMBDA_PREFIX + id++;
     _wrapper = new Feature(pos,
+                           SourcePosition.notAvailable,
                            Consts.VISIBILITY_INVISIBLE,
                            Consts.MODIFIER_FINAL,
                            RefType.INSTANCE,
@@ -456,6 +457,7 @@ public class Function extends ExprWithPos
             List<Stmnt> statements = new List<Stmnt>(f);
             String wrapperName = FuzionConstants.LAMBDA_PREFIX + id++;
             _wrapper = new Feature(pos(),
+                                   SourcePosition.notAvailable,
                                    Consts.VISIBILITY_INVISIBLE,
                                    Consts.MODIFIER_FINAL,
                                    RefType.INSTANCE,
@@ -685,7 +687,9 @@ public class Function extends ExprWithPos
                 argnum++;
               }
             Call callWithArgs = new Call(pos(), null, call.name, actual_args);
-            Feature fcall = new Feature(pos(), Consts.VISIBILITY_PUBLIC,
+            Feature fcall = new Feature(pos(),
+                                        SourcePosition.notAvailable,
+                                        Consts.VISIBILITY_PUBLIC,
                                         Consts.MODIFIER_REDEFINE,
                                         NoType.INSTANCE, // calledFeature.returnType,
                                         new List<String>("call"),
@@ -703,6 +707,7 @@ public class Function extends ExprWithPos
 
             String wrapperName = FuzionConstants.LAMBDA_PREFIX + id++;
             Feature function = new Feature(pos(),
+                                           SourcePosition.notAvailable,
                                            Consts.VISIBILITY_INVISIBLE,
                                            Consts.MODIFIER_FINAL,
                                            RefType.INSTANCE,

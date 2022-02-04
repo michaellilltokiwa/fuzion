@@ -260,7 +260,8 @@ field       : visibility
       a.isEmpty()              &&
       i.isEmpty()                 ? implFldOrRout(hasType)
                                   : implRout();
-    return new FList(pos, v,m,r,n,g,a,i,c,p);
+    var nextPos = posObject();
+    return new FList(pos, nextPos, v,m,r,n,g,a,i,c,p);
   }
 
 
@@ -2698,12 +2699,12 @@ nextValue   : COMMA exprAtMinIndent
             p2 = new Impl(pos, exprAtMinIndent(), p2.kind_);
           }
       }
-    Feature f1 = new Feature(pos,v1,m1,r1,new List<>(n1),
+    Feature f1 = new Feature(pos,SourcePosition.notAvailable,v1,m1,r1,new List<>(n1),
                              FormalGenerics.NONE,
                              new List<Feature>(),
                              new List<>(),
                              c1,p1);
-    Feature f2 = new Feature(pos,v2,m2,r2,new List<>(n2),
+    Feature f2 = new Feature(pos,SourcePosition.notAvailable,v2,m2,r2,new List<>(n2),
                              FormalGenerics.NONE,
                              new List<Feature>(),
                              new List<>(),

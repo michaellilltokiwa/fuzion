@@ -180,6 +180,7 @@ public class Destructure extends ANY implements Stmnt
             for (String name : names)
               {
                 fields.add(new Feature(pos,
+                                       SourcePosition.notAvailable,
                                        Consts.VISIBILITY_LOCAL,
                                        0,
                                        new FunctionReturnType(Types.t_UNDEFINED), // NoType.INSTANCE,

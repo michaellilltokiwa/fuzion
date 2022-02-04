@@ -123,10 +123,15 @@ public class Feature extends AbstractFeature implements Stmnt
 
 
   /**
-   * The soucecode position of this feature declaration, used for error
+   * The sourcecode position of this feature declaration, used for error
    * messages.
    */
   private final SourcePosition _pos;
+
+  /**
+   * The sourcecode position of the first token after this feature
+   */
+  private final SourcePosition _nextPos;
 
 
   /**
@@ -341,6 +346,7 @@ public class Feature extends AbstractFeature implements Stmnt
   public Feature()
   {
     this(SourcePosition.builtIn,
+         SourcePosition.notAvailable,
          Consts.VISIBILITY_PUBLIC,
          0,
          ValueType.INSTANCE,
@@ -388,6 +394,7 @@ public class Feature extends AbstractFeature implements Stmnt
                                   Block b)
   {
     return new Feature(pos,
+                       SourcePosition.notAvailable,
                        Consts.VISIBILITY_INVISIBLE,
                        0,
                        r,
@@ -487,6 +494,7 @@ public class Feature extends AbstractFeature implements Stmnt
           AbstractFeature outerOfInitialValue)
   {
     this(pos,
+         SourcePosition.notAvailable,
          v,
          0,
          t == null ? NoType.INSTANCE : new FunctionReturnType(t), /* NYI: try to avoid creation of ReturnType here, set actualtype directly? */
@@ -526,6 +534,7 @@ public class Feature extends AbstractFeature implements Stmnt
                  Contract c)
   {
     this(pos,
+         SourcePosition.notAvailable,
          v,
          m,
          new FunctionReturnType(t), /* NYI: try to avoid creation of ReturnType here, set actualtype directly? */
@@ -570,6 +579,7 @@ public class Feature extends AbstractFeature implements Stmnt
           Impl     p)
   {
     this(pos,
+         SourcePosition.notAvailable,
          Consts.VISIBILITY_INVISIBLE,
          0,
          r,
@@ -585,7 +595,9 @@ public class Feature extends AbstractFeature implements Stmnt
   /**
    * Constructor
    *
-   * @param pos the soucecode position, used for error messages.
+   * @param pos the sourcecode position, used for error messages.
+   * 
+   * @param nextPos sourcecode position of the first token after this feature
    *
    * @param v the visibility
    *
@@ -606,6 +618,7 @@ public class Feature extends AbstractFeature implements Stmnt
    * @param p the implementation (feature body etc).
    */
   public Feature(SourcePosition pos,
+                 SourcePosition nextPos,
                  Visi v,
                  int m,
                  ReturnType r,
@@ -622,6 +635,7 @@ public class Feature extends AbstractFeature implements Stmnt
        p != null);
 
     this._pos        = pos;
+    this._nextPos = nextPos;
     this._visibility = v;
     this._modifiers  = m;
     this._returnType = r;
@@ -697,6 +711,13 @@ public class Feature extends AbstractFeature implements Stmnt
     return _pos;
   }
 
+  /**
+   * sourcecode position of the first token after this feature
+   */
+  public SourcePosition nextPos()
+  {
+    return _nextPos;
+  }
 
   /**
    * Check for possible errors related to the feature name. Currenlty, this only
