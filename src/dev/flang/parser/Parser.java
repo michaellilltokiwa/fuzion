@@ -838,7 +838,7 @@ argument    : visibility
                                     Contract c = contract();
                                     for (String s : n)
                                       {
-                                        result.add(new Feature(pos, v, m, t, s, c));
+                                        result.add(new Feature(pos, SourcePosition.notAvailable, v, m, t, s, c));
                                       }
                                   }
                                 while (skipComma());
@@ -3029,7 +3029,8 @@ anonymous   : returnType
     var        i = inherit();
     Contract   c = contract();
     Block      b = block(false);
-    var f = Feature.anonymous(pos, r, i, c, b);
+    var nextPos = posObject();
+    var f = Feature.anonymous(pos, nextPos, r, i, c, b);
     var ca = new Call(pos, f);
     return ca;
     // NYI: This would simplify the code (in Feature.findFieldDefInScope that

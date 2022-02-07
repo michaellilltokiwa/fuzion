@@ -433,6 +433,7 @@ public class Function extends ExprWithPos
         for (var n : _names)
           {
             var arg = new Feature(pos() /* better n.pos() */,
+                                  SourcePosition.notAvailable,
                                   Consts.VISIBILITY_LOCAL,
                                   0,
                                   i < gs.size() ? gs.get(i) : Types.t_ERROR,
@@ -683,7 +684,7 @@ public class Function extends ExprWithPos
               {
                 String name = "a"+argnum;
                 actual_args.add(new Call(pos(), null, name));
-                formal_args.add(new Feature(pos(), Consts.VISIBILITY_LOCAL, 0, f.resultType(), name, new Contract(null,null,null)));
+                formal_args.add(new Feature(pos(), SourcePosition.notAvailable,  Consts.VISIBILITY_LOCAL, 0, f.resultType(), name, new Contract(null,null,null)));
                 argnum++;
               }
             Call callWithArgs = new Call(pos(), null, call.name, actual_args);

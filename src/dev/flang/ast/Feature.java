@@ -379,6 +379,8 @@ public class Feature extends AbstractFeature implements Stmnt
    *
    * @param pos the sourcecode position, used for error messages.
    *
+   * @param nextPos
+   *
    * @param r the result type
    *
    * @param i the inherits calls
@@ -388,13 +390,14 @@ public class Feature extends AbstractFeature implements Stmnt
    * @param b the implementation block
    */
   public static Feature anonymous(SourcePosition pos,
+                                  SourcePosition nextPos,
                                   ReturnType r,
                                   List<AbstractCall> i,
                                   Contract c,
                                   Block b)
   {
     return new Feature(pos,
-                       SourcePosition.notAvailable,
+                       nextPos,
                        Consts.VISIBILITY_INVISIBLE,
                        0,
                        r,
@@ -436,6 +439,7 @@ public class Feature extends AbstractFeature implements Stmnt
           AbstractFeature outer)
   {
     this(pos,
+         SourcePosition.notAvailable,
          v,
          0,
          t,
@@ -463,6 +467,7 @@ public class Feature extends AbstractFeature implements Stmnt
           String qname)
   {
     this(pos,
+         SourcePosition.notAvailable,
          v,
          0,
          t,
@@ -516,6 +521,8 @@ public class Feature extends AbstractFeature implements Stmnt
    *
    * @param pos the sourcecode position, used for error messages.
    *
+   * @param nextPos
+   *
    * @param v the visibility
    *
    * @param m the modifiers
@@ -527,6 +534,7 @@ public class Feature extends AbstractFeature implements Stmnt
    * @param c the contract
    */
   public Feature(SourcePosition pos,
+                 SourcePosition nextPos,
                  Visi v,
                  int m,
                  AbstractType t,
@@ -534,7 +542,7 @@ public class Feature extends AbstractFeature implements Stmnt
                  Contract c)
   {
     this(pos,
-         SourcePosition.notAvailable,
+         nextPos,
          v,
          m,
          new FunctionReturnType(t), /* NYI: try to avoid creation of ReturnType here, set actualtype directly? */
