@@ -1,0 +1,72 @@
+# This file is part of the Fuzion language implementation.
+#
+# The Fuzion language implementation is free software: you can redistribute it
+# and/or modify it under the terms of the GNU General Public License as published
+# by the Free Software Foundation, version 3 of the License.
+#
+# The Fuzion language implementation is distributed in the hope that it will be
+# useful, but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public
+# License for more details.
+#
+# You should have received a copy of the GNU General Public License along with The
+# Fuzion language implementation.  If not, see <https://www.gnu.org/licenses/>.
+
+
+# -----------------------------------------------------------------------
+#
+#  Tokiwa Software GmbH, Germany
+#
+#  Source code of Fuzion standard library feature math
+#
+#  Author: Michael Lill (michael.lill@tokiwa.software)
+#
+# -----------------------------------------------------------------------
+
+#
+math is
+
+  # eulers number
+  # holds to closest f64 to eulers number
+  e => 2.7182818284590452354
+
+  # π
+  # holds to closest f64 to pi
+  pi => 3.14159265358979323846
+  π => pi
+
+  # sinus
+  sin(a f64) f64 is intrinsic
+  # cosinus
+  cos(a f64) f64 is intrinsic
+  # tangens
+  tan(a f64) f64 is intrinsic
+
+  # arcus sinus
+  asin(a f64) f64 is intrinsic
+  # arcus cosinus
+  acos(a f64) f64 is intrinsic
+  # arcus tangens
+  atan(a f64) f64 is intrinsic
+
+  # sinus hyperbolicus
+  sinh(a f64) f64 is intrinsic
+  # cosinus hyperbolicus
+  cosh(a f64) f64 is intrinsic
+  # tangens hyperbolicus
+  tanh(a f64) f64 is intrinsic
+
+  # natural logarithm
+  log(a f64) f64 is intrinsic
+
+  # common logarithm
+  # (logarithm to base 10)
+  log10(a f64) f64 is intrinsic
+
+  # square root
+  sqrt(a f64) f64 is intrinsic
+
+  # NYI the following are native in "java"
+  # expm1 is intrinsic
+  # log1p is intrinsic
+  # atan2(y f64, x f64) is intrinsic

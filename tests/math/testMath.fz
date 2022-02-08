@@ -1,0 +1,61 @@
+# This file is part of the Fuzion language implementation.
+#
+# The Fuzion language implementation is free software: you can redistribute it
+# and/or modify it under the terms of the GNU General Public License as published
+# by the Free Software Foundation, version 3 of the License.
+#
+# The Fuzion language implementation is distributed in the hope that it will be
+# useful, but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public
+# License for more details.
+#
+# You should have received a copy of the GNU General Public License along with The
+# Fuzion language implementation.  If not, see <https://www.gnu.org/licenses/>.
+
+
+# -----------------------------------------------------------------------
+#
+#  Tokiwa Software GmbH, Germany
+#
+#  Source code of Fuzion test testLists
+#
+#  Author: Michael Lill (michael.lill@tokiwa.software)
+#
+# -----------------------------------------------------------------------
+
+testMath is
+
+  exitCode := 0
+
+  # epsilon := 4.94065645841247E-324
+  epsilon := 1E-6
+
+  chck (b bool, msg string) unit is
+    if b
+      say "PASSED: $msg"
+    else
+      say "FAILED: $msg"
+      set exitCode := 1
+
+  for i in [0.0, 1.0, 2.0, math.pi, math.e] do
+    i² := i * i
+    chck(math.sqrt i² == i, "sqrt {i²} should be $i")
+
+  for i in [-1.0, 0.0, 1.0] do
+    chck(math.sin (math.asin i) - i <= epsilon, "sin asin $i should be very close to $i")
+    chck(math.cos (math.acos i) - i <= epsilon, "cos acos $i should be very close to $i")
+
+  for i in [0.0, 1.0] do
+    chck(math.tan (math.atan i) - i <= epsilon, "tan atan $i should be very close to $i")
+
+  for i in [-1.0, 0.0, 1.0, math.e, math.pi] do
+    chck(math.sinh i - (1.0/2.0)*(math.e**i - math.e**(-i)) < epsilon, "sinh $i should be very close to (1/2)(e^x-e^(-x))")
+    chck(math.cosh i - (1.0/2.0)*(math.e**i + math.e**(-i)) < epsilon, "cosh $i should be very close to (1/2)(e^x+e^(-x))")
+    chck(math.tanh i - (math.sinh i / math.cosh i) < epsilon, "tanh $i should be very close to sinh/cosh")
+
+  for i in [-math.pi, -math.e, -1.0, 0.0, 1.0, math.e, math.pi] do
+    chck(math.log (math.e**i) - i < epsilon, "log(e^$i) should be very close to $i")
+
+  chck(math.log10 100 == 2, "log10 100 should be 2")
+
+  fuzion.std.exit exitCode

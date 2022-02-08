@@ -612,6 +612,18 @@ public class Intrinsics extends ANY
     else if (n.equals("Object.asString" )) { result = (args) -> Interpreter.value(args.get(0).toString());
       // NYI: This could be more useful by giving the object's class, an id, public fields, etc.
     }
+    else if (n.equals("math.sin" )) { result = (args) -> new f64Value (Math.sin(args.get(1).f64Value())); }
+    else if (n.equals("math.cos" )) { result = (args) -> new f64Value (Math.cos(args.get(1).f64Value())); }
+    else if (n.equals("math.tan" )) { result = (args) -> new f64Value (Math.tan(args.get(1).f64Value())); }
+    else if (n.equals("math.asin" )) { result = (args) -> new f64Value (Math.asin(args.get(1).f64Value())); }
+    else if (n.equals("math.acos" )) { result = (args) -> new f64Value (Math.acos(args.get(1).f64Value())); }
+    else if (n.equals("math.atan" )) { result = (args) -> new f64Value (Math.atan(args.get(1).f64Value())); }
+    else if (n.equals("math.sinh" )) { result = (args) -> new f64Value (Math.sinh(args.get(1).f64Value())); }
+    else if (n.equals("math.cosh" )) { result = (args) -> new f64Value (Math.cosh(args.get(1).f64Value())); }
+    else if (n.equals("math.tanh" )) { result = (args) -> new f64Value (Math.tanh(args.get(1).f64Value())); }
+    else if (n.equals("math.log" )) { result = (args) -> new f64Value (Math.log(args.get(1).f64Value())); }
+    else if (n.equals("math.log10" )) { result = (args) -> new f64Value (Math.log10(args.get(1).f64Value())); }
+    else if (n.equals("math.sqrt" )) { result = (args) -> new f64Value (Math.sqrt(args.get(1).f64Value())); }
     else
       {
         Errors.fatal(f.pos(),
