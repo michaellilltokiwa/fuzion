@@ -26,8 +26,8 @@
 #
 math is
 
-  # eulers number
-  # holds to closest f64 to eulers number
+  # Eulers' number
+  # holds to closest f64 to Eulers' number
   e => 2.7182818284590452354
 
   # π
