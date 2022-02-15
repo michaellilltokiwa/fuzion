@@ -2139,7 +2139,7 @@ DQUOTE            : '"' -> pushMode(IN_STRING)
                   ;
 mode IN_STRING;
 
-TEXT              : ~[\\"]+
+TEXT              : ~[{$"]+
                   ;
 BACKSLASH_PAREN   : '\\{' -> pushMode(DEFAULT_MODE)
                   ;
