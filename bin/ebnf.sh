@@ -49,25 +49,23 @@ NEW_LINE=$'\n'
 SCRIPTPATH="$(dirname "$(readlink -f "$0")")"
 cd "$SCRIPTPATH"/..
 
-RULE_MATCHER="^(fragment\n)*[a-zA-Z0-9_]+[ ]*:(\n|.)*?( ;)"
-EBNF_LEXER=$(pcregrep -M "$RULE_MATCHER" ./src/dev/flang/parser/Lexer.java)
-EBNF_PARSER=$(pcregrep -M "$RULE_MATCHER" ./src/dev/flang/parser/Parser.java)
+RULE_MATCHER="^(mode.*;|(fragment\n)*[a-zA-Z0-9_]+[ ]*:(\n|.)*?( ;))"
+LEXER_RULES=$(pcregrep -M "$RULE_MATCHER" ./src/dev/flang/parser/Lexer.java)
+PARSER_RULES=$(pcregrep -M "$RULE_MATCHER" ./src/dev/flang/parser/Parser.java)
 
 # header
-EBNF_HEADER="grammar Fuzion;${NEW_LINE}${NEW_LINE}"
-# combine parser and lexer
-EBNF="${EBNF_HEADER}${EBNF_PARSER}${NEW_LINE}${EBNF_LEXER}"
-# replace " by '
-EBNF=$(sed 's/"/\x27/g' <<< "$EBNF")
+LEXER_GRAMMAR="lexer grammar FuzionLexer;${NEW_LINE}${NEW_LINE}${LEXER_RULES}"
+PARSER_GRAMMAR="parser grammar FuzionParser;${NEW_LINE}options {${NEW_LINE}    tokenVocab = 'FuzionLexer';${NEW_LINE}}${NEW_LINE}${NEW_LINE}${PARSER_RULES}"
 
-echo "$EBNF"
+echo "$PARSER_GRAMMAR$LEXER_GRAMMAR"
 
 # test grammar with antlr4
 TMP=$(mktemp -d)
 mkdir -p "$TMP"/fuzion_grammar
-echo "$EBNF" > "$TMP"/fuzion_grammar/Fuzion.g4
+echo "$LEXER_GRAMMAR" > "$TMP"/fuzion_grammar/FuzionLexer.g4
+echo "$PARSER_GRAMMAR" > "$TMP"/fuzion_grammar/FuzionParser.g4
 # NYI add option -Werror
-antlr4 -long-messages -o "$TMP"/fuzion_grammar "$TMP"/fuzion_grammar/Fuzion.g4
+antlr4 -long-messages -o "$TMP"/fuzion_grammar "$TMP"/fuzion_grammar/FuzionLexer.g4 "$TMP"/fuzion_grammar/FuzionParser.g4
 antlr4_rc=$?
 rm -rf "$TMP"
 

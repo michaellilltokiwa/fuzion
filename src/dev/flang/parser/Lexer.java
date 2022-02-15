@@ -952,7 +952,7 @@ RPAREN      : ')'
               break;
             }
           /**
-BRACEL      : '{'
+BRACEL      : '{' -> pushMode(DEFAULT_MODE)
             ;
           */
           case K_LBRACE  :    // '{'  curly brackets or braces
@@ -961,7 +961,7 @@ BRACEL      : '{'
               break;
             }
           /**
-BRACER      : '}'
+BRACER      : '}' -> popMode
             ;
           */
           case K_RBRACE  :    // '}'
@@ -1188,13 +1188,13 @@ NUM_LITERAL : [0-9]+
 LITERAL     : DIGITS_W_DOT EXPONENT
             ;
 fragment
-EXPONENT    : "E" PLUSMINUS DIGITS
-            | "P" PLUSMINUS DIGITS
+EXPONENT    : 'E' PLUSMINUS DIGITS
+            | 'P' PLUSMINUS DIGITS
             |
             ;
 fragment
-PLUSMINUS   : "+"
-            | "-"
+PLUSMINUS   : '+'
+            | '-'
             |
             ;
    *
@@ -1444,23 +1444,23 @@ PLUSMINUS   : "+"
      * @param negative true if a '-' was encountered before firstDigit.
      *
 DIGITS      :         DEC_DIGIT_ DEC_DIGITS_
-            | "0" "b" BIN_DIGIT_ BIN_DIGITS_
-            | "0" "o" OCT_DIGIT_ OCT_DIGITS_
-            | "0" "d" DEC_DIGIT_ DEC_DIGITS_
-            | "0" "x" HEX_DIGIT_ HEX_DIGITS_
+            | '0' 'b' BIN_DIGIT_ BIN_DIGITS_
+            | '0' 'o' OCT_DIGIT_ OCT_DIGITS_
+            | '0' 'd' DEC_DIGIT_ DEC_DIGITS_
+            | '0' 'x' HEX_DIGIT_ HEX_DIGITS_
             ;
 DIGITS_W_DOT: DIGITS
             |         DEC_DIGIT_ DEC_DIGITS_ DEC_TAIL
-            | "0" "b" BIN_DIGIT_ BIN_DIGITS_ BIN_TAIL
-            | "0" "o" OCT_DIGIT_ OCT_DIGITS_ OCT_TAIL
-            | "0" "d" DEC_DIGIT_ DEC_DIGITS_ DEC_TAIL
-            | "0" "x" HEX_DIGIT_ HEX_DIGITS_ HEX_TAIL
+            | '0' 'b' BIN_DIGIT_ BIN_DIGITS_ BIN_TAIL
+            | '0' 'o' OCT_DIGIT_ OCT_DIGITS_ OCT_TAIL
+            | '0' 'd' DEC_DIGIT_ DEC_DIGITS_ DEC_TAIL
+            | '0' 'x' HEX_DIGIT_ HEX_DIGITS_ HEX_TAIL
             ;
 fragment
-UNDERSCORE  : "_"
+UNDERSCORE  : '_'
             |
             ;
-BIN_DIGIT   : "0" | "1"
+BIN_DIGIT   : '0' | '1'
             ;
 BIN_DIGIT_  : UNDERSCORE BIN_DIGIT
             ;
@@ -1472,9 +1472,9 @@ fragment
 BIN_DIGITS  : BIN_DIGIT BIN_DIGITS
             |
             ;
-BIN_TAIL    : "." BIN_DIGITS
+BIN_TAIL    : '.' BIN_DIGITS
             ;
-OCT_DIGIT   : "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7"
+OCT_DIGIT   : '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7'
             ;
 OCT_DIGIT_  : UNDERSCORE OCT_DIGIT
             ;
@@ -1486,9 +1486,9 @@ fragment
 OCT_DIGITS  : OCT_DIGIT OCT_DIGITS
             |
             ;
-OCT_TAIL    : "." OCT_DIGITS
+OCT_TAIL    : '.' OCT_DIGITS
             ;
-DEC_DIGIT   : "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9"
+DEC_DIGIT   : '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9'
             ;
 DEC_DIGIT_  : UNDERSCORE DEC_DIGIT
             ;
@@ -1500,11 +1500,11 @@ fragment
 DEC_DIGITS  : DEC_DIGIT DEC_DIGITS
             |
             ;
-DEC_TAIL    : "." DEC_DIGITS
+DEC_TAIL    : '.' DEC_DIGITS
             ;
-HEX_DIGIT   : "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9"
-            | "a" | "b" | "c" | "d" | "e" | "f" | "g" | "h" | "i" | "j" | "k" | "l" | "m" | "n" | "o" | "p" | "q" | "r" | "s" | "t" | "u" | "v" | "w" | "x" | "y" | "z"
-            | "A" | "B" | "C" | "D" | "E" | "F" | "G" | "H" | "I" | "J" | "K" | "L" | "M" | "N" | "O" | "P" | "Q" | "R" | "S" | "T" | "U" | "V" | "W" | "X" | "Y" | "Z"
+HEX_DIGIT   : '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9'
+            | 'a' | 'b' | 'c' | 'd' | 'e' | 'f' | 'g' | 'h' | 'i' | 'j' | 'k' | 'l' | 'm' | 'n' | 'o' | 'p' | 'q' | 'r' | 's' | 't' | 'u' | 'v' | 'w' | 'x' | 'y' | 'z'
+            | 'A' | 'B' | 'C' | 'D' | 'E' | 'F' | 'G' | 'H' | 'I' | 'J' | 'K' | 'L' | 'M' | 'N' | 'O' | 'P' | 'Q' | 'R' | 'S' | 'T' | 'U' | 'V' | 'W' | 'X' | 'Y' | 'Z'
             ;
 HEX_DIGIT_  : UNDERSCORE HEX_DIGIT
             ;
@@ -1516,7 +1516,7 @@ fragment
 HEX_DIGITS  : HEX_DIGIT HEX_DIGITS
             |
             ;
-HEX_TAIL    : "." HEX_DIGITS
+HEX_TAIL    : '.' HEX_DIGITS
             ;
      */
     Digits(int firstDigit, boolean allowDot, boolean negative)
@@ -1885,13 +1885,13 @@ HEX_TAIL    : "." HEX_DIGITS
    * is Token.t_op and the operator is op.  If so, advance to the next token
    * using next(). Otherwise, cause a syntax error.
    *
-COLON       : ":"
+COLON       : ':'
             ;
 
-ARROW       : "=>"
+ARROW       : '=>'
             ;
 
-PIPE        : "|"
+PIPE        : '|'
             ;
    *
    * @param op the operator we want to see
@@ -2134,6 +2134,116 @@ PIPE        : "|"
 
   /**
    * Small state-machine parser for constant strings.
+   *
+DQUOTE            : '"' -> pushMode(IN_STRING)
+                  ;
+mode IN_STRING;
+
+TEXT              : ~[\\"]+
+                  ;
+BACKSLASH_PAREN   : '\\{' -> pushMode(DEFAULT_MODE)
+                  ;
+ESCAPE_SEQUENCE   : '\\'.
+                  ;
+DQUOTE_IN_STRING  : '"' -> type(DQUOTE), popMode
+                  ;
+
+mode DEFAULT_MODE ;
+
+FUNARROW                         : '->'
+                         ;
+ASSIGN                         : ':='
+                         ;
+DOTDOTDOT                         : '...'
+                         ;
+DOTDOT                         : '..'
+                         ;
+DOT                         : '.'
+                         ;
+LT                         : '<'
+                         ;
+GT                         : '>'
+                         ;
+DOLLAR                         : '$'
+                         ;
+ABSTRACT                         : 'abstract'
+                         ;
+CHECK                         : 'check'
+                         ;
+CONST                         : 'const'
+                         ;
+DO                         : 'do'
+                         ;
+ELSE                         : 'else'
+                         ;
+EXPORT                         : 'export'
+                         ;
+FOR                         : 'for'
+                         ;
+FUN                         : 'fun'
+                         ;
+IF                         : 'if'
+                         ;
+IN                         : 'in'
+                         ;
+INDEX                         : 'index'
+                         ;
+INFIX                         : 'infix'
+                         ;
+INTRINSIC                         : 'intrinsic'
+                         ;
+INV                         : 'inv'
+                         ;
+IS                         : 'is'
+                         ;
+LAZY                         : 'lazy'
+                         ;
+LEAF                         : 'leaf'
+                         ;
+MATCH                         : 'match'
+                         ;
+OLD                         : 'old'
+                         ;
+POST                         : 'post'
+                         ;
+POSTFIX                         : 'postfix'
+                         ;
+PRE                         : 'pre'
+                         ;
+PREFIX                         : 'prefix'
+                         ;
+PRIVATE                         : 'private'
+                         ;
+PROTECTED                         : 'protected'
+                         ;
+PUBLIC                         : 'public'
+                         ;
+REDEF                         : 'redef'
+                         ;
+REDEFINE                         : 'redefine'
+                         ;
+REF                         : 'ref'
+                         ;
+SET                         : 'set'
+                         ;
+SYNCHRONIZED                         : 'synchronized'
+                         ;
+TERNARY                         : 'ternary'
+                         ;
+THEN                         : 'then'
+                         ;
+THIS                         : 'this'
+                         ;
+UNTIL                         : 'until'
+                         ;
+VALUE                         : 'value'
+                         ;
+VARIANT                         : 'variant'
+                         ;
+WHILE                         : 'while'
+                         ;
+
+   *
    */
   private class StringLexer
   {
@@ -2592,9 +2702,9 @@ PIPE        : "|"
   /**
    * Parse singe-char t_op.
    *
-STAR        : "*"
+STAR        : '*'
             ;
-QUESTION    : "?"
+QUESTION    : '?'
             ;
    *
    * @param op the single-char operator

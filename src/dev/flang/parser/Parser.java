@@ -348,10 +348,10 @@ field       : visibility
 visibility  : visiFlag
             |
             ;
-visiFlag    : "export" visiList
-            | "private"
-            | "protected"
-            | "public"
+visiFlag    : 'export' visiList
+            | 'private'
+            | 'protected'
+            | 'public'
             ;
 visiList    : e=visi ( COMMA visiList
                      |
@@ -442,11 +442,11 @@ qual        : name ( dot qual
    *
 name        : IDENT                            // all parts of name must be in same line
             | opName
-            | "ternary" QUESTION COLON
-            | "index" LBRACKET ( ".." RBRACKET
+            | 'ternary' QUESTION COLON
+            | 'index' LBRACKET ( '..' RBRACKET
                                | RBRACKET
                                )
-            | "set" ( LBRACKET RBRACKET
+            | 'set' ( LBRACKET RBRACKET
                     | IDENT
                     )
             ;
@@ -573,9 +573,9 @@ name        : IDENT                            // all parts of name must be in s
   /**
    * Parse opName
    *
-opName      : "infix"   op
-            | "prefix"  op
-            | "postfix" op
+opName      : 'infix'   op
+            | 'prefix'  op
+            | 'postfix' op
             ;
    *
    */
@@ -595,12 +595,12 @@ opName      : "infix"   op
 modifiers   : modifier modifiers
             |
             ;
-modifier    : "lazy"
-            | "synchronized"
-            | "redef"
-            | "redefine"
-            | "const"
-            | "leaf"
+modifier    : 'lazy'
+            | 'synchronized'
+            | 'redef'
+            | 'redefine'
+            | 'const'
+            | 'leaf'
             ;
    *
    * @return logically or'ed set of Consts.MODIFIER_* constants found.
@@ -681,11 +681,11 @@ featNames   : qual (COMMA featNames
   /**
    * Parse formGens
    *
-formGens    : "<" formGensBody ">"
-            | "<" ">"
+formGens    : '<' formGensBody '>'
+            | '<' '>'
             |
             ;
-formGensBody: l=genericList ( "..."
+formGensBody: l=genericList ( '...'
                             |
                             )
             |
@@ -985,8 +985,8 @@ argNames    : name ( COMMA argNames
    * Parse returnType
    *
 returnType  : type
-            | "value"
-            | "ref"
+            | 'value'
+            | 'ref'
             |
             ;
    */
@@ -1188,7 +1188,7 @@ call        : name ( actualGens actualArgs callTail
    * Parse indexcall
    *
 indexCall   : ( LBRACKET exprList RBRACKET
-                ( ":=" exprInLine
+                ( ':=' exprInLine
                 |
                 )
               )
@@ -1246,8 +1246,8 @@ callTail    : ( indexCall
   /**
    * Parse actualGens
    *
-actualGens  : "<" typeList ">"
-            | "<" ">"
+actualGens  : '<' typeList '>'
+            | '<' '>'
             |
             ;
    */
@@ -1778,7 +1778,7 @@ argNamesOpt : argNames
    * Parse a simple lambda expression, i.e., one without parentheses around the
    * arguments.
    *
-lambda      : contract "->" block
+lambda      : contract '->' block
             ;
    */
   Expr lambda(List<String> n)
@@ -1885,7 +1885,7 @@ simpleterm  : bracketTerm
             | fun
             | stringTerm
             | NUM_LITERAL
-            | "old" term
+            | 'old' term
             | match
             | loop
             | ifstmnt
@@ -1948,18 +1948,13 @@ simpleterm  : bracketTerm
   /**
    * Parse stringTerm
    *
-stringTerm  : '"<any chars>"'
-            | '"<any chars>$' IDENT stringTermD
-            | '"<any chars>{' block stringTermB
-            ;
-stringTermD : '<any chars>"'
-            | '<any chars>$' IDENT stringTermD
-            | '<any chars>{' block stringTermB
-            ;
-stringTermB : '}<any chars>"'
-            | '}<any chars>$' IDENT stringTermD
-            | '}<any chars>{' block stringTermB
-            ;
+stringTerm     : DQUOTE stringContents* DQUOTE
+               ;
+stringContents : TEXT
+               | ESCAPE_SEQUENCE
+               | '{' block '}'
+               | '$' IDENT
+               ;
   */
   Expr stringTerm(Expr leftString)
   {
@@ -2065,8 +2060,8 @@ op          : OPERATOR
   /**
    * Parse fun
    *
-fun         : "fun" function
-            | "fun" c=call
+fun         : 'fun' function
+            | 'fun' c=call
             ;
    */
   Expr fun()
@@ -2095,7 +2090,7 @@ function    : formArgsOpt
               inherits
               contract
               ( block
-              | "is" block
+              | 'is' block
               | ARROW e=block
               )
             ;
@@ -2160,7 +2155,7 @@ function    : formArgsOpt
   /**
    * Parse match
    *
-match       : "match" exprInLine BRACEL cases BRACER
+match       : 'match' exprInLine BRACEL cases BRACER
             ;
    */
   Expr match()
@@ -2595,15 +2590,15 @@ loop        : loopProlog loopBody loopEpilog
             |            loopBody
             | loopProlog          loopEpilog
             ;
-loopProlog  : indexVars "variant" exprInLine
+loopProlog  : indexVars 'variant' exprInLine
             | indexVars
-            |           "variant" exprInLine
+            |           'variant' exprInLine
             ;
-loopBody    : "while" exprAtMinIndent      block
-            | "while" exprAtMinIndent "do" block
-            |                         "do" block
+loopBody    : 'while' exprAtMinIndent      block
+            | 'while' exprAtMinIndent 'do' block
+            |                         'do' block
             ;
-loopEpilog  : "until" exprAtMinIndent thenPart elseBlockOpt
+loopEpilog  : 'until' exprAtMinIndent thenPart elseBlockOpt
             |                                  elseBlock
             ;
    */
@@ -2635,7 +2630,7 @@ loopEpilog  : "until" exprAtMinIndent thenPart elseBlockOpt
   /**
    * Parse IndexVars
    *
-indexVars   : "for" indexVar (semi indexVars)
+indexVars   : 'for' indexVar (semi indexVars)
             |
             ;
    */
@@ -2664,7 +2659,7 @@ indexVar    : visibility
               |      contract implFldIter
               )
             ;
-implFldIter : "in" exprInLine;
+implFldIter : 'in' exprInLine;
 nextValue   : COMMA exprAtMinIndent
             |
             ;
@@ -2755,7 +2750,7 @@ cond        : exprInLine
   /**
    * Parse ifstmnt
    *
-ifstmnt      : "if" exprInLine thenPart elseBlockOpt
+ifstmnt      : 'if' exprInLine thenPart elseBlockOpt
             ;
    */
   If ifstmnt()
@@ -2788,7 +2783,7 @@ ifstmnt      : "if" exprInLine thenPart elseBlockOpt
   /**
    * Parse thenPart
    *
-thenPart    : "then" block
+thenPart    : 'then' block
             |        block
             ;
    */
@@ -2807,7 +2802,7 @@ thenPart    : "then" block
 elseBlockOpt: elseBlock
             |
             ;
-elseBlock   : "else" ( ifstmnt
+elseBlock   : 'else' ( ifstmnt
                      | block
                      )
             ;
@@ -2851,7 +2846,7 @@ elseBlock   : "else" ( ifstmnt
   /**
    * Parse checksmnt
    *
-checkstmt   : "check" cond
+checkstmt   : 'check' cond
             ;
    */
   Stmnt checkstmnt()
@@ -2876,7 +2871,7 @@ checkstmt   : "check" cond
   /**
    * Parse assign
    *
-assign      : "set" name ":=" exprInLine
+assign      : 'set' name ':=' exprInLine
             ;
    */
   Stmnt assign()
@@ -2920,11 +2915,11 @@ destructure : destructr
             | destructrDcl
             | destructrSet
             ;
-destructr   : "(" argNames ")"       ":=" exprInLine
+destructr   : '(' argNames ')'       ':=' exprInLine
             ;
-destructrDcl: formArgs               ":=" exprInLine
+destructrDcl: formArgs               ':=' exprInLine
             ;
-destructrSet: "set" "(" argNames ")" ":=" exprInLine
+destructrSet: 'set' '(' argNames ')' ':=' exprInLine
             ;
    */
   Stmnt destructure()
@@ -3063,7 +3058,7 @@ anonymous   : returnType
   /**
    * Parse qualThis
    *
-qualThis    : name ( dot name )* dot "this"
+qualThis    : name ( dot name )* dot 'this'
             ;
    */
   This qualThis()
@@ -3162,7 +3157,7 @@ contract    : require
   /**
    * Parse require
    *
-require     : "pre" condList
+require     : 'pre' condList
             |
             ;
    */
@@ -3181,7 +3176,7 @@ require     : "pre" condList
   /**
    * Parse ensure
    *
-ensure      : "post" condList
+ensure      : 'post' condList
             |
             ;
    */
@@ -3200,7 +3195,7 @@ ensure      : "post" condList
   /**
    * Parse invariant
    *
-invariant   : "inv" condList
+invariant   : 'inv' condList
             |
             ;
    */
@@ -3241,9 +3236,9 @@ condList    : cond ( COMMA condList
    * Parse implRout
    *
 implRout    : block
-            | "is" "abstract"
-            | "is" "intrinsic"
-            | "is" block
+            | 'is' 'abstract'
+            | 'is' 'intrinsic'
+            | 'is' block
             | ARROW e=block
             ;
    */
@@ -3297,9 +3292,9 @@ implFldOrRout   : implRout
   /**
    * Parse implFldInitOrUndef
    *
-implFldInit : ":=" exprAtMinIndent
+implFldInit : ':=' exprAtMinIndent
             ;
-implFldUndef: ":=" "?"
+implFldUndef: ':=' '?'
             ;
    */
   Impl implFldInitOrUndef(boolean hasType, boolean maybeUndefined)
@@ -3417,10 +3412,10 @@ type        : onetype ( PIPE onetype ) *
   /**
    * Parse onetype
    *
-onetype     : "ref" simpletype
-            | "fun" funArgsOpt typeOpt
-            | simpletype "->" simpletype
-            | funArgs "->" simpletype
+onetype     : 'ref' simpletype
+            | 'fun' funArgsOpt typeOpt
+            | simpletype '->' simpletype
+            | funArgs '->' simpletype
             | t=simpletype
             ;
 funArgs     : LPAREN a=typeList RPAREN
@@ -3638,7 +3633,7 @@ comma       : COMMA
   /**
    * Parse colon if it is found
    *
-colon       : ":"
+colon       : ':'
             ;
    *
    * @return true iff a colon was found and skipped.
@@ -3650,9 +3645,9 @@ colon       : ":"
 
 
   /**
-   * Parse "." if it is found
+   * Parse '.' if it is found
    *
-dot         : "."
+dot         : '.'
             ;
    *
    * @return true iff a "." was found and skipped.
