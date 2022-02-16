@@ -883,6 +883,26 @@ public class Lexer extends SourceFile
                                                    : skipOp();
               break;
             }
+          /**
+OPERATOR  : ( '!'
+            | '$'
+            | '%'
+            | '&'
+            | '*'
+            | '+'
+            | '-'
+            | '.'
+            | ':'
+            | '<'
+            | '='
+            | '>'
+            | '?'
+            | '^'
+            | '|'
+            | '~'
+            )+
+          ;
+          */
           case K_OP      :   // '+'|'-'|'*'|'%'|'|'|'~'|'!'|'$'|'&'|'@'|':'|'<'|'>'|'='|'^'|'.')+;
             {
               token = skipOp();
@@ -1006,6 +1026,17 @@ NUM_LITERAL : [0-9]+
               token = Token.t_numliteral;
               break;
             }
+          /**
+IDENT     : ( 'a'..'z'
+            | 'A'..'Z'
+            )
+            ( 'a'..'z'
+            | 'A'..'Z'
+            | '0'..'9'
+            | '_'
+            )*
+          ;
+          */
           case K_LETTER  :    // 'A'..'Z', 'a'..'z'
             {
               while (partOfIdentifier(curCodePoint()))
@@ -1187,10 +1218,12 @@ NUM_LITERAL : [0-9]+
    *
 LITERAL     : DIGITS_W_DOT EXPONENT
             ;
+fragment
 EXPONENT    : "E" PLUSMINUS DIGITS
             | "P" PLUSMINUS DIGITS
             |
             ;
+fragment
 PLUSMINUS   : "+"
             | "-"
             |
@@ -1454,6 +1487,7 @@ DIGITS_W_DOT: DIGITS
             | "0" "d" DEC_DIGIT_ DEC_DIGITS_ DEC_TAIL
             | "0" "x" HEX_DIGIT_ HEX_DIGITS_ HEX_TAIL
             ;
+fragment
 UNDERSCORE  : "_"
             |
             ;
@@ -1461,9 +1495,11 @@ BIN_DIGIT   : "0" | "1"
             ;
 BIN_DIGIT_  : UNDERSCORE BIN_DIGIT
             ;
+fragment
 BIN_DIGITS_ : BIN_DIGIT_ BIN_DIGITS_
             |
             ;
+fragment
 BIN_DIGITS  : BIN_DIGIT BIN_DIGITS
             |
             ;
@@ -1473,9 +1509,11 @@ OCT_DIGIT   : "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7"
             ;
 OCT_DIGIT_  : UNDERSCORE OCT_DIGIT
             ;
+fragment
 OCT_DIGITS_ : OCT_DIGIT_ OCT_DIGITS_
             |
             ;
+fragment
 OCT_DIGITS  : OCT_DIGIT OCT_DIGITS
             |
             ;
@@ -1485,9 +1523,11 @@ DEC_DIGIT   : "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9"
             ;
 DEC_DIGIT_  : UNDERSCORE DEC_DIGIT
             ;
+fragment
 DEC_DIGITS_ : DEC_DIGIT_ DEC_DIGITS_
             |
             ;
+fragment
 DEC_DIGITS  : DEC_DIGIT DEC_DIGITS
             |
             ;
@@ -1499,9 +1539,11 @@ HEX_DIGIT   : "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9"
             ;
 HEX_DIGIT_  : UNDERSCORE HEX_DIGIT
             ;
+fragment
 HEX_DIGITS_ : HEX_DIGIT_ HEX_DIGITS_
             |
             ;
+fragment
 HEX_DIGITS  : HEX_DIGIT HEX_DIGITS
             |
             ;
@@ -1873,6 +1915,15 @@ HEX_TAIL    : "." HEX_DIGITS
    * Match the current token with the given operator, i.e, check that current()
    * is Token.t_op and the operator is op.  If so, advance to the next token
    * using next(). Otherwise, cause a syntax error.
+   *
+COLON       : ":"
+            ;
+
+ARROW       : "=>"
+            ;
+
+PIPE        : "|"
+            ;
    *
    * @param op the operator we want to see
    *
@@ -2571,6 +2622,11 @@ HEX_TAIL    : "." HEX_DIGITS
 
   /**
    * Parse singe-char t_op.
+   *
+STAR        : "*"
+            ;
+QUESTION    : "?"
+            ;
    *
    * @param op the single-char operator
    *

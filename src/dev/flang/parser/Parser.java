@@ -1530,7 +1530,7 @@ actualsLstC : COMMA expr actualsLstC
   /**
    * A bracketTerm
    *
-bracketTerm : block
+bracketTerm : brblock
             | klammer
             | inlineArray
             ;
@@ -1545,7 +1545,7 @@ bracketTerm : block
     var c = current();
     switch (c)
       {
-      case t_lbrace  : return block(false);
+      case t_lbrace  : return brblock(false);
       case t_lparen  : return klammer();
       case t_lcrochet: return inlineArray();
       default: throw new Error("Unexpected case: "+c);
@@ -1949,10 +1949,17 @@ simpleterm  : bracketTerm
   /**
    * Parse stringTerm
    *
-stringTerm  : STRING
-            // NYI string interpolation
-            // | STRING$ ident stringTerm
-            // | STRING{ block stringTerm
+stringTerm  : '&quot;any chars&quot;'
+            | '&quot; any chars &dollar;' IDENT stringTermD
+            | '&quot; any chars{' block stringTermB
+            ;
+stringTermD : 'any chars&quot;'
+            | 'any chars&dollar;' IDENT stringTermD
+            | 'any chars{' block stringTermB
+            ;
+stringTermB : '}any chars&quot;'
+            | '}any chars&dollar;' IDENT stringTermD
+            | '}any chars{' block stringTermB
             ;
   */
   Expr stringTerm(Expr leftString)
@@ -2364,7 +2371,8 @@ caseBlock   : ARROW          // if followed by '|'
   /**
    * Parse block
    *
-block       : BRACEL stmnts BRACER
+block       : stmnts
+            | brblock
             ;
    */
   Block block(boolean mayBeAtMinIndent)
@@ -2394,13 +2402,26 @@ block       : BRACEL stmnts BRACER
       }
     else
       {
-        return bracketTermWithNLs(mayBeAtMinIndent, BRACES, "block",
-                                  () -> {
-                                    var l = stmnts();
-                                    var pos2 = posObject();
-                                    return new Block(pos1, pos2, l);
-                                  });
+        return brblock(mayBeAtMinIndent);
       }
+  }
+
+
+  /**
+   * Parse block
+   *
+brblock     : BRACEL stmnts BRACER
+            ;
+   */
+  Block brblock(boolean mayBeAtMinIndent)
+  {
+    SourcePosition pos1 = posObject();
+    return bracketTermWithNLs(mayBeAtMinIndent, BRACES, "block",
+                              () -> {
+                                var l = stmnts();
+                                var pos2 = posObject();
+                                return new Block(pos1, pos2, l);
+                              });
   }
 
 
