@@ -28,7 +28,6 @@ package dev.flang.parser;
 
 import java.nio.file.Path;
 
-import dev.flang.util.Callable;
 import dev.flang.util.Errors;
 import dev.flang.util.List;
 import dev.flang.util.SourcePosition;
@@ -1840,8 +1839,8 @@ plainLambda : argNames lambda
   /**
    * Parse inlineArray
    *
-inlineArray : LBRACKET expr (COMMA expr)+ RBRACKET
-            | LBRACKET expr (SEMI  expr)+ RBRACKET
+inlineArray : LBRACKET expr (COMMA expr)+ COMMA? RBRACKET
+            | LBRACKET expr (SEMI  expr)+ SEMI?  RBRACKET
             ;
    */
   Expr inlineArray()
@@ -1855,7 +1854,8 @@ inlineArray : LBRACKET expr (COMMA expr)+ RBRACKET
                          var s = sep;
                          var p1 = pos();
                          boolean reportedMixed = false;
-                         while ((s == Token.t_comma || s == Token.t_semicolon) && skip(s))
+                         var end = CROCHETS[1];
+                         while ((s == Token.t_comma || s == Token.t_semicolon) && skip(s) && current() != end)
                            {
                              elements.add(expr());
                              s = current();
