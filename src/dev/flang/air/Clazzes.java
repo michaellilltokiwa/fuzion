@@ -82,6 +82,7 @@ public class Clazzes extends ANY
   private static final Map<Clazz, Clazz> clazzes = new TreeMap<>();
   private static final Map<AbstractType, Clazz> _clazzesForTypes_ = new TreeMap<>();
 
+
   /**
    * All clazzes found so far that have not been analyzed yet for clazzes that
    * they require.
@@ -506,6 +507,10 @@ public class Clazzes extends ANY
    */
   static void calledDynamically(AbstractFeature f)
   {
+    if (PRECONDITIONS) require
+      (isUsedAtAll(f),
+       f.generics().list.isEmpty());
+
     if (!_calledDynamically_.contains(f))
       {
         _calledDynamically_.add(f);
@@ -814,7 +819,12 @@ public class Clazzes extends ANY
 
     var tclazz  = clazz(c.target(), outerClazz);
     var cf      = c.calledFeature();
-    var dynamic = c.isDynamic() && tclazz.isRef();
+    var callToOuterRef = c.target().isCallToOuterRef();
+    boolean dynamic = c.isDynamic() && (tclazz.isRef() || callToOuterRef);
+    if (callToOuterRef)
+      {
+        tclazz._isCalledAsOuter = true;
+      }
     if (dynamic)
       {
         calledDynamically(cf);
@@ -828,32 +838,6 @@ public class Clazzes extends ANY
           }
         outerClazz.setRuntimeData(c.sid_ + 0, innerClazz);
         outerClazz.setRuntimeData(c.sid_ + 1, tclazz    );
-
-        if (!dynamic)
-          {
-            whenCalled(outerClazz,
-                       () ->
-                       {
-                         var ic = innerClazz.isCalled();
-                         innerClazz._isCalledDirectly = true;  // NYI: Check why this is needed
-                         if (!c.isInheritanceCall())
-                           {
-                             innerClazz.instantiated(c);
-                           }
-                         if (!ic && innerClazz.isCalled())
-                           {
-                             var l = _whenCalled_.remove(innerClazz);
-                             if (l != null)
-                               {
-                                 for (var r : l)
-                                   {
-                                     r.run();
-                                   }
-                               }
-                           }
-                       });
-          }
-
         var afs = innerClazz.argumentFields();
         var i = 0;
         for (var a : c.actuals())
@@ -1261,17 +1245,6 @@ public class Clazzes extends ANY
     f._usedAt = at;
   }
 
-
-  /**
-   * Has f been found to be called dynamically?
-   *
-   * NYI: remove, redundant with isCalledDynamically.
-   */
-  public static boolean isCalledDynamically0(AbstractFeature f)
-  {
-    return f._calledDynamically;
-  }
-
   public static void clear()
   {
     clazzes.clear();
@@ -1312,18 +1285,6 @@ public class Clazzes extends ANY
     conststring = new OnDemandClazz(() -> Types.resolved.t_conststring, true /* needed? */);
     c_unit = new OnDemandClazz(() -> Types.resolved.t_unit);
     error = new OnDemandClazz(() -> Types.t_ERROR);
-  }
-
-
-  /**
-   * Add f to the set of dynamically called features, record at as the position
-   * of the first use.
-   *
-   * NYI: remove, redundant with isCalledDynamically.
-   */
-  public static void setCalledDynamically0(AbstractFeature f)
-  {
-    f._calledDynamically = true;
   }
 
 }
