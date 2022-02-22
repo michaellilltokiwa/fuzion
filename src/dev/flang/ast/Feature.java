@@ -808,6 +808,17 @@ public class Feature extends AbstractFeature implements Stmnt
     return _impl.kind_;
   }
 
+
+  /**
+   * Is this an intrinsic feature that creates an instance of its result ref
+   * type?
+   */
+  public boolean isIntrinsicConstructor()
+  {
+    return _impl == Impl.INTRINSIC_CONSTRUCTOR;
+  }
+
+
   /**
    * get the initial value of this feature.
    */
@@ -2209,8 +2220,10 @@ public class Feature extends AbstractFeature implements Stmnt
    */
   boolean hasThisType()
   {
-    return _impl != Impl.INTRINSIC && _impl != Impl.ABSTRACT
-      && !isField();
+    return
+      _impl.kind_ != Impl.Kind.Intrinsic &&
+      _impl.kind_ != Impl.Kind.Abstract  &&
+      !isField();
   }
 
 
@@ -2336,10 +2349,7 @@ public class Feature extends AbstractFeature implements Stmnt
   public AbstractFeature outerRef()
   {
     if (PRECONDITIONS) require
-      (isUniverse() || (this == Types.f_ERROR) || outer() != null,
-       (this == Types.f_ERROR) ||
-       _state.atLeast(State.RESOLVED_DECLARATIONS) &&
-       (!_state.atLeast(State.CHECKING_TYPES2) || outerRef_ != null || !hasOuterRef()));
+      (_state.atLeast(State.RESOLVED_DECLARATIONS));
 
     Feature result = outerRef_;
 
