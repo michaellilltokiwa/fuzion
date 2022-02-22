@@ -71,3 +71,10 @@ numerics<T : numeric<T>> is
     redef infix ∙ (a, b T) T is a *^ b
     redef infix == (a, b T) bool is a == b
     redef e T is one
+
+  # monoid of numeric. counts amount of values
+  #
+  count : Monoid<T> is
+    redef infix ∙ (a, b T) T is a + one
+    redef infix == (a, b T) bool is a == b
+    redef e T is zero
