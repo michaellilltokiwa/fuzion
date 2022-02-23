@@ -72,11 +72,13 @@ float<T: float<T>> : numeric<T>, hasInterval<T>, floats<T> is
   #  IEEE_754 5.4.1
   squareRoot T is abstract
 
-  convertToIntegerTiesToEven<U>(exact bool) integer<U> is abstract
-  convertToIntegerTowardZero<U>(exact bool) integer<U> is abstract
-  convertToIntegerTowardPositive<U>(exact bool) integer<U> is abstract
-  convertToIntegerTowardNegative<U>(exact bool) integer<U> is abstract
-  convertToIntegerTiesToAway<U>(exact bool) integer<U> is abstract
+  # https://stackoverflow.com/questions/32746523/ieee-754-compliant-round-half-to-even
+  roundeven<U>(exact bool) integer<U> is abstract     # convertToIntegerTiesToEven
+  trunc<U>(exact bool) integer<U> is abstract         # convertToIntegerTowardZero
+  ceil<U>(exact bool) integer<U> is abstract          # convertToIntegerTowardPositive
+  floor<U>(exact bool) integer<U> is abstract         # convertToIntegerTowardNegative
+  round<U>(exact bool) integer<U> is abstract         # convertToIntegerTiesToAway
+  rint<U> => round true
 
   #  IEEE_754 5.4.2 NYI
   #  IEEE_754 5.4.3 NYI

@@ -55,6 +55,7 @@ f64(val f64) : float<f64>, hasInterval<f64>, f64s is
 
 
   # conversion
+  # might be better to have ppl explicitly use round, ceil, floor etc.
   as_i64 i64
     pre
       safety: f64.this >= f64s.from_i64 i64.min && f64.this <= from_i64 i64.max
