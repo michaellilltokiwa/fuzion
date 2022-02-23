@@ -55,8 +55,21 @@ floats<T: float<T>> : numerics<T> is
 
   # minPositive => # NYI:1.4E-45
 
-  # nan => ...
+  # 5.4.1
+  fusedMultiplyAdd(x,y,y T) T is intrinsic
+  convertFromInt<U>(int integer<U>) T is intrinsic
 
-  # infinity =>
+  # 5.7.2
+  signalingNaN is
+  quietNaN is
+  negativeInfinity is
+  negativeNormal is
+  negativeSubnormal is
+  negativeZero is
+  positiveZero is
+  positiveSubnormal is
+  positiveNormal is
+  positiveInfinity is
 
-  # negInfinity T is abstract
+
+

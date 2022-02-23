@@ -44,3 +44,99 @@ float<T: float<T>> : numeric<T>, hasInterval<T>, floats<T> is
   redef infix /! (other T) bool is true
   redef infix %! (other T) bool is true
   redef infix **!(other T) bool is true
+
+  # IEEE_754 5.3.1
+  roundToIntegralTiesToEven T is abstract
+  roundToIntegralTiesToAway T is abstract
+  roundToIntegralTowardZero T is abstract
+  roundToIntegralTowardPositive T is abstract
+  roundToIntegralTowardNegative T is abstract
+  roundToIntegralExact T is abstract
+  nextUp T is abstract
+  nextDown T is abstract
+  remainder(other T) T is abstract
+  minNum(other T) T is abstract
+  maxNum(other T) T is abstract
+  minNumMag(other T) T is abstract
+  maxNumMag(other T) T is abstract
+
+  #  IEEE_754 5.3.2
+  quantize(other T) T is abstract
+
+  #  IEEE_754 5.3.3
+  logBFormat is
+  scaleB (logBFormat logBFormat) T is abstract
+  logB logBFormat is abstract
+
+
+  #  IEEE_754 5.4.1
+  squareRoot T is abstract
+
+  convertToIntegerTiesToEven<U>(exact bool) integer<U> is abstract
+  convertToIntegerTowardZero<U>(exact bool) integer<U> is abstract
+  convertToIntegerTowardPositive<U>(exact bool) integer<U> is abstract
+  convertToIntegerTowardNegative<U>(exact bool) integer<U> is abstract
+  convertToIntegerTiesToAway<U>(exact bool) integer<U> is abstract
+
+  #  IEEE_754 5.4.2 NYI
+  #  IEEE_754 5.4.3 NYI
+  #  IEEE_754 5.5 NYI
+  #  IEEE_754 5.6 comparisons partially NYI
+
+  #  IEEE_754 5.7.2 NYI
+
+  # class signalingNaN
+  #   | quietNaN
+  #   | negativeInfinity
+  #   | negativeNormal
+  #   | negativeSubnormal
+  #   | negativeZero
+  #   | positiveZero
+  #   | positiveSubnormal
+  #   | positiveNormal
+  #   | positiveInfinity is intrinsic
+
+  # isSignMinus =>
+  #   match class
+  #     signalingNaN => true
+  #     quietNaN => true
+  #     negativeInfinity => true
+  #     negativeNormal => true
+  #     negativeSubnormal => true
+  #     negativeZero => true
+  #     positiveZero => true
+  #     positiveSubnormal => false
+  #     positiveNormal => false
+  #     positiveInfinity => false
+
+  # # not zero, subnormal, infinite, or NaN
+  # isNormal is
+  # isFinite is
+  # redef isZero =>
+  #   match class
+  #     signalingNaN => false
+  #     quietNaN => false
+  #     negativeInfinity => false
+  #     negativeNormal => false
+  #     negativeSubnormal => false
+  #     negativeZero => true
+  #     positiveZero => true
+  #     positiveSubnormal => false
+  #     positiveNormal => false
+  #     positiveInfinity => false
+  # isSubnormal bool is
+  # isInfinite bool is
+  # isNaN bool is
+  # isSignaling bool is
+  # isCanonical bool is
+  # radixTwo is
+  # radixTen is
+  # radix radixTwo | radixTen is radixTwo
+  # totalOrder(other T) is
+  # totalOrderMag(other T) is
+
+  # IEEE_754 5.7.3
+  # sameQuantum(other T) is
+
+  # IEEE_754 5.7.4 NYI
+  # IEEE_754 5.8 NYI
