@@ -29,23 +29,60 @@
 # usage: run_tests.sh <build-dir> <target>
 #
 
+# source: https://newbedev.com/parallelize-a-bash-for-loop
+# initialize a semaphore with a given number of tokens
+open_sem(){
+    mkfifo pipe-$$
+    exec 3<>pipe-$$
+    rm pipe-$$
+    local i=$1
+    for((;i>0;i--)); do
+        printf %s 000 >&3
+    done
+}
+
+# source: https://newbedev.com/parallelize-a-bash-for-loop
+# run the given command asynchronously and pop/push tokens
+run_with_lock(){
+    local x
+    # this read waits until there is something to read
+    read -u 3 -n 3 x && ((0==x)) || exit "$x"
+    (
+     ( "$@"; )
+    # push the return code of the command to the semaphore
+    printf '%.3d' $? >&3
+    )&
+}
+
+# lower priority to prevent system getting unresponsive
+renice -n 19 $$ > /dev/null
+
 BUILD_DIR=$1
 TARGET=$2
 TESTS=$(echo "$BUILD_DIR"/tests/*/)
 rm -rf "$BUILD_DIR"/run_tests.results
+
+N=$(nproc --all)
+open_sem "$N"
+
 for test in $TESTS; do
-  if test -n "$VERBOSE"; then
-    echo -en "\nrun $test: "
-  fi
-  if test -e "$test"/skip -o -e "$test"/skip_"$TARGET"; then
-    echo -n "_"
-    echo "$test: skipped" >>"$BUILD_DIR"/run_tests.results
-  else
-      make "$TARGET" -e -C >"$test"/out.txt "$test" 2>/dev/null \
+  task(){
+    if test -n "$VERBOSE"; then
+      echo -en "\nrun $test: "
+    fi
+    if test -e "$test"/skip -o -e "$test"/skip_"$TARGET"; then
+      echo -n "_"
+      echo "$test: skipped" >>"$BUILD_DIR"/run_tests.results
+    else
+      (make "$TARGET" -e -C >"$test"/out.txt "$test" 2>/dev/null \
           && (echo -n "." && echo "$test: ok"     >>"$BUILD_DIR"/run_tests.results) \
-          || (echo -n "#" && echo "$test: failed" >>"$BUILD_DIR"/run_tests.results)
-fi
+          || (echo -n "#" && echo "$test: failed" >>"$BUILD_DIR"/run_tests.results))
+    fi
+  }
+  run_with_lock task
 done
+wait
+
 echo -n " $(cat "$BUILD_DIR"/run_tests.results | grep ok$      | wc -l)/$(echo "$TESTS" | wc -w) tests passed,"
 echo -n " $(cat "$BUILD_DIR"/run_tests.results | grep skipped$ | wc -l) skipped,"
 echo    " $(cat "$BUILD_DIR"/run_tests.results | grep failed$  | wc -l) failed."
