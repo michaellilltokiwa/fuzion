@@ -62,7 +62,7 @@ TARGET=$2
 TESTS=$(echo "$BUILD_DIR"/tests/*/)
 rm -rf "$BUILD_DIR"/run_tests.results
 
-N=$(nproc --all)
+N=$(nproc --all || echo 1)
 open_sem "$N"
 
 for test in $TESTS; do
