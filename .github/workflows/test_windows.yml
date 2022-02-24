@@ -1,0 +1,27 @@
+name: run_tests windows
+
+jobs:
+  run_tests:
+    name: run_tests windows
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: install choco
+        shell: powershell
+        run: Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
+
+      - name: install choco packages
+        shell: powershell
+        run: choco install git openjdk make msys2 diffutils
+
+      - name: uncomment MSYS2_PATH_TYPE=inherit
+        shell: powershell
+        run: (Get-Content 'C:\tools\msys64\msys2_shell.cmd') -replace 'rem set MSYS2_PATH_TYPE=inherit', 'set MSYS2_PATH_TYPE=inherit' | Set-Content 'C:\tools\msys64\msys2_shell.cmd'
+
+      - shell: powershell
+        run: pacman -S mingw-w64-x86_64-clang
+
+      - name: run tests
+        shell: msys2
+        run: make run_tests
