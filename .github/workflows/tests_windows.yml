@@ -25,6 +25,6 @@ jobs:
       - shell: powershell
         run: pacman -S mingw-w64-x86_64-clang
 
-      - name: run tests
-        shell: msys2
-        run: make run_tests
+#      - name: run tests
+#        shell: msys2
+#        run: make run_tests
