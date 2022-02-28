@@ -55,3 +55,10 @@ f32s : floats<f32> is
 
 
   from_i64(v i64) f32 is intrinsic
+
+  minExp f32 is intrinsic
+  maxExp f32 is intrinsic
+  min f32 is intrinsic
+  max f32 is intrinsic
+  epsilon f32 is intrinsic
+
