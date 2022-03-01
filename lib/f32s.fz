@@ -57,3 +57,4 @@ f32s : floats<f32> is
 
   redef squareRoot(val f32) f32 is intrinsic
 
+  redef parse(str string) f32 is intrinsic

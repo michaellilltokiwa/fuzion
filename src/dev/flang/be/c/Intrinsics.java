@@ -319,6 +319,9 @@ class Intrinsics extends ANY
       case "f64s.epsilon"        : return CExpr.ident("DBL_EPSILON").ret();
       case "f32s.squareRoot"     : return CExpr.call("sqrtf", new List<>(outer)).ret();
       case "f64s.squareRoot"     : return CExpr.call("sqrt", new List<>(outer)).ret();
+      // NYI Parsing should be implented in Fuzion, need to be able to set u8s in f32/f64
+      case "f32s.parse"          : return CExpr.call("strtof", new List<>(c.constStrToCharPtr(A0), new CIdent("NULL"))).ret();
+      case "f64s.parse"          : return CExpr.call("strtod", new List<>(c.constStrToCharPtr(A0), new CIdent("NULL"))).ret();
       case "Object.hashCode"     :
         {
           var hc = c._fuir.clazzIsRef(c._fuir.clazzResultClazz(or))

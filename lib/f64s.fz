@@ -62,3 +62,5 @@ f64s : floats<f64> is
   redef epsilon f64 is intrinsic
 
   redef squareRoot(val f64) f64 is intrinsic
+
+  redef parse(str string) f64 is intrinsic

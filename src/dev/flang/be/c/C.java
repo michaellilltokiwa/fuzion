@@ -758,6 +758,21 @@ public class C extends ANY
 
 
   /**
+   * For identifier a0 of type constString return expr to the data field cast to a char pointer
+   */
+  CExpr constStrToCharPtr(CIdent a0)
+  {
+    var internalArray = _names.fieldName(_fuir.clazz_conststring_internalArray());
+    var data          = _names.fieldName(_fuir.clazz_sysArray_u8_data());
+    var length        = _names.fieldName(_fuir.clazz_sysArray_u8_length());
+    return fields(a0.castTo("fzT__R1conststring*"), _fuir.clazz_conststring())
+      .field(internalArray)
+      .field(data)
+      .castTo("char*");
+  }
+
+
+  /**
    * Create code to assign value to a field
    *
    * @param stack the stack containing the value and the target instance
