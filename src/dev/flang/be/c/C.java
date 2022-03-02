@@ -555,8 +555,8 @@ public class C extends ANY
             case c_u16  -> CExpr.uint16const(ByteBuffer.wrap(d).order(ByteOrder.LITTLE_ENDIAN).getChar ());
             case c_u32  -> CExpr.uint32const(ByteBuffer.wrap(d).order(ByteOrder.LITTLE_ENDIAN).getInt  ());
             case c_u64  -> CExpr.uint64const(ByteBuffer.wrap(d).order(ByteOrder.LITTLE_ENDIAN).getLong ());
-            case c_f32  -> CExpr.   f32const(ByteBuffer.wrap(d).order(ByteOrder.LITTLE_ENDIAN).getFloat());
-            case c_f64  -> CExpr.   f64const(ByteBuffer.wrap(d).order(ByteOrder.LITTLE_ENDIAN).getDouble());
+            case c_f32  -> CExpr.   f32const(ByteBuffer.wrap(d).order(ByteOrder.LITTLE_ENDIAN));
+            case c_f64  -> CExpr.   f64const(ByteBuffer.wrap(d).order(ByteOrder.LITTLE_ENDIAN));
             case c_conststring ->
             {
               var tmp = _names.newTemp();

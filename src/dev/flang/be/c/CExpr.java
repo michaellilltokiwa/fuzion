@@ -29,7 +29,9 @@ package dev.flang.be.c;
 import dev.flang.util.ANY;
 import dev.flang.util.List;
 
+import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
+import java.util.BitSet;
 
 /**
  * CExpr provides infrastructure to generate C code expressions
@@ -247,13 +249,19 @@ abstract class CExpr extends CStmnt
    *
    * @return the resulting expression
    */
-  public static CExpr f32const(float value)
+  public static CExpr f32const(ByteBuffer byteBuffer)
   {
     return new CExpr()
     {
       void code(CString sb)
       {
-        sb.append(String.valueOf(value));
+        //type punning and compound literal compiler magic
+        sb.append("(*(float*)&((uint32_t){0b");
+        var bs = BitSet.valueOf(byteBuffer);
+        for (int i = 31; i >= 0; i--) {
+          sb.append(bs.get(i) ? "1": "0");
+        }
+        sb.append("}))");
       }
       int precedence() { return 0; }
     };
@@ -264,13 +272,19 @@ abstract class CExpr extends CStmnt
    *
    * @return the resulting expression
    */
-  public static CExpr f64const(double value)
+  public static CExpr f64const(ByteBuffer byteBuffer)
   {
     return new CExpr()
     {
       void code(CString sb)
       {
-        sb.append(String.valueOf(value));
+        //type punning and compound literal compiler magic
+        sb.append("(*(double*)&((uint64_t){0b");
+        var bs = BitSet.valueOf(byteBuffer);
+        for (int i = 63; i >= 0; i--) {
+          sb.append(bs.get(i) ? "1": "0");
+        }
+        sb.append("}))");
       }
       int precedence() { return 0; }
     };
