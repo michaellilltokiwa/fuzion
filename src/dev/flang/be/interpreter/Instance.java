@@ -52,7 +52,7 @@ public class Instance extends ValueWithClazz
   /**
    * Handy preallocated global instances to be used during execution:
    */
-  public static Instance universe;
+  public static Instance universe = new Instance(Clazzes.universe.get());
 
 
   /*----------------------------  variables  ----------------------------*/
