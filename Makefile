@@ -260,7 +260,9 @@ ALL = \
 	$(MOD_JAVA_DATATRANSFER) \
 	$(MOD_JAVA_DESKTOP) \
 	$(BUILD_DIR)/tests \
-	$(BUILD_DIR)/examples
+	$(BUILD_DIR)/examples \
+        $(BUILD_DIR)/README.md \
+        $(BUILD_DIR)/release_notes.md \
 
 DOCUMENTATION = \
 	$(BUILD_DIR)/doc/fumfile.html     # fum file format documentation created with asciidoc
@@ -275,6 +277,9 @@ all: $(ALL)
 # phony target to compile all java sources
 .PHONY: javac
 javac: $(CLASS_FILES_TOOLS) $(CLASS_FILES_TOOLS_FZJAVA)
+
+$(BUILD_DIR)/%.md: $(FZ_SRC)/%.md
+	cp $^ $@
 
 $(FUZION_EBNF): $(SRC)/dev/flang/parser/Parser.java
 	mkdir -p $(@D)
@@ -527,3 +532,13 @@ release: clean all
 .PHONY: shellcheck
 shellcheck:
 	shellcheck $(SHELL_SCRIPTS) $(shell find . -iname '*.sh' -not -path "./build/*")
+
+# show readme in browser, requires 'sudo apt install grip'
+.PHONY: show_readme
+show_readme:
+	grip -b README.md
+
+# show release notes in browser, requires 'sudo apt install grip'
+.PHONY: show_release_notes
+show_release_notes:
+	grip -b release_notes.md
