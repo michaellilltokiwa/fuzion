@@ -33,6 +33,95 @@ test is
       say "FAILED: $msg"
       set exitCode := 1
 
+  # this works only on x64 and similar...
+  as_binary_string(val f32|f64) =>
+    f64_to_bitset(val f64) =>
+      a u64 := val.castTo_u64
+      r := bitsets.empty
+      # NYI convert to for loop without set
+      for i in u64 0 .. 63 do
+        set a := if a % 2 == 1
+                   set r := r.put (u64 64 - i)
+                   (a - 1) / 2
+                 else
+                   a / 2
+      r
+
+    a := match val
+      f32 f32 => f64_to_bitset f32.as_f64
+      f64 f64 => f64_to_bitset f64
+
+    sign := if(a.has 1) "-" else "+"
+
+    isZero := (u64 2 .. 64) ∀ i -> !a.has i
+    isSubNormal := (u64 2 .. 12) ∀ i -> !a.has i
+    isInfinity := ((u64 2 .. 12) ∀ i -> a.has i) && ((u64 13 .. 64) ∀ i -> !a.has i)
+    isNaN := !a.has (u64 1) && ((u64 2 .. 64) ∀ i -> a.has i)
+    #0 11111111111 1000000000000000000000000000000000000000000000000001
+    isQNaN := !a.has (u64 1) && ((u64 2 .. 13) ∀ i -> a.has i) &&  ((u64 14 .. 63) ∀ i -> !a.has i) && a.has (u64 64)
+    #0 11111111111 1000000000000000000000000000000000000000000000000001
+    isSNaN := !a.has (u64 1) && ((u64 2 .. 12) ∀ i -> a.has i) &&  ((u64 13 .. 63) ∀ i -> !a.has i) && a.has (u64 64)
+
+    if isZero
+      "{sign}0"
+    else if isSubNormal
+      "subnormal"
+    else if isInfinity
+      "{sign}inf"
+    else if isNaN
+      "NaN"
+    else if isQNaN
+      "qNaN"
+    else if isSNaN
+      "sNaN"
+    else
+      exp:= (2..12)
+        .reduce<i32> -1023 (r, i -> if (a.has i.as_u64) r + 2**(12-i) else r)
+
+      as_hex(val i32)
+        pre val >= 0 && val < 16
+        =>
+        if val < 10
+          "$val"
+        else if val == 10
+          "A"
+        else if val == 11
+          "B"
+        else if val == 12
+          "C"
+        else if val == 13
+          "D"
+        else if val == 14
+          "E"
+        else if val == 15
+          "F"
+        else
+          "ERROR"
+
+      fraction =>
+        # fraction has 13*4 bits
+        (0 .. 12)
+          .reduce<string> "" (res, i ->
+            accum := (0..3)
+              .reduce<i32> 0 (r, j ->
+                # bit is set: add 2^3-j to result
+                if a.has (13+i*4+j).as_u64
+                  r + 2**(3-j)
+                else
+                  r
+              )
+            res + as_hex accum
+            )
+
+      trimmed_fraction := strings.fromBytes (fraction
+        .utf8
+        .asList
+        .reverse
+        .dropWhile (u -> u == "0".utf8.first)
+        .reverse)
+
+      "{sign}1.{trimmed_fraction}P{exp}"
+
 #TEST_DEFINITIONS#
 
   fuzion.std.exit exitCode
