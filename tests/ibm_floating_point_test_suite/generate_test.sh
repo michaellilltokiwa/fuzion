@@ -179,7 +179,7 @@ for file in test_suite/*Basic*.fptest; do
 
           operation="$(transliterateOperation "${vars[0]:3:99}" "$fx")"
 
-          TEST_DEFINITIONS="$TEST_DEFINITIONS  chck \"$line\" ($var1 $operation $var2 == $var3)$EOL"
+          TEST_DEFINITIONS="$TEST_DEFINITIONS  chck \"$line RESULT: {$var1 $operation $var2}\" ($var1 $operation $var2 == $var3)$EOL"
         # unary operations
         elif [[  ${vars[0]:3:99} == "V"
               || ${vars[0]:3:99} == "~"
@@ -196,7 +196,7 @@ for file in test_suite/*Basic*.fptest; do
 
           operation="$(transliterateOperation "${vars[0]:3:99}" "$fx")"
 
-          TEST_DEFINITIONS="$TEST_DEFINITIONS  chck \"$line\" (($operation$var1) == $var2)$EOL"
+          TEST_DEFINITIONS="$TEST_DEFINITIONS  chck \"$line RESULT: {$operation$var1}\" (($operation$var1) == $var2)$EOL"
         fi
       fi
     done <<< "$TESTS"
