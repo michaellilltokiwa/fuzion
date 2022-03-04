@@ -104,6 +104,15 @@ for file in test_suite/*Basic*.fptest; do
     TESTS="$(grep -E '^(d64|b32)' "$file" || true)"
     while IFS= read -r line; do
       if [ -n "$line" ]; then
+        # skip tests for subnormal numbers
+        if [[  $line =~ .*e29.*
+            || $line =~ .*e3.*
+            || $line =~ .*e-29.*
+            || $line =~ .*e-3.*
+            ]]; then
+          continue
+        fi
+
         echo "processing line: $line"
 
         # split line into array
