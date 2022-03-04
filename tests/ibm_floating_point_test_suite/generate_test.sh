@@ -177,6 +177,11 @@ for file in test_suite/*Basic*.fptest; do
           # result of operation
           var3="$(transliterateNumber "${vars[$offset + 3]}" "$fx")"
 
+          # NYI check NaN result
+          if [[  $var3 =~ .*NaN.* ]]; then
+            continue
+          fi
+
           operation="$(transliterateOperation "${vars[0]:3:99}" "$fx")"
 
           TEST_DEFINITIONS="$TEST_DEFINITIONS  chck \"$line RESULT: {$var1 $operation $var2}\" ($var1 $operation $var2 == $var3)$EOL"
@@ -193,6 +198,11 @@ for file in test_suite/*Basic*.fptest; do
 
           var1="$(transliterateNumber "${vars[$offset]}" "$fx")"
           var2="$(transliterateNumber "${vars[$offset + 2]}" "$fx")"
+
+          # NYI check NaN result
+          if [[  $var2 =~ .*NaN.* ]]; then
+            continue
+          fi
 
           operation="$(transliterateOperation "${vars[0]:3:99}" "$fx")"
 
