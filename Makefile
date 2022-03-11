@@ -24,34 +24,48 @@
 # -----------------------------------------------------------------------
 
 JAVA = java
-JAVAC = javac -encoding UTF8 -source 16
+JAVAC = javac -encoding UTF8 -source 17
 FZ_SRC = $(patsubst %/,%,$(dir $(lastword $(MAKEFILE_LIST))))
 SRC = $(FZ_SRC)/src
 BUILD_DIR = ./build
 CLASSES_DIR = $(BUILD_DIR)/classes
-TESTS=$(shell echo $(BUILD_DIR)/tests/*/)
 
 JAVA_FILES_UTIL = \
           $(SRC)/dev/flang/util/ANY.java \
           $(SRC)/dev/flang/util/Callable.java \
+          $(SRC)/dev/flang/util/DataOut.java \
           $(SRC)/dev/flang/util/Errors.java \
           $(SRC)/dev/flang/util/FuzionOptions.java \
           $(SRC)/dev/flang/util/FuzionConstants.java \
+          $(SRC)/dev/flang/util/HasSourcePosition.java \
+          $(SRC)/dev/flang/util/HexDump.java \
           $(SRC)/dev/flang/util/Intervals.java \
           $(SRC)/dev/flang/util/List.java \
           $(SRC)/dev/flang/util/Map2Int.java \
           $(SRC)/dev/flang/util/MapComparable2Int.java \
           $(SRC)/dev/flang/util/Profiler.java \
+          $(SRC)/dev/flang/util/SourceDir.java \
           $(SRC)/dev/flang/util/SourceFile.java \
           $(SRC)/dev/flang/util/SourcePosition.java \
           $(SRC)/dev/flang/util/Terminal.java \
           $(SRC)/dev/flang/util/UnicodeData.java \
+          $(SRC)/dev/flang/util/YesNo.java \
 
 JAVA_FILES_UTIL_UNICODE = \
           $(SRC)/dev/flang/util/unicode/ParseUnicodeData.java \
 
 JAVA_FILES_AST = \
+          $(SRC)/dev/flang/ast/AbstractAssign.java \
+          $(SRC)/dev/flang/ast/AbstractBlock.java \
+          $(SRC)/dev/flang/ast/AbstractCall.java \
+          $(SRC)/dev/flang/ast/AbstractCase.java \
+          $(SRC)/dev/flang/ast/AbstractConstant.java \
+          $(SRC)/dev/flang/ast/AbstractCurrent.java \
+          $(SRC)/dev/flang/ast/AbstractFeature.java \
+          $(SRC)/dev/flang/ast/AbstractMatch.java \
+          $(SRC)/dev/flang/ast/AbstractType.java \
           $(SRC)/dev/flang/ast/Assign.java \
+          $(SRC)/dev/flang/ast/AstErrors.java \
           $(SRC)/dev/flang/ast/Block.java \
           $(SRC)/dev/flang/ast/BoolConst.java \
           $(SRC)/dev/flang/ast/Box.java \
@@ -60,20 +74,23 @@ JAVA_FILES_AST = \
           $(SRC)/dev/flang/ast/Check.java \
           $(SRC)/dev/flang/ast/Cond.java \
           $(SRC)/dev/flang/ast/Consts.java \
+          $(SRC)/dev/flang/ast/Constant.java \
           $(SRC)/dev/flang/ast/Contract.java \
           $(SRC)/dev/flang/ast/Current.java \
           $(SRC)/dev/flang/ast/Destructure.java \
+          $(SRC)/dev/flang/ast/Env.java \
           $(SRC)/dev/flang/ast/Expr.java \
-          $(SRC)/dev/flang/ast/FeErrors.java \
+          $(SRC)/dev/flang/ast/ExprWithPos.java \
           $(SRC)/dev/flang/ast/Feature.java \
           $(SRC)/dev/flang/ast/FeatureName.java \
           $(SRC)/dev/flang/ast/FeatureVisitor.java \
+          $(SRC)/dev/flang/ast/FeaturesAndOuter.java \
           $(SRC)/dev/flang/ast/FormalGenerics.java \
           $(SRC)/dev/flang/ast/Function.java \
           $(SRC)/dev/flang/ast/FunctionReturnType.java \
           $(SRC)/dev/flang/ast/Generic.java \
           $(SRC)/dev/flang/ast/If.java \
-          $(SRC)/dev/flang/ast/InitArray.java \
+          $(SRC)/dev/flang/ast/InlineArray.java \
           $(SRC)/dev/flang/ast/Impl.java \
           $(SRC)/dev/flang/ast/IncompatibleResultsOnBranches.java \
           $(SRC)/dev/flang/ast/Loop.java \
@@ -85,6 +102,8 @@ JAVA_FILES_AST = \
           $(SRC)/dev/flang/ast/RefType.java \
           $(SRC)/dev/flang/ast/Resolution.java \
           $(SRC)/dev/flang/ast/ReturnType.java \
+          $(SRC)/dev/flang/ast/SrcModule.java \
+          $(SRC)/dev/flang/ast/StatementVisitor.java \
           $(SRC)/dev/flang/ast/Stmnt.java \
           $(SRC)/dev/flang/ast/StrConst.java \
           $(SRC)/dev/flang/ast/Tag.java \
@@ -104,22 +123,32 @@ JAVA_FILES_PARSER = \
           $(SRC)/dev/flang/parser/Parser.java \
 
 JAVA_FILES_IR = \
-          $(SRC)/dev/flang/ir/Backend.java \
-          $(SRC)/dev/flang/ir/BackendCallable.java \
-          $(SRC)/dev/flang/ir/Clazz.java \
-          $(SRC)/dev/flang/ir/Clazzes.java \
-          $(SRC)/dev/flang/ir/DynamicBinding.java \
-          $(SRC)/dev/flang/ir/IrErrors.java \
+          $(SRC)/dev/flang/ir/IR.java \
 
 JAVA_FILES_MIR = \
           $(SRC)/dev/flang/mir/MIR.java \
+          $(SRC)/dev/flang/mir/MirModule.java \
 
 JAVA_FILES_FE = \
+          $(SRC)/dev/flang/fe/DFA.java \
+          $(SRC)/dev/flang/fe/FeErrors.java \
           $(SRC)/dev/flang/fe/FrontEnd.java \
           $(SRC)/dev/flang/fe/FrontEndOptions.java \
+          $(SRC)/dev/flang/fe/GenericType.java \
+          $(SRC)/dev/flang/fe/LibraryCall.java \
+          $(SRC)/dev/flang/fe/LibraryFeature.java \
+          $(SRC)/dev/flang/fe/LibraryModule.java \
+          $(SRC)/dev/flang/fe/LibraryOut.java \
+          $(SRC)/dev/flang/fe/LibraryType.java \
+          $(SRC)/dev/flang/fe/Module.java \
+          $(SRC)/dev/flang/fe/NormalType.java \
+          $(SRC)/dev/flang/fe/SourceModule.java \
 
 JAVA_FILES_AIR = \
           $(SRC)/dev/flang/air/AIR.java \
+          $(SRC)/dev/flang/air/AirErrors.java \
+          $(SRC)/dev/flang/air/Clazz.java \
+          $(SRC)/dev/flang/air/Clazzes.java \
 
 JAVA_FILES_ME = \
           $(SRC)/dev/flang/me/MiddleEnd.java \
@@ -132,8 +161,10 @@ JAVA_FILES_OPT = \
 
 JAVA_FILES_BE_INTERPRETER = \
           $(SRC)/dev/flang/be/interpreter/ArrayData.java \
+          $(SRC)/dev/flang/be/interpreter/BackendCallable.java \
           $(SRC)/dev/flang/be/interpreter/Callable.java \
           $(SRC)/dev/flang/be/interpreter/ChoiceIdAsRef.java \
+          $(SRC)/dev/flang/be/interpreter/DynamicBinding.java \
           $(SRC)/dev/flang/be/interpreter/Instance.java \
           $(SRC)/dev/flang/be/interpreter/Interpreter.java \
           $(SRC)/dev/flang/be/interpreter/JavaInterface.java \
@@ -142,6 +173,7 @@ JAVA_FILES_BE_INTERPRETER = \
           $(SRC)/dev/flang/be/interpreter/LValue.java \
           $(SRC)/dev/flang/be/interpreter/Intrinsics.java \
           $(SRC)/dev/flang/be/interpreter/Value.java \
+          $(SRC)/dev/flang/be/interpreter/ValueWithClazz.java \
           $(SRC)/dev/flang/be/interpreter/boolValue.java \
           $(SRC)/dev/flang/be/interpreter/i8Value.java \
           $(SRC)/dev/flang/be/interpreter/i16Value.java \
@@ -212,20 +244,33 @@ JARS_JFREE_SVG_JAR = $(BUILD_DIR)/jars/org.jfree.svg-5.0.1.jar
 
 FUZION_EBNF = $(BUILD_DIR)/fuzion.ebnf
 
+MOD_BASE              = $(BUILD_DIR)/modules/base.fum
 MOD_JAVA_BASE         = $(BUILD_DIR)/modules/java.base/__marker_for_make__
 MOD_JAVA_XML          = $(BUILD_DIR)/modules/java.xml/__marker_for_make__
 MOD_JAVA_DATATRANSFER = $(BUILD_DIR)/modules/java.datatransfer/__marker_for_make__
 MOD_JAVA_DESKTOP      = $(BUILD_DIR)/modules/java.desktop/__marker_for_make__
 
+VERSION = $(shell cat $(FZ_SRC)/version.txt)
+
 ALL = \
 	$(BUILD_DIR)/bin/fz \
 	$(BUILD_DIR)/bin/fzjava \
+	$(MOD_BASE) \
 	$(MOD_JAVA_BASE) \
 	$(MOD_JAVA_XML) \
 	$(MOD_JAVA_DATATRANSFER) \
 	$(MOD_JAVA_DESKTOP) \
 	$(BUILD_DIR)/tests \
-	$(BUILD_DIR)/examples
+	$(BUILD_DIR)/examples \
+        $(BUILD_DIR)/README.md \
+        $(BUILD_DIR)/release_notes.md \
+
+DOCUMENTATION = \
+	$(BUILD_DIR)/doc/fumfile.html     # fum file format documentation created with asciidoc
+
+SHELL_SCRIPTS = \
+	bin/fz \
+	bin/fzjava
 
 .PHONY: all
 all: $(ALL)
@@ -234,14 +279,17 @@ all: $(ALL)
 .PHONY: javac
 javac: $(CLASS_FILES_TOOLS) $(CLASS_FILES_TOOLS_FZJAVA)
 
+$(BUILD_DIR)/%.md: $(FZ_SRC)/%.md
+	cp $^ $@
+
 $(FUZION_EBNF): $(SRC)/dev/flang/parser/Parser.java
 	mkdir -p $(@D)
-	which pcregrep && pcregrep -M "^[a-zA-Z0-9]+[ ]*:(\n|.)*?;" $^ >$@ || echo "*** need pcregrep tool installed" >$@
+	$(FZ_SRC)/bin/ebnf.sh > $@
 
 $(JAVA_FILE_TOOLS_VERSION): $(FZ_SRC)/version.txt $(JAVA_FILE_TOOLS_VERSION_IN)
 	mkdir -p $(@D)
 	cat $(JAVA_FILE_TOOLS_VERSION_IN) \
-          | sed "s^@@VERSION@@^`cat $(FZ_SRC)/version.txt`^g" \
+          | sed "s^@@VERSION@@^$(VERSION)^g" \
           | sed "s^@@GIT_HASH@@^`cd $(FZ_SRC); echo -n \`git rev-parse HEAD\` \`git diff-index --quiet HEAD -- || echo with local changes\``^g" \
           | sed "s^@@DATE@@^`date +%Y-%m-%d\ %H:%M:%S`^g"  \
           | sed "s^@@BUILTBY@@^`echo -n $(USER)@; hostname`^g" >$@
@@ -301,7 +349,7 @@ $(CLASS_FILES_OPT): $(JAVA_FILES_OPT) $(CLASS_FILES_AIR) $(CLASS_FILES_FUIR)
 	$(JAVAC) -cp $(CLASSES_DIR) -d $(CLASSES_DIR) $(JAVA_FILES_OPT)
 	touch $@
 
-$(CLASS_FILES_BE_INTERPRETER): $(JAVA_FILES_BE_INTERPRETER) $(CLASS_FILES_FUIR) $(CLASS_FILES_AST)  # NYI: remove dependency on $(CLASS_FILES_AST), replace by $(CLASS_FILES_FUIR)
+$(CLASS_FILES_BE_INTERPRETER): $(JAVA_FILES_BE_INTERPRETER) $(CLASS_FILES_FUIR) $(CLASS_FILES_AIR) $(CLASS_FILES_AST)  # NYI: remove dependency on $(CLASS_FILES_AST), replace by $(CLASS_FILES_FUIR)
 	mkdir -p $(CLASSES_DIR)
 	$(JAVAC) -cp $(CLASSES_DIR) -d $(CLASSES_DIR) $(JAVA_FILES_BE_INTERPRETER)
 	touch $@
@@ -353,6 +401,7 @@ $(BUILD_DIR)/assets/logo_bleed_cropmark.svg: $(CLASS_FILES_MISC_LOGO)
 	touch $@
 
 $(BUILD_DIR)/lib: $(FZ_SRC)/lib
+	rm -rf $@
 	mkdir -p $(@D)
 	cp -rf $^ $@
 
@@ -360,6 +409,10 @@ $(BUILD_DIR)/bin/fz: $(FZ_SRC)/bin/fz $(CLASS_FILES_TOOLS) $(BUILD_DIR)/lib
 	mkdir -p $(@D)
 	cp -rf $(FZ_SRC)/bin/fz $@
 	chmod +x $@
+
+$(MOD_BASE): $(BUILD_DIR)/lib $(BUILD_DIR)/bin/fz
+	mkdir -p $(@D)
+	$(BUILD_DIR)/bin/fz -XsaveBaseLib=$@
 
 $(BUILD_DIR)/bin/fzjava: $(FZ_SRC)/bin/fzjava $(CLASS_FILES_TOOLS_FZJAVA)
 	mkdir -p $(@D)
@@ -430,6 +483,13 @@ $(BUILD_DIR)/UnicodeData.java.generated: $(CLASS_FILES_UTIL_UNICODE) $(BUILD_DIR
 $(BUILD_DIR)/UnicodeData.java: $(BUILD_DIR)/UnicodeData.java.generated $(SRC)/dev/flang/util/UnicodeData.java.in
 	sed -e '/@@@ generated code start @@@/r build/UnicodeData.java.generated' $(SRC)/dev/flang/util/UnicodeData.java.in >$@
 
+.phony: doc
+doc: $(DOCUMENTATION)
+
+$(BUILD_DIR)/doc/fumfile.html: $(SRC)/dev/flang/fe/LibraryModule.java
+	mkdir -p $(@D)
+	sed -n '/--asciidoc--/,/--asciidoc--/p' $^ | grep -v "\--asciidoc--" | asciidoc - >$@
+
 # phony target to regenerate UnicodeData.java using the latest UnicodeData.txt.
 # This must be phony since $(SRC)/dev/flang/util/UnicodeData.java would
 # be a circular dependency
@@ -448,34 +508,54 @@ logo: $(BUILD_DIR)/assets/logo.svg $(BUILD_DIR)/assets/logo_bleed.svg $(BUILD_DI
 run_tests: run_tests_int run_tests_c
 
 # phony target to run Fuzion tests using interpreter and report number of failures
-.PHONY .SILENT: run_tests_int
-run_tests_int: $(BUILD_DIR)/bin/fz $(BUILD_DIR)/tests
-	rm -rf $(BUILD_DIR)/run_tests.results
-	echo -n "testing interpreter: "; \
-	for test in $(TESTS); do \
-          if test -n "$(VERBOSE)"; then \
-            echo -n "\nrun interpreted $$test: "; \
-          fi; \
-	  make -e -C >$$test/out.txt $$test 2>/dev/null && (echo -n "." && echo "$$test: ok" >>$(BUILD_DIR)/run_tests.results) || (echo -n "#"; echo "$$test: failed" >>$(BUILD_DIR)/run_tests.results); \
-	done
-	echo " `cat $(BUILD_DIR)/run_tests.results | grep ok$$ | wc -l`/`echo $(TESTS) | wc -w` tests passed, `cat $(BUILD_DIR)/run_tests.results | grep failed$$ | wc -l` tests failed"; \
-	cat $(BUILD_DIR)/run_tests.results | grep failed$$
+.PHONY .SILENT .IGNORE: run_tests_int
+run_tests_int: $(BUILD_DIR)/bin/fz $(MOD_BASE) $(BUILD_DIR)/tests
+	echo -n "testing interpreter: "
+	$(FZ_SRC)/bin/run_tests.sh $(BUILD_DIR) int
 
 # phony target to run Fuzion tests using c backend and report number of failures
-.PHONY .SILENT: run_tests_c
-run_tests_c: $(BUILD_DIR)/bin/fz $(BUILD_DIR)/tests
-	rm -rf $(BUILD_DIR)/run_tests.results
+.PHONY .SILENT .IGNORE: run_tests_c
+run_tests_c: $(BUILD_DIR)/bin/fz $(MOD_BASE) $(BUILD_DIR)/tests
 	echo -n "testing C backend: "; \
-	for test in $(TESTS); do \
-          if test -n "$(VERBOSE)"; then \
-            echo -n "\nrun C backend $$test"; \
-          fi; \
-	  make c -e -C >$$test/out.txt $$test 2>/dev/null && (echo -n "." && echo "$$test: ok" >>$(BUILD_DIR)/run_tests.results) || (echo -n "#"; echo "$$test: failed" >>$(BUILD_DIR)/run_tests.results); \
-	done
-	echo " `cat $(BUILD_DIR)/run_tests.results | grep ok$$ | wc -l`/`echo $(TESTS) | wc -w` tests passed, `cat $(BUILD_DIR)/run_tests.results | grep failed$$ | wc -l` tests failed"; \
-	cat $(BUILD_DIR)/run_tests.results | grep failed$$
+	$(FZ_SRC)/bin/run_tests.sh $(BUILD_DIR) c
+
+# phony target to run Fuzion tests and report number of failures
+.PHONY: run_tests_parallel
+run_tests_parallel: run_tests_int_parallel run_tests_c_parallel
+
+# phony target to run Fuzion tests using interpreter and report number of failures
+.PHONY .SILENT: run_tests_int_parallel
+run_tests_int_parallel: $(BUILD_DIR)/bin/fz $(MOD_BASE) $(BUILD_DIR)/tests
+	echo -n "testing interpreter: "
+	$(FZ_SRC)/bin/run_tests_parallel.sh $(BUILD_DIR) int
+
+# phony target to run Fuzion tests using c backend and report number of failures
+.PHONY .SILENT: run_tests_c_parallel
+run_tests_c_parallel: $(BUILD_DIR)/bin/fz $(MOD_BASE) $(BUILD_DIR)/tests
+	echo -n "testing C backend: "; \
+	$(FZ_SRC)/bin/run_tests_parallel.sh $(BUILD_DIR) c
 
 .PHONY: clean
 clean:
 	rm -rf $(BUILD_DIR)
-	find $(FZ_SRC) -name "*~" -exec rm {} \;
+	find $(FZ_SRC) -name "*~" -type f -exec rm {} \;
+
+.PHONY: release
+release: clean all
+	rm -f fuzion_$(VERSION).tar.gz
+	tar cfz fuzion_$(VERSION).tar.gz --transform s/^build/fuzion_$(VERSION)/ build
+
+# shellcheck (https://www.shellcheck.net) checks shell scripts for issues/bugs
+.PHONY: shellcheck
+shellcheck:
+	shellcheck $(SHELL_SCRIPTS) $(shell find . -iname '*.sh' -not -path "./build/*")
+
+# show readme in browser, requires 'sudo apt install grip'
+.PHONY: show_readme
+show_readme:
+	grip -b README.md
+
+# show release notes in browser, requires 'sudo apt install grip'
+.PHONY: show_release_notes
+show_release_notes:
+	grip -b release_notes.md

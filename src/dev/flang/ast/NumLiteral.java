@@ -38,7 +38,7 @@ import java.nio.ByteOrder;
  *
  * @author Fridtjof Siebert (siebert@tokiwa.software)
  */
-public class NumLiteral extends Expr
+public class NumLiteral extends Constant
 {
 
 
@@ -206,7 +206,7 @@ public class NumLiteral extends Expr
    * The type of this constant.  This can be set by the user of this type
    * depending on what this is assigned to.
    */
-  private Type type_;
+  private AbstractType type_;
 
 
   /*--------------------------  constructors  ---------------------------*/
@@ -215,7 +215,7 @@ public class NumLiteral extends Expr
   /**
    * Constructor
    *
-   * @param pos the soucecode position, used for error messages.
+   * @param pos the sourcecode position, used for error messages.
    *
    * @param s
    */
@@ -248,7 +248,7 @@ public class NumLiteral extends Expr
         exponentBase = exponentBase / 5;
         e5 += e;
       }
-    check
+    if (CHECKS) check
       (exponentBase == 1); // we do not support exponentBases other that 2^n*5^m
 
     while (b % 2 == 0)
@@ -261,7 +261,7 @@ public class NumLiteral extends Expr
         b = b / 5;
         e5 -= dotAt;
       }
-    check
+    if (CHECKS) check
       (b == 1); // we do not support bases other that 2^n*5^m
 
     while (v.signum() != 0 && v.mod(B2).signum() == 0)
@@ -337,17 +337,25 @@ public class NumLiteral extends Expr
   {
     var o = _originalString;
     var s = o.startsWith("-") ? o.substring(1) : "-" + o;
-    return new NumLiteral(pos, s, _base, _mantissa.negate(), _exponent2, _exponent5);
+    return new NumLiteral(pos, s, _base, _mantissa, _exponent2, _exponent5);
   }
 
 
   /**
-   * typeOrNull returns the type of this expression or Null if the type is still
-   * unknown, i.e., before or during type resolution.
-   *
-   * @return this Expr's type or null if not known.
+   * Is this negative?
    */
-  public Type typeOrNull()
+  private boolean signBit()
+  {
+    return _originalString.startsWith("-");
+  }
+
+  /**
+   * type returns the type of this expression or Types.t_ERROR if the type is
+   * still unknown, i.e., before or during type resolution.
+   *
+   * @return this Expr's type or t_ERROR in case it is not known yet.
+   */
+  public AbstractType type()
   {
     if (type_ == null)
       {
@@ -378,7 +386,7 @@ public class NumLiteral extends Expr
    */
   public BigInteger intValue()
   {
-    return intValue(findConstantType(typeOrNull()));
+    return intValue(findConstantType(type()));
   }
 
 
@@ -418,7 +426,7 @@ public class NumLiteral extends Expr
             v = v.multiply(B5);
             e5 = e5 - 1;
           }
-        return v;
+        return signBit() ? v.negate() : v;
       }
   }
 
@@ -430,17 +438,16 @@ public class NumLiteral extends Expr
   {
     ConstantType ct = findConstantType(type_);
 
-    check
+    if (CHECKS) check
       (ct._isFloat);
 
     var res = new byte[ct._bytes];
     var m = _mantissa;
-    var s = m.signum();
-    if (s != 0)
+    var f = B0;
+    if (m.signum() != 0)
       {
         var e5 = _exponent5;
         var e2 = _exponent2;
-        m = s > 0 ? m : m.negate();
 
         // incorporate e5 into m/e2:
         if (e5 > 0)
@@ -464,7 +471,7 @@ public class NumLiteral extends Expr
         var deltaBits = ct._mBits - m.bitLength();
         m = shiftWithRounding(m, deltaBits);
         e2 = e2 - deltaBits;
-        check
+        if (CHECKS) check
           (m.bitLength() == ct._mBits);
 
         // add bias to e2 and handle overflow and denormalized numbers
@@ -485,7 +492,7 @@ public class NumLiteral extends Expr
             var d = bmax.toString();
             var max = d.charAt(0) + "." + d.substring(1,ndigits) + "E" + (d.length()-1);
             var maxH = "0x1P" + (eBias + ct._mBits - 1);
-            FeErrors.floatConstantTooLarge(pos(),
+            AstErrors.floatConstantTooLarge(pos(),
                                            _originalString,
                                            type_,
                                            max, maxH);
@@ -505,7 +512,7 @@ public class NumLiteral extends Expr
                 var exp = b5min.length() - b10min.length();
                 var min = b5min.charAt(0) + "." + b5min.charAt(1) + "E" + exp;
                 var minH = "0x1P" + minE2;
-                FeErrors.floatConstantTooSmall(pos(),
+                AstErrors.floatConstantTooSmall(pos(),
                                                _originalString,
                                                type_,
                                                min, minH);
@@ -514,23 +521,23 @@ public class NumLiteral extends Expr
         else
           {
             var high1 = B1.shiftLeft(ct._mBits-1);
-            check
+            if (CHECKS) check
               (m.and(high1).signum() != 0);
             m = m.andNot(high1);
           }
-        var f = BigInteger.valueOf((2-s)/2) .shiftLeft(ct._eBits  )
-          .or(  BigInteger.valueOf(e2     )).shiftLeft(ct._mBits-1)
+        f = (signBit() ? B1 : B0)    .shiftLeft(ct._eBits  )
+          .or(BigInteger.valueOf(e2)).shiftLeft(ct._mBits-1)
           .or(m);
-        var b = f.toByteArray();
-        var l0 = 0L;
-        var bl = Math.min(b.length, ct._bytes);
-        var bs = Math.max(0, b.length - ct._bytes);
-        for (var i = 0; i < bl; i++)
-          {
-            var bv = b[i+bs];
-            l0 = l0 | (((long) bv & 0xff) << ((bl-1-i)*8));
-            res[bl-1-i] = bv;
-          }
+      }
+    var b = f.toByteArray();
+    var l0 = 0L;
+    var bl = Math.min(b.length, ct._bytes);
+    var bs = Math.max(0, b.length - ct._bytes);
+    for (var i = 0; i < bl; i++)
+      {
+        var bv = b[i+bs];
+        l0 = l0 | (((long) bv & 0xff) << ((bl-1-i)*8));
+        res[bl-1-i] = bv;
       }
     return res;
   }
@@ -556,7 +563,12 @@ public class NumLiteral extends Expr
     else if (sh < 0)
       {
         var roundingBit = B1.shiftLeft(-sh-1);
-        return v.add(roundingBit).shiftRight(-sh);
+        var result = v.add(roundingBit).shiftRight(-sh);
+        if (_exponent5 == 0 && !result.shiftLeft(-sh).equals(v))
+          {
+            AstErrors.lossOfPrecision(pos(), _originalString, _base, type_);
+          }
+        return result;
       }
     else
       {
@@ -571,7 +583,7 @@ public class NumLiteral extends Expr
   public float f32Value()
   {
     if (PRECONDITIONS) require
-      (typeOrNull() == Types.resolved.t_f32);
+      (type().compareTo(Types.resolved.t_f32) == 0);
 
     return ByteBuffer.wrap(data()).order(ByteOrder.LITTLE_ENDIAN).getFloat();
   }
@@ -582,7 +594,7 @@ public class NumLiteral extends Expr
   public double f64Value()
   {
     if (PRECONDITIONS) require
-      (typeOrNull() == Types.resolved.t_f64);
+      (type().compareTo(Types.resolved.t_f64) == 0);
 
     return ByteBuffer.wrap(data()).order(ByteOrder.LITTLE_ENDIAN).getDouble();
   }
@@ -606,13 +618,13 @@ public class NumLiteral extends Expr
         var i = intValue(ct);
         if (i == null)
           {
-            FeErrors.nonWholeNumberUsedAsIntegerConstant(pos(),
+            AstErrors.nonWholeNumberUsedAsIntegerConstant(pos(),
                                                          _originalString,
                                                          type_);
           }
         else if (!ct.canHold(i))
           {
-            FeErrors.integerConstantOutOfLegalRange(pos(),
+            AstErrors.integerConstantOutOfLegalRange(pos(),
                                                     _originalString,
                                                     type_,
                                                     toString(ct._min),
@@ -659,18 +671,18 @@ public class NumLiteral extends Expr
    *
    * @return the corresponding ConstantType or nul if none.
    */
-  ConstantType findConstantType(Type t)
+  ConstantType findConstantType(AbstractType t)
   {
-    if      (t == Types.resolved.t_i8 ) { return ConstantType.ct_i8 ; }
-    else if (t == Types.resolved.t_i16) { return ConstantType.ct_i16; }
-    else if (t == Types.resolved.t_i32) { return ConstantType.ct_i32; }
-    else if (t == Types.resolved.t_i64) { return ConstantType.ct_i64; }
-    else if (t == Types.resolved.t_u8 ) { return ConstantType.ct_u8 ; }
-    else if (t == Types.resolved.t_u16) { return ConstantType.ct_u16; }
-    else if (t == Types.resolved.t_u32) { return ConstantType.ct_u32; }
-    else if (t == Types.resolved.t_u64) { return ConstantType.ct_u64; }
-    else if (t == Types.resolved.t_f32) { return ConstantType.ct_f32; }
-    else if (t == Types.resolved.t_f64) { return ConstantType.ct_f64; }
+    if      (t.compareTo(Types.resolved.t_i8 ) == 0) { return ConstantType.ct_i8 ; }
+    else if (t.compareTo(Types.resolved.t_i16) == 0) { return ConstantType.ct_i16; }
+    else if (t.compareTo(Types.resolved.t_i32) == 0) { return ConstantType.ct_i32; }
+    else if (t.compareTo(Types.resolved.t_i64) == 0) { return ConstantType.ct_i64; }
+    else if (t.compareTo(Types.resolved.t_u8 ) == 0) { return ConstantType.ct_u8 ; }
+    else if (t.compareTo(Types.resolved.t_u16) == 0) { return ConstantType.ct_u16; }
+    else if (t.compareTo(Types.resolved.t_u32) == 0) { return ConstantType.ct_u32; }
+    else if (t.compareTo(Types.resolved.t_u64) == 0) { return ConstantType.ct_u64; }
+    else if (t.compareTo(Types.resolved.t_f32) == 0) { return ConstantType.ct_f32; }
+    else if (t.compareTo(Types.resolved.t_f64) == 0) { return ConstantType.ct_f64; }
     else                                { return null;             }
   }
 
@@ -692,7 +704,7 @@ public class NumLiteral extends Expr
    * result. In particular, if the result is assigned to a temporary field, this
    * will be replaced by the statement that reads the field.
    */
-  public Expr propagateExpectedType(Resolution res, Feature outer, Type t)
+  public Expr propagateExpectedType(Resolution res, AbstractFeature outer, AbstractType t)
   {
     if (type_ == null && findConstantType(t) != null)
       {
@@ -713,7 +725,7 @@ public class NumLiteral extends Expr
    *
    * @return this.
    */
-  public NumLiteral visit(FeatureVisitor v, Feature outer)
+  public NumLiteral visit(FeatureVisitor v, AbstractFeature outer)
   {
     // nothing to be done for a constant
     return this;
@@ -743,7 +755,7 @@ public class NumLiteral extends Expr
           {
             if (ix >= b.length)
               {
-                result[ix] = (byte) (_mantissa.signum() < 0 ? 0xff : 0x00);
+                result[ix] = (byte) (i.signum() < 0 ? 0xff : 0x00);
               }
             else
               {

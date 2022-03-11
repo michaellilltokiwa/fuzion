@@ -45,7 +45,7 @@ is
     infix <= (other entry) => ks[i] <= ks[other.i]
     key => ks[i]
     val => vs[i]
-  sortedEntries := sortedArray<entry>((0..ks.length-1).mapList<entry>(fun (i i32) => entry i).asArray)
+  sortedEntries := sortedArray<entry> ((0..ks.length-1).mapSequence<entry> (i -> entry i)).asArray
 
   # number of entries in this map
   #
@@ -57,10 +57,43 @@ is
   # performance is O(log size).
   #
   index [] (k K) option<V> is
-    sortedEntries.find(fun(e entry) => ks[e.i] <> k)
-                 .map<V> (fun(i i32) => sortedEntries[i].val)
+    sortedEntries.find (e -> ks[e.i] <> k)
+                 .map<V> (i -> sortedEntries[i].val)
 
 
   # get a stream of all key/value pairs in this map
   #
-  items List<tuple<K,V>> is sortedEntries.map<tuple<K,V>> (fun (e entry) => (e.key, e.val))
+  items Sequence<tuple<K,V>> is sortedEntries.map<tuple<K,V>> (e -> (e.key, e.val))
+
+
+  # add mapping from k to v
+  #
+  add(k K, v V) orderedMap<K,V> is
+    match index[](k)
+      nil =>
+        (orderedMap
+          (ks++[k]).asArray
+          (vs++(marray<V> 1 v)).asArray)
+      V =>
+        va := array<V> size (i -> if ks[i]=k then v else vs[i])
+        (orderedMap ks va)
+
+
+  # create a string containing all mappings
+  #
+  redef asString =>
+    for
+      r := "", r + c + n
+      i in ks.indices
+      n := "({ks[i]} => {vs[i]})"
+      c := "", ", "
+    else
+      r
+
+
+# orderedMap -- convenience routine to create an empty instance of orderedMap
+#
+#
+orderedMap<K : ordered<K>, V> => (orderedMap
+                                    Sequences.empty<K>.asArray
+                                    Sequences.empty<V>.asArray)

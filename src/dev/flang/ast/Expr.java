@@ -28,6 +28,8 @@ package dev.flang.ast;
 
 import dev.flang.util.ANY;
 import dev.flang.util.Errors;
+import dev.flang.util.FuzionConstants;
+import dev.flang.util.HasSourcePosition;
 import dev.flang.util.List;
 import dev.flang.util.SourcePosition;
 
@@ -37,7 +39,7 @@ import dev.flang.util.SourcePosition;
  *
  * @author Fridtjof Siebert (siebert@tokiwa.software)
  */
-public abstract class Expr extends ANY implements Stmnt
+public abstract class Expr extends ANY implements Stmnt, HasSourcePosition
 {
 
   /*----------------------------  constants  ----------------------------*/
@@ -61,38 +63,17 @@ public abstract class Expr extends ANY implements Stmnt
   /*----------------------------  variables  ----------------------------*/
 
 
-  /**
-   * The soucecode position of this expression, used for error messages.
-   */
-  public final SourcePosition pos;
-
-
   /*--------------------------  constructors  ---------------------------*/
 
 
   /**
-   * Constructor for an Expression at the given source code postition.
-   *
-   * @param pos the soucecode position, used for error messages.
+   * Constructor for an Expression.
    */
-  public Expr(SourcePosition pos)
+  public Expr()
   {
-    if (PRECONDITIONS) require
-      (pos != null);
-
-    this.pos = pos;
   }
 
   /*-----------------------------  methods  -----------------------------*/
-
-
-  /**
-   * The soucecode position of this expression, used for error messages.
-   */
-  public SourcePosition pos()
-  {
-    return pos;
-  }
 
 
   /**
@@ -113,48 +94,48 @@ public abstract class Expr extends ANY implements Stmnt
 
 
   /**
-   * During resolution of inheritance, for a feature
-   *
-   *   f : target.g { }
-   *
-   * this is used to find target.type().featureOfType() without type resolution
-   * of target.
-   */
-  Feature calledFeature()
-  {
-    throw new Error("NYI: calledFeature() not implemented for "+getClass());
-  }
-
-
-  /**
    * type returns the type of this expression or Types.t_ERROR if the type is
    * still unknown, i.e., before or during type resolution.
    *
    * @return this Expr's type or t_ERROR in case it is not known yet.
    */
-  public Type type()
+  public AbstractType type()
   {
-    Type result = typeOrNull();
+    var result = typeForFeatureResultTypeInferencing();
     if (result == null)
       {
         result = Types.t_ERROR;
         // NYI: This should try to find the reason for the missing type and
         // print the problem
-        Errors.error(pos,
-                     "Failed to infer type of expression.",
-                     "Expression with unknown type: " + this);
+        AstErrors.failedToInferType(this);
       }
     return result;
   }
 
 
   /**
-   * typeOrNull returns the type of this expression or Null if the type is still
-   * unknown, i.e., before or during type resolution.
+   * typeForFeatureResultTypeInferencing returns the type of this expression or
+   * null if the type is still unknown, i.e., before or during type resolution.
    *
    * @return this Expr's type or null if not known.
    */
-  public abstract Type typeOrNull();
+  AbstractType typeForFeatureResultTypeInferencing()
+  {
+    return type();
+  }
+
+
+  /**
+   * typeForGenericsTypeInfereing returns the type of this expression or null if
+   * the type is still unknown, i.e., before or during type resolution for
+   * generic type arguments.
+   *
+   * @return this Expr's type or null if not known.
+   */
+  public AbstractType typeForGenericsTypeInfereing()
+  {
+    return typeForFeatureResultTypeInferencing();
+  }
 
 
   /**
@@ -171,7 +152,7 @@ public abstract class Expr extends ANY implements Stmnt
    */
   SourcePosition posOfLast()
   {
-    return pos;
+    return pos();
   }
 
 
@@ -183,7 +164,7 @@ public abstract class Expr extends ANY implements Stmnt
    *
    * @param outer the class that contains this expression.
    */
-  void loadCalledFeature(Resolution res, Feature outer)
+  void loadCalledFeature(Resolution res, AbstractFeature outer)
   {
     if (Errors.count() == 0)
       {
@@ -204,7 +185,7 @@ public abstract class Expr extends ANY implements Stmnt
    * @return this or an alternative Expr if the action performed during the
    * visit replaces this by the alternative.
    */
-  public abstract Expr visit(FeatureVisitor v, Feature outer);
+  public abstract Expr visit(FeatureVisitor v, AbstractFeature outer);
 
 
   /**
@@ -223,9 +204,9 @@ public abstract class Expr extends ANY implements Stmnt
    * @return the Stmnt this Expr is to be replaced with, typically an Assign
    * that performs the assignment to r.
    */
-  Stmnt assignToField(Resolution res, Feature outer, Feature r)
+  Stmnt assignToField(Resolution res, AbstractFeature outer, Feature r)
   {
-    return new Assign(res, pos, r, this, outer);
+    return new Assign(res, pos(), r, this, outer);
   }
 
 
@@ -246,26 +227,28 @@ public abstract class Expr extends ANY implements Stmnt
    * result. In particular, if the result is assigned to a temporary field, this
    * will be replaced by the statement that reads the field.
    */
-  public Expr propagateExpectedType(Resolution res, Feature outer, Type t)
+  public Expr propagateExpectedType(Resolution res, AbstractFeature outer, AbstractType t)
   {
     return this;
   }
 
 
-  protected Expr addFieldForResult(Resolution res, Feature outer, Type t)
+  protected Expr addFieldForResult(Resolution res, AbstractFeature outer, AbstractType t)
   {
     var result = this;
-    if (t != Types.resolved.t_void)
+    if (t.compareTo(Types.resolved.t_void) != 0)
       {
-        Feature r = new Feature(pos,
+        var pos = pos();
+        Feature r = new Feature(res,
+                                pos,
                                 Consts.VISIBILITY_INVISIBLE,
                                 t,
-                                "#stmtResult" + (_id_++),
+                                FuzionConstants.STATEMENT_RESULT_PREFIX + (_id_++),
                                 outer);
         r.scheduleForResolution(res);
         res.resolveTypes();
         result = new Block(pos, pos, new List<>(assignToField(res, outer, r),
-                                              new Call(pos, new Current(pos, outer.thisType()), r).resolveTypes(res, outer)));
+                                                    new Call(pos, new Current(pos, outer.thisType()), r).resolveTypes(res, outer)));
       }
     return result;
   }
@@ -294,27 +277,34 @@ public abstract class Expr extends ANY implements Stmnt
    * Check if this value might need boxing, unboxing or tagging and wrap this
    * into Box()/Tag() if this is the case.
    *
-   * @param frmlT the formal type this is assigned to.
+   * @param frmlT the formal type this value is assigned to
    *
    * @return this or an instance of Box wrapping this.
    */
-  Expr box(Type frmlT)
+  Expr box(AbstractType frmlT)
   {
-    Expr result = this;
+    if (PRECONDITIONS) require
+      (frmlT != null);
+
+    var result = this;
     var t = type();
 
-    if ((!t.isRef() || isCallToOuterRef()) && t != Types.resolved.t_void &&
-        (frmlT.isRef() ||
-         (frmlT.isChoice() &&
-          !frmlT.isAssignableFrom(t) &&
-          frmlT.isAssignableFrom(t.asRef()))))
+    if (t.compareTo(Types.resolved.t_void) != 0)
       {
-        result = new Box(result);
-        t = result.type();
-      }
-    if (frmlT.isChoice() && t != frmlT && frmlT.isAssignableFrom(t))
-      {
-        result = new Tag(result, frmlT);
+        if ((!t.isRef() || isCallToOuterRef()) &&
+            (frmlT.isRef() ||
+             (frmlT.isChoice() &&
+              !frmlT.isAssignableFrom(t) &&
+              frmlT.isAssignableFrom(t.asRef()))) ||
+            frmlT.isGenericArgument())
+          {
+            result = new Box(result, frmlT);
+            t = result.type();
+          }
+        if (frmlT.isChoice() && t.compareTo(frmlT) != 0 && frmlT.isAssignableFrom(t))
+          {
+            result = new Tag(result, frmlT);
+          }
       }
     return result;
   }
@@ -335,7 +325,7 @@ public abstract class Expr extends ANY implements Stmnt
   boolean getCompileTimeConstBool()
   {
     if (PRECONDITIONS) require
-      (isCompileTimeConst() && type() == Types.resolved.t_bool);
+      (isCompileTimeConst() && type().compareTo(Types.resolved.t_bool) == 0);
 
     throw new Error();
   }
@@ -347,7 +337,7 @@ public abstract class Expr extends ANY implements Stmnt
   int getCompileTimeConstI32()
   {
     if (PRECONDITIONS) require
-      (isCompileTimeConst() && type() == Types.resolved.t_i32);
+      (isCompileTimeConst() && type().compareTo(Types.resolved.t_i32) == 0);
 
     throw new Error();
   }

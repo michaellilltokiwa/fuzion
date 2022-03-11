@@ -52,6 +52,17 @@ abstract class CExpr extends CStmnt
   /*----------------------------  constants  ----------------------------*/
 
 
+  /**
+   * Dummy value to be used for unit type values.  This cannot be used to create
+   * code since C does not have a unit type.
+   */
+  static CExpr UNIT = new CExpr()
+    {
+      void code(CString sb) { sb.append("/* UNIT VALUE */");  }
+      int precedence() { return 0; }
+    };
+
+
   /*----------------------------  producers  ----------------------------*/
 
 
@@ -431,7 +442,7 @@ abstract class CExpr extends CStmnt
    *
    * See Chapter 6.5 in http://www.open-std.org/jtc1/sc22/wg14/www/docs/n2596.pdf for detail:
    *
-   *  0 for prim-expr: identifier, constant, string-literal, '(' expresion ')' and generic-selection
+   *  0 for prim-expr: identifier, constant, string-literal, '(' expression ')' and generic-selection
    *
    *  1 for postfix-expr: prim-expr | postfix-expr ('[' expr ']'| '(' arglist ')'| '.'| '->'| '++'| '--'
    *           | '(' type-name ')' '{' initializer-list [','] '}'
@@ -641,7 +652,7 @@ abstract class CExpr extends CStmnt
    */
   CExpr sizeOfExpr()
   {
-    return new Unary(this, "sizeof");
+    return new Unary(this, "sizeof ");
   }
 
 

@@ -26,6 +26,8 @@ Fuzion language implementation.  If not, see <https://www.gnu.org/licenses/>.
 
 package dev.flang.ast;
 
+import dev.flang.util.SourcePosition;
+
 
 /**
  * Tag is an expression that converts a value to a choice type, i.e., it adds a
@@ -51,7 +53,7 @@ public class Tag extends Expr
   /**
    * The desired tagged type, set during creation.
    */
-  public Type _taggedType;
+  public AbstractType _taggedType;
 
 
   /**
@@ -70,13 +72,12 @@ public class Tag extends Expr
    *
    * @param value the value instance
    */
-  public Tag(Expr value, Type taggedType)
+  public Tag(Expr value, AbstractType taggedType)
   {
-    super(value.pos);
+    super();
 
     if (PRECONDITIONS) require
-      (pos != null,
-       value != null);
+      (value != null);
 
     this._value = value;
     this._taggedType = taggedType;
@@ -87,12 +88,21 @@ public class Tag extends Expr
 
 
   /**
-   * typeOrNull returns the type of this expression or Null if the type is still
-   * unknown, i.e., before or during type resolution.
-   *
-   * @return this Expr's type or null if not known.
+   * The sourcecode position of this expression, used for error messages.
    */
-  public Type typeOrNull()
+  public SourcePosition pos()
+  {
+    return _value.pos();
+  }
+
+
+  /**
+   * type returns the type of this expression or Types.t_ERROR if the type is
+   * still unknown, i.e., before or during type resolution.
+   *
+   * @return this Expr's type or t_ERROR in case it is not known yet.
+   */
+  public AbstractType type()
   {
     return _taggedType;
   }
@@ -108,11 +118,24 @@ public class Tag extends Expr
    *
    * @return this.
    */
-  public Tag visit(FeatureVisitor v, Feature outer)
+  public Tag visit(FeatureVisitor v, AbstractFeature outer)
   {
     _value = _value.visit(v, outer);
     v.action(this, outer);
     return this;
+  }
+
+
+  /**
+   * visit all the statements within this Tag.
+   *
+   * @param v the visitor instance that defines an action to be performed on
+   * visited statements
+   */
+  public void visitStatements(StatementVisitor v)
+  {
+    super.visitStatements(v);
+    _value.visitStatements(v);
   }
 
 

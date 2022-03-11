@@ -36,16 +36,16 @@ i64(val i64) : wrappingInteger<i64>, hasInterval<i64>, i64s is
   redef wrappedOnNeg => isMin
 
   # would addtion thiz + other cause an overflow or underflow?
-  redef overflowOnAdd (other i64) => i64.this > 0 && max -° i64.this < other
-  redef underflowOnAdd(other i64) => i64.this < 0 && min -° i64.this > other
+  redef overflowOnAdd (other i64) => thiz > 0 && max -° thiz < other
+  redef underflowOnAdd(other i64) => thiz < 0 && min -° thiz > other
 
   # would subtraction thiz - other cause an overflow or underflow?
-  redef overflowOnSub (other i64) => i64.this > 0 && i64.this -° max > other
-  redef underflowOnSub(other i64) => i64.this < 0 && i64.this -° min < other
+  redef overflowOnSub (other i64) => thiz > 0 && thiz -° max > other
+  redef underflowOnSub(other i64) => thiz < 0 && thiz -° min < other
 
   # would multiplication thiz * other cause an overflow or underflow?
-  redef overflowOnMul (other i64) => if sign *° other.sign <= 0 false else (i64.this *° other / other) != i64.this
-  redef underflowOnMul(other i64) => if sign *° other.sign >= 0 false else (i64.this *° other / other) != i64.this
+  redef overflowOnMul (other i64) => if sign *° other.sign <= 0 false else (thiz *° other / other) != thiz
+  redef underflowOnMul(other i64) => if sign *° other.sign >= 0 false else (thiz *° other / other) != thiz
 
   # neg, add, sub, mul with wrap-around semantics
   redef prefix -° i64 is intrinsic
@@ -84,32 +84,60 @@ i64(val i64) : wrappingInteger<i64>, hasInterval<i64>, i64s is
   redef infix >  (other i64) bool is intrinsic
   redef infix >= (other i64) bool is intrinsic
 
+  as_i8 i8
+    pre
+      thiz >= i8.min.as_i64,
+      thiz <= i8.max.as_i64
+    is
+      low8bits.as_i8
+  as_i16 i16
+    pre
+      thiz <= i16.max.as_i64,
+      thiz <= i16.max.as_i64
+    is
+      low16bits.as_i16
   as_i32 i32
     pre
-      i64.this >= i32.min.as_i64,
-      i64.this <= i32.max.as_i64
+      thiz >= i32.min.as_i64,
+      thiz <= i32.max.as_i64
     is
       low32bits.castTo_i32
+  as_u8 u8
+    pre
+      thiz >= 0
+#      thiz <= u8.max.as_i64
+#    post
+#      analysis: result.as_u64 == thiz
+    is
+      low8bits
+  as_u16 u16
+     pre
+      thiz >= 0
+#      thiz <= u16max.as_i64
+#    post
+#      analysis: result.as_u64 == thiz
+    is
+      low16bits
   as_u32 u32
     pre
-      i64.this >= 0
-#      i64.this <= u32.max.as_i64
+      thiz >= 0
+#      thiz <= u32.max.as_i64
 #    post
-#      analysis:  result.as_i64 == i64.this
+#      analysis:  result.as_i64 == thiz
     is
       low32bits
   as_u64 u64
     pre
-      i64.this >= 0
+      thiz >= 0
 #    post
-#      analysis:  result.as_i64 == i64.this
+#      analysis:  result.as_i64 == thiz
     is
       castTo_u64
   as_u128 u128
     pre
-      i64.this >= 0
+      thiz >= 0
     post
-      analysis:  result.as_i64 == i64.this
+      analysis:  result.as_i64 == thiz
     is
       u128 0, castTo_u64
 
@@ -118,6 +146,9 @@ i64(val i64) : wrappingInteger<i64>, hasInterval<i64>, i64s is
   low16bits  u16 is castTo_u64.low16bits
   low32bits  u32 is castTo_u64.low32bits
   castTo_u64 u64 is intrinsic
+
+  # conversion to float
+  as_f64 f64 is intrinsic
 
   # NYI: max is redefined here only to solve repeated inheritance conflict. Since max inherited
   # from hasInterval is abstract, fz should not complain about this conflict.
@@ -147,3 +178,29 @@ i64(val i64) : wrappingInteger<i64>, hasInterval<i64>, i64s is
   #
   onesCount i32 is
     val.castTo_u64.onesCount
+
+
+# i64s -- unit type defining features related to i64 but not requiring an
+# instance
+#
+i64s : wrappingIntegers<i64> is
+
+  redef name => "i64"
+
+  redef zero => i64 0
+  redef one  => i64 1
+
+  redef min => -0x_8000_0000_0000_0000
+  redef max =>  0x_7fff_ffff_ffff_ffff
+
+
+# i64 -- returns value of unit type i64s
+#
+# This is a convenience feature that allows using, e.g., 'i64.sum' to
+# get the the monoid of (i64, infix +) instead of 'i64s.sum'.
+#
+# since this i64 with no arguments is a routine and not a constructor, it
+# does not define a type (which would cause a name clash with i64 with one
+# argument).
+#
+i64 => i64s

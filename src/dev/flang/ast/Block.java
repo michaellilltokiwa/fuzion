@@ -34,18 +34,22 @@ import dev.flang.util.SourcePosition;
 
 
 /**
- * Block <description>
+ * Block represents a Block of statements
  *
  * @author Fridtjof Siebert (siebert@tokiwa.software)
  */
-public class Block extends Expr
+public class Block extends AbstractBlock
 {
 
 
   /*----------------------------  variables  ----------------------------*/
 
 
-  public List<Stmnt> statements_;
+  /**
+   * The sourcecode position of this expression, used for error messages.
+   */
+  private final SourcePosition _pos;
+
 
   SourcePosition closingBracePos_;
 
@@ -65,7 +69,7 @@ public class Block extends Expr
   /**
    * Generic constructor
    *
-   * @param pos the soucecode position of the start of this block, used for
+   * @param pos the sourcecode position of the start of this block, used for
    * error messages.
    *
    * @param closingBracePos the sourcecode position of this block's closing
@@ -83,8 +87,8 @@ public class Block extends Expr
                 List<Stmnt> s,
                 boolean newScope)
   {
-    super(pos);
-    this.statements_ = s;
+    super(s);
+    this._pos = pos;
     this.closingBracePos_ = closingBracePos;
     this._newScope = newScope;
   }
@@ -94,7 +98,7 @@ public class Block extends Expr
    * Generate a block of statements that define a new scope. This is generally
    * called from the Parser when the source contains a block.
    *
-   * @param pos the soucecode position of the start of this block, used for
+   * @param pos the sourcecode position of the start of this block, used for
    * error messages.
    *
    * @param closingBracePos the sourcecode position of this block's closing
@@ -115,7 +119,7 @@ public class Block extends Expr
    * Generate a block of statements that do not define a new scope, i.e.,
    * declarations remain visible after this block.
    *
-   * @param pos the soucecode position, used for error messages.
+   * @param pos the sourcecode position, used for error messages.
    *
    * @param s the list of statements
    */
@@ -130,7 +134,7 @@ public class Block extends Expr
    * Generate a block of statements that do not define a new scope, i.e.,
    * declarations remain visible after this block.
    *
-   * @param pos the soucecode position, used for error messages.
+   * @param pos the sourcecode position, used for error messages.
    *
    * @param s the list of statements
    *
@@ -195,6 +199,15 @@ public class Block extends Expr
 
 
   /**
+   * The sourcecode position of this expression, used for error messages.
+   */
+  public SourcePosition pos()
+  {
+    return _pos;
+  }
+
+
+  /**
    * visit all the features, expressions, statements within this feature.
    *
    * @param v the visitor instance that defines an action to be performed on
@@ -204,7 +217,7 @@ public class Block extends Expr
    *
    * @return this.
    */
-  public Block visit(FeatureVisitor v, Feature outer)
+  public Block visit(FeatureVisitor v, AbstractFeature outer)
   {
     v.actionBefore(this, outer);
     ListIterator<Stmnt> i = statements_.listIterator();
@@ -219,90 +232,18 @@ public class Block extends Expr
 
 
   /**
-   * resultExpressionIndex returns the index of the last non-NOP statement of
-   * this block if it is an expression, -1 if the block is empty or the last
-   * non-NOP statement is not an Expr.
+   * type returns the type of this expression or Types.t_ERROR if the type is
+   * still unknown, i.e., before or during type resolution.
    *
-   * @return the index of the Expr that produces this Block's result, -1 if none
-   * exists.
+   * @return this Expr's type or t_ERROR in case it is not known yet.
    */
-  private int resultExpressionIndex()
+  public AbstractType type()
   {
-    var i = statements_.size() - 1;
-    while (i >= 0 && (statements_.get(i) instanceof Nop))
-      {
-        i--;
-      }
-    return (i >= 0 && (statements_.get(i) instanceof Expr))
-      ? i
-      : -1;
-  }
-
-
-  /**
-   * resultExpression returns the last non-NOP statement of this block if it is
-   * an expression, null if the block is empty or the last non-NOP statement is
-   * not an Expr.
-   *
-   * @return the Expr that produces this Block's result, or null if none.
-   */
-  public Expr resultExpression()
-  {
-    var i = resultExpressionIndex();
-    return i >= 0
-      ? (Expr) statements_.get(i)
-      : null;
-  }
-
-
-  /**
-   * removeResultExpression removes and returns the last non-NOP statement of
-   * this block if it is an expression.  Does nothing an returns null if the
-   * block is empty or the last non-NOP statement is not an Expr.
-   *
-   * @return the Expr that produces this Block's result
-   */
-  private Expr removeResultExpression()
-  {
-    var i = resultExpressionIndex();
-    return i >= 0
-      ? (Expr) statements_.remove(i)
-      : null;
-  }
-
-
-  /**
-   * Check if this value might need boxing and wrap this into Box() if this is
-   * the case.
-   *
-   * @param frmlT the formal type this is assigned to.
-   *
-   * @return this or an instance of Box wrapping this.
-   */
-  Expr box(Type frmlT)
-  {
-    var r = removeResultExpression();
-    if (r != null)
-      {
-        statements_.add(r.box(frmlT));
-      }
-    return this;
-  }
-
-
-  /**
-   * typeOrNull returns the type of this expression or Null if the type is still
-   * unknown, i.e., before or during type resolution.
-   *
-   * @return this Expr's type or null if not known.
-   */
-  public Type typeOrNull()
-  {
-    Type result = Types.resolved.t_unit;
+    AbstractType result = Types.resolved.t_unit;
     Expr resExpr = resultExpression();
     if (resExpr != null)
       {
-        result = resExpr.typeOrNull();
+        result = resExpr.typeForFeatureResultTypeInferencing();
       }
     return result;
   }
@@ -316,7 +257,7 @@ public class Block extends Expr
    *
    * @param outer the class that contains this expression.
    */
-  void loadCalledFeature(Resolution res, Feature outer)
+  void loadCalledFeature(Resolution res, AbstractFeature outer)
   {
     Expr resExpr = resultExpression();
     if (resExpr != null)
@@ -344,10 +285,46 @@ public class Block extends Expr
     Expr resExpr = resultExpression();
     if (resExpr != null)
       {
-        result = resExpr.pos;
+        result = resExpr.pos();
       }
     return result;
   }
+
+
+  /**
+   * removeResultExpression removes and returns the last non-NOP statement of
+   * this block if it is an expression.  Does nothing an returns null if the
+   * block is empty or the last non-NOP statement is not an Expr.
+   *
+   * @return the Expr that produces this Block's result
+   */
+  private Expr removeResultExpression()
+  {
+    var i = resultExpressionIndex();
+    return i >= 0
+      ? (Expr) statements_.remove(i)
+      : null;
+  }
+
+
+  /**
+   * Check if this value might need boxing and wrap this into Box() if this is
+   * the case.
+   *
+   * @param frmlT the formal type this is assigned to.
+   *
+   * @return this or an instance of Box wrapping this.
+   */
+  Expr box(AbstractType frmlT)
+  {
+    var r = removeResultExpression();
+    if (r != null)
+      {
+        statements_.add(r.box(frmlT));
+      }
+    return this;
+  }
+
 
 
   /**
@@ -378,16 +355,16 @@ public class Block extends Expr
    *
    * @param r the field this should be assigned to.
    */
-  Block assignToField(Resolution res, Feature outer, Feature r)
+  Block assignToField(Resolution res, AbstractFeature outer, Feature r)
   {
     Expr resExpr = removeResultExpression();
     if (resExpr != null)
       {
         statements_.add(resExpr.assignToField(res, outer, r));
       }
-    else if (r.resultType() != Types.resolved.t_unit)
+    else if (r.resultType().compareTo(Types.resolved.t_unit) != 0)
       {
-        FeErrors.blockMustEndWithExpression(closingBracePos_, r.resultType());
+        AstErrors.blockMustEndWithExpression(closingBracePos_, r.resultType());
       }
     return this;
   }
@@ -410,12 +387,12 @@ public class Block extends Expr
    * result. In particular, if the result is assigned to a temporary field, this
    * will be replaced by the statement that reads the field.
    */
-  public Expr propagateExpectedType(Resolution res, Feature outer, Type type)
+  public Expr propagateExpectedType(Resolution res, AbstractFeature outer, AbstractType type)
   {
-    if (type == Types.resolved.t_unit && hasImplicitResult())
+    if (type.compareTo(Types.resolved.t_unit) == 0 && hasImplicitResult())
       { // return unit if this is expected even if we would implicitly return
         // something else:
-        statements_.add(new Block(pos, new List<>()));
+        statements_.add(new Block(pos(), new List<>()));
       }
     Expr resExpr = removeResultExpression();
     if (resExpr != null)
@@ -423,21 +400,6 @@ public class Block extends Expr
         statements_.add(resExpr.propagateExpectedType(res, outer, type));
       }
     return this;
-  }
-
-
-  /**
-   * Does this statement consist of nothing but declarations? I.e., it has no
-   * code that actually would be executed at runtime.
-   */
-  public boolean containsOnlyDeclarations()
-  {
-    boolean result = true;
-    for (Stmnt s : statements_)
-      {
-        result = result && s.containsOnlyDeclarations();
-      }
-    return result;
   }
 
 
@@ -452,42 +414,6 @@ public class Block extends Expr
     return expr != null && expr.producesResult();
   }
 
-
-  /**
-   * toString
-   *
-   * @return
-   */
-  public String toString()
-  {
-    return new StringBuilder().append("{\n").append(toString("  ")).append("}").toString();
-  }
-
-
-  /**
-   * toString
-   *
-   * @return
-   */
-  public String toString(String prefix)
-  {
-    String s = statements_.toString("\n");
-    StringBuilder sb = new StringBuilder();
-    if (s.length() > 0)
-      {
-        sb.append(prefix);
-      }
-    for (int i=0; i<s.length(); i++)
-      {
-        var c = s.charAt(i);
-        sb.append(c);
-        if (c == '\n' && i < s.length()-1)
-          {
-            sb.append(prefix);
-          }
-      }
-    return sb.toString();
-  }
 
 }
 

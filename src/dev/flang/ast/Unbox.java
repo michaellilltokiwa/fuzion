@@ -29,7 +29,7 @@ package dev.flang.ast;
 import java.util.Iterator;
 
 import dev.flang.util.Errors;
-import dev.flang.util.SourcePosition;
+
 
 /**
  * Unbox is an expression that dereferences an address of a value type to
@@ -37,7 +37,7 @@ import dev.flang.util.SourcePosition;
  *
  * @author Fridtjof Siebert (siebert@tokiwa.software)
  */
-public class Unbox extends Expr
+public abstract class Unbox extends Expr
 {
 
 
@@ -53,7 +53,7 @@ public class Unbox extends Expr
   /**
    * The type of this, set during creation.
    */
-  private Type type_;
+  private AbstractType type_;
 
 
   /**
@@ -76,19 +76,16 @@ public class Unbox extends Expr
   /**
    * Constructor
    *
-   * @param pos the soucecode position, used for error messages.
+   * @param adr the expression (outer ref) leading to the outer ref value that should
+   * be unboxed.
    *
-   * @param t the result type
+   * @param type the result type
    */
-  public Unbox(SourcePosition pos, Expr adr, Type type, Feature outer)
+  public Unbox(Expr adr, AbstractType type)
   {
-    super(pos);
-
     if (PRECONDITIONS) require
-      (pos != null,
-       adr != null,
-       adr.type().isRef(),
-       Errors.count() > 0 || type.featureOfType() == outer,
+      (adr != null,
+       adr.type().isRef() || adr instanceof AbstractCall c && c.calledFeature().isOuterRef(),
        !type.featureOfType().isThisRef()
        );
 
@@ -97,16 +94,37 @@ public class Unbox extends Expr
   }
 
 
+  /**
+   * Constructor
+   *
+   * @param adr the expression (outer ref) leading to the outer ref value that should
+   * be unboxed.
+   *
+   * @param t the result type
+   */
+  public Unbox(Expr adr, AbstractType type, AbstractFeature outer)
+  {
+    this(adr, type);
+
+    if (PRECONDITIONS) require
+      (adr != null,
+       adr.type().isRef(),
+       Errors.count() > 0 || type.featureOfType() == outer,
+       !type.featureOfType().isThisRef()
+       );
+  }
+
+
   /*-----------------------------  methods  -----------------------------*/
 
 
   /**
-   * typeOrNull returns the type of this expression or Null if the type is still
-   * unknown, i.e., before or during type resolution.
+   * type returns the type of this expression or Types.t_ERROR if the type is
+   * still unknown, i.e., before or during type resolution.
    *
-   * @return this Expr's type or null if not known.
+   * @return this Expr's type or t_ERROR in case it is not known yet.
    */
-  public Type typeOrNull()
+  public AbstractType type()
   {
     return type_;
   }
@@ -122,11 +140,24 @@ public class Unbox extends Expr
    *
    * @return this.
    */
-  public Unbox visit(FeatureVisitor v, Feature outer)
+  public Unbox visit(FeatureVisitor v, AbstractFeature outer)
   {
     adr_ = adr_.visit(v, outer);
     v.action(this, outer);
     return this;
+  }
+
+
+  /**
+   * visit all the statements within this Unbox.
+   *
+   * @param v the visitor instance that defines an action to be performed on
+   * visited statements
+   */
+  public void visitStatements(StatementVisitor v)
+  {
+    adr_.visitStatements(v);
+    super.visitStatements(v);
   }
 
 
@@ -138,10 +169,10 @@ public class Unbox extends Expr
    *
    * @return this or an instance of Box wrapping this.
    */
-  Expr box(Type frmlT)
+  Expr box(AbstractType frmlT)
   {
     var t = type();
-    if (t != Types.resolved.t_void &&
+    if (t.compareTo(Types.resolved.t_void) != 0 &&
         ((!frmlT.isRef() ||
           (frmlT.isChoice() &&
            !frmlT.isAssignableFrom(t) &&
@@ -151,6 +182,15 @@ public class Unbox extends Expr
         this.type_ = frmlT;
       }
     return super.box(frmlT);
+  }
+
+
+  /**
+   * Is this Expr a call to an outer ref?
+   */
+  public boolean isCallToOuterRef()
+  {
+    return adr_.isCallToOuterRef();
   }
 
 

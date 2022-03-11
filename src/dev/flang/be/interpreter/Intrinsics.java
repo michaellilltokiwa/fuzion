@@ -26,21 +26,23 @@ Fuzion language implementation.  If not, see <https://www.gnu.org/licenses/>.
 
 package dev.flang.be.interpreter;
 
+import dev.flang.ast.AbstractType; // NYI: remove dependency! Use dev.flang.fuir instead.
 import dev.flang.ast.Consts; // NYI: remove dependency! Use dev.flang.fuir instead.
-import dev.flang.ast.Feature; // NYI: remove dependency! Use dev.flang.fuir instead.
 import dev.flang.ast.Impl; // NYI: remove dependency! Use dev.flang.fuir instead.
-import dev.flang.ast.Type; // NYI: remove dependency! Use dev.flang.fuir instead.
 import dev.flang.ast.Types; // NYI: remove dependency! Use dev.flang.fuir instead.
 
-import dev.flang.ir.Clazz;
-import dev.flang.ir.Clazzes;
+import dev.flang.air.Clazz;
+import dev.flang.air.Clazzes;
 
 import dev.flang.util.ANY;
 import dev.flang.util.Errors;
 import dev.flang.util.List;
 
 import java.lang.reflect.Array;
+
 import java.nio.charset.StandardCharsets;
+
+import java.util.TreeMap;
 
 
 /**
@@ -63,6 +65,17 @@ public class Intrinsics extends ANY
   /*----------------------------  variables  ----------------------------*/
 
 
+  /*------------------------  static variables  -------------------------*/
+
+
+  /**
+   * Currently installed one-way monads.
+   *
+   * NYI: This should be thread-local eventually.
+   */
+  static TreeMap<Clazz, Value> _onewayMonads_ = new TreeMap<>();
+
+
   /*-------------------------  static methods  --------------------------*/
 
 
@@ -76,7 +89,7 @@ public class Intrinsics extends ANY
   public static Callable call(Clazz innerClazz)
   {
     if (PRECONDITIONS) require
-      (innerClazz.feature().impl == Impl.INTRINSIC);
+      (innerClazz.feature().isIntrinsic());
 
     Callable result;
     var f = innerClazz.feature();
@@ -120,7 +133,7 @@ public class Intrinsics extends ANY
              n.equals("fuzion.java.getField0"      )    )
       {
         var statique = n.equals("fuzion.java.getStaticField0");
-        var actualGenerics = innerClazz._type._generics;
+        var actualGenerics = innerClazz._type.generics();
         if ((actualGenerics == null) || (actualGenerics.size() != 1))
           {
             System.err.println("fuzion.java.getStaticField called with wrong number of actual generic arguments");
@@ -149,7 +162,7 @@ public class Intrinsics extends ANY
         var virtual     = n.equals("fuzion.java.callV0");
         var statique    = n.equals("fuzion.java.callS0");
         var constructor = n.equals("fuzion.java.callC0");
-        var actualGenerics = innerClazz._type._generics;
+        var actualGenerics = innerClazz._type.generics();
         Clazz resultClazz = innerClazz.actualClazz(actualGenerics.getFirst());
         result = (args) ->
           {
@@ -163,12 +176,18 @@ public class Intrinsics extends ANY
             var nameI   = constructor ? null : (Instance) args.get(a++);
             var sigI    =                      (Instance) args.get(a++);
             var thizI   = !virtual    ? null : (Instance) args.get(a++);
-            var argz = args.get(a);
+
+            var argz = args.get(a); // of type sys.array<JavaObject>, we need to get field argz.data
+            var argfields = innerClazz.argumentFields();
+            var argsArray = argfields[argfields.length - 1];
+            var sac = argsArray.resultClazz();
+            var argzData = Interpreter.getField(Types.resolved.f_sys_array_data, sac, argz);
+
             String clName =                          (String) JavaInterface.instanceToJavaObject(clNameI);
             String name   = nameI   == null ? null : (String) JavaInterface.instanceToJavaObject(nameI  );
             String sig    =                          (String) JavaInterface.instanceToJavaObject(sigI   );
             Object thiz   = thizI   == null ? null :          JavaInterface.instanceToJavaObject(thizI  );
-            return JavaInterface.call(clName, name, sig, thiz, argz, resultClazz);
+            return JavaInterface.call(clName, name, sig, thiz, argzData, resultClazz);
           };
       }
     else if (n.equals("fuzion.java.arrayLength"))
@@ -392,19 +411,25 @@ public class Intrinsics extends ANY
             return Value.EMPTY_VALUE;
           };
       }
-    else if (n.equals("debug"        ) ||
-             n.equals("debugLevel"   ) ||
-             n.equals("safety"       ) ||
-             n.equals("bool.prefix !") ||
+    else if (n.equals("safety"      ))
+      {
+        result = (args) -> new boolValue(Interpreter._options_.fuzionSafety());
+      }
+    else if (n.equals("debug"       ))
+      {
+        result = (args) -> new boolValue(Interpreter._options_.fuzionDebug());
+      }
+    else if (n.equals("debugLevel"  ))
+      {
+        result = (args) -> new i32Value(Interpreter._options_.fuzionDebugLevel());
+      }
+    else if (n.equals("bool.prefix !") ||
              n.equals("bool.infix ||") ||
              n.equals("bool.infix &&") ||
              n.equals("bool.infix :")   )
       {
-        if (Errors.count() == 0)
-          {
-            Errors.error(f.pos, "intrinsic feature not supported by backend",
-                         "intrinsic '"+n+"' should be handled by front end");
-          }
+        Errors.fatal(f.pos(), "intrinsic feature not supported by backend",
+                     "intrinsic '"+n+"' should be handled by front end");
         result = (args) -> Value.NO_VALUE;
       }
     else if (n.equals("i8.as_i32"       )) { result = (args) -> new i32Value (              (                           args.get(0).i8Value() )); }
@@ -447,6 +472,7 @@ public class Intrinsics extends ANY
     else if (n.equals("i16.infix >="    )) { result = (args) -> new boolValue(              (args.get(0).i16Value() >=  args.get(1).i16Value())); }
     else if (n.equals("i32.as_i64"      )) { result = (args) -> new i64Value ((long)        (                           args.get(0).i32Value())); }
     else if (n.equals("i32.castTo_u32"  )) { result = (args) -> new u32Value (              (                           args.get(0).i32Value())); }
+    else if (n.equals("i32.as_f64"      )) { result = (args) -> new f64Value ((double)      (                           args.get(0).i32Value())); }
     else if (n.equals("i32.prefix -°"   )) { result = (args) -> new i32Value (              (                       -   args.get(0).i32Value())); }
     else if (n.equals("i32.infix +°"    )) { result = (args) -> new i32Value (              (args.get(0).i32Value() +   args.get(1).i32Value())); }
     else if (n.equals("i32.infix -°"    )) { result = (args) -> new i32Value (              (args.get(0).i32Value() -   args.get(1).i32Value())); }
@@ -465,6 +491,7 @@ public class Intrinsics extends ANY
     else if (n.equals("i32.infix <="    )) { result = (args) -> new boolValue(              (args.get(0).i32Value() <=  args.get(1).i32Value())); }
     else if (n.equals("i32.infix >="    )) { result = (args) -> new boolValue(              (args.get(0).i32Value() >=  args.get(1).i32Value())); }
     else if (n.equals("i64.castTo_u64"  )) { result = (args) -> new u64Value (              (                           args.get(0).i64Value())); }
+    else if (n.equals("i64.as_f64"      )) { result = (args) -> new f64Value ((double)      (                           args.get(0).i64Value())); }
     else if (n.equals("i64.prefix -°"   )) { result = (args) -> new i64Value (              (                       -   args.get(0).u64Value())); }
     else if (n.equals("i64.infix +°"    )) { result = (args) -> new i64Value (              (args.get(0).i64Value() +   args.get(1).i64Value())); }
     else if (n.equals("i64.infix -°"    )) { result = (args) -> new i64Value (              (args.get(0).i64Value() -   args.get(1).i64Value())); }
@@ -525,6 +552,7 @@ public class Intrinsics extends ANY
     else if (n.equals("u32.low8bits"    )) { result = (args) -> new u8Value  (       0xff & (                           args.get(0).u32Value())); }
     else if (n.equals("u32.low16bits"   )) { result = (args) -> new u16Value (     0xffff & (                           args.get(0).u32Value())); }
     else if (n.equals("u32.castTo_i32"  )) { result = (args) -> new i32Value (              (                           args.get(0).u32Value())); }
+    else if (n.equals("u32.as_f64"      )) { result = (args) -> new f64Value ((double)      (                           args.get(0).u32Value())); }
     else if (n.equals("u32.prefix -°"   )) { result = (args) -> new u32Value (              (                       -   args.get(0).u32Value())); }
     else if (n.equals("u32.infix +°"    )) { result = (args) -> new u32Value (              (args.get(0).u32Value() +   args.get(1).u32Value())); }
     else if (n.equals("u32.infix -°"    )) { result = (args) -> new u32Value (              (args.get(0).u32Value() -   args.get(1).u32Value())); }
@@ -546,6 +574,7 @@ public class Intrinsics extends ANY
     else if (n.equals("u64.low16bits"   )) { result = (args) -> new u16Value (     0xffff & ((int)                      args.get(0).u64Value())); }
     else if (n.equals("u64.low32bits"   )) { result = (args) -> new u32Value ((int)         (                           args.get(0).u64Value())); }
     else if (n.equals("u64.castTo_i64"  )) { result = (args) -> new i64Value (              (                           args.get(0).u64Value())); }
+    else if (n.equals("u64.as_f64"      )) { result = (args) -> new f64Value (2.0 *        ((args.get(0).u64Value()>>>1) & 0x7fffffffffffffffL)); }
     else if (n.equals("u64.prefix -°"   )) { result = (args) -> new u64Value (              (                       -   args.get(0).u64Value())); }
     else if (n.equals("u64.infix +°"    )) { result = (args) -> new u64Value (              (args.get(0).u64Value() +   args.get(1).u64Value())); }
     else if (n.equals("u64.infix -°"    )) { result = (args) -> new u64Value (              (args.get(0).u64Value() -   args.get(1).u64Value())); }
@@ -593,15 +622,46 @@ public class Intrinsics extends ANY
     else if (n.equals("f64.infix >="    )) { result = (args) -> new boolValue(                (args.get(0).f64Value() >= args.get(1).f64Value())); }
     else if (n.equals("f64.castTo_u64"  )) { result = (args) -> new u64Value (    Double.doubleToLongBits(               args.get(0).f64Value())); }
     else if (n.equals("f64.asString"    )) { result = (args) -> Interpreter.value(Double.toString       (                args.get(0).f64Value())); }
-    else if (n.equals("Object.infix !==")) { result = (args) -> new boolValue(args.get(0) !=  args.get(1)); }
-    else if (n.equals("Object.infix ===")) { result = (args) -> new boolValue(args.get(0) ==  args.get(1)); }
     else if (n.equals("Object.hashCode" )) { result = (args) -> new i32Value (args.get(0).toString().hashCode()); }
     else if (n.equals("Object.asString" )) { result = (args) -> Interpreter.value(args.get(0).toString());
       // NYI: This could be more useful by giving the object's class, an id, public fields, etc.
-      }
+    }
+    else if (n.equals("onewayMonad.install" )) {
+      result = (args) ->
+      {
+        var m = args.get(0);
+        var cl = innerClazz._outer;
+        check
+          (_onewayMonads_.get(cl) == null);
+        _onewayMonads_.put(cl, m);
+        return Value.EMPTY_VALUE;
+      };
+    }
+    else if (n.equals("onewayMonad.remove" )) {
+      result = (args) ->
+      {
+        var m = args.get(0);
+        var cl = innerClazz._outer;
+        check
+        (_onewayMonads_.get(cl) != null);
+        _onewayMonads_.put(cl, null);
+        return Value.EMPTY_VALUE;
+      };
+    }
+    else if (n.equals("onewayMonad.replace" )) {
+      result = (args) ->
+      {
+        var m = args.get(0);
+        var cl = innerClazz._outer;
+        check
+        (_onewayMonads_.get(cl) != null);
+        _onewayMonads_.put(cl, m);
+        return Value.EMPTY_VALUE;
+      };
+    }
     else
       {
-        Errors.error(f.pos,
+        Errors.fatal(f.pos(),
                      "Intrinsic feature not supported",
                      "Missing intrinsic feature: " + f.qualifiedName());
         result = (args) -> Value.NO_VALUE;
@@ -610,35 +670,35 @@ public class Intrinsics extends ANY
   }
 
 
-  static Type elementType(Clazz arrayClazz)
+  static AbstractType elementType(Clazz arrayClazz)
   {
     // NYI: Properly determine generic argument type of array
     var arrayType = arrayClazz._type;
-    if (arrayType == Types.resolved.t_conststring /* NYI: Hack */)
+    if (arrayType.compareTo(Types.resolved.t_conststring) == 0 /* NYI: Hack */)
       {
         return Types.resolved.t_i32;
       }
     else
       {
-        return arrayType._generics.getFirst();
+        return arrayType.generics().getFirst();
       }
   }
 
   static ArrayData sysArrayAlloc(int sz,
-                                Clazz arrayClazz)
+                                 Clazz arrayClazz)
   {
     // NYI: Properly determine generic argument type of array
     var elementType = elementType(arrayClazz);
-    if      (elementType == Types.resolved.t_i8  ) { return new ArrayData(new byte   [sz]); }
-    else if (elementType == Types.resolved.t_i16 ) { return new ArrayData(new short  [sz]); }
-    else if (elementType == Types.resolved.t_i32 ) { return new ArrayData(new int    [sz]); }
-    else if (elementType == Types.resolved.t_i64 ) { return new ArrayData(new long   [sz]); }
-    else if (elementType == Types.resolved.t_u8  ) { return new ArrayData(new byte   [sz]); }
-    else if (elementType == Types.resolved.t_u16 ) { return new ArrayData(new char   [sz]); }
-    else if (elementType == Types.resolved.t_u32 ) { return new ArrayData(new int    [sz]); }
-    else if (elementType == Types.resolved.t_u64 ) { return new ArrayData(new long   [sz]); }
-    else if (elementType == Types.resolved.t_bool) { return new ArrayData(new boolean[sz]); }
-    else                                           { return new ArrayData(new Value  [sz]); }
+    if      (elementType.compareTo(Types.resolved.t_i8  ) == 0) { return new ArrayData(new byte   [sz]); }
+    else if (elementType.compareTo(Types.resolved.t_i16 ) == 0) { return new ArrayData(new short  [sz]); }
+    else if (elementType.compareTo(Types.resolved.t_i32 ) == 0) { return new ArrayData(new int    [sz]); }
+    else if (elementType.compareTo(Types.resolved.t_i64 ) == 0) { return new ArrayData(new long   [sz]); }
+    else if (elementType.compareTo(Types.resolved.t_u8  ) == 0) { return new ArrayData(new byte   [sz]); }
+    else if (elementType.compareTo(Types.resolved.t_u16 ) == 0) { return new ArrayData(new char   [sz]); }
+    else if (elementType.compareTo(Types.resolved.t_u32 ) == 0) { return new ArrayData(new int    [sz]); }
+    else if (elementType.compareTo(Types.resolved.t_u64 ) == 0) { return new ArrayData(new long   [sz]); }
+    else if (elementType.compareTo(Types.resolved.t_bool) == 0) { return new ArrayData(new boolean[sz]); }
+    else                                                        { return new ArrayData(new Value  [sz]); }
   }
 
   static void sysArraySetEl(ArrayData ad,
@@ -649,16 +709,16 @@ public class Intrinsics extends ANY
     // NYI: Properly determine generic argument type of array
     var elementType = elementType(arrayClazz);
     ad.checkIndex(x);
-    if      (elementType == Types.resolved.t_i8  ) { ((byte   [])ad._array)[x] = (byte   ) v.i8Value();   }
-    else if (elementType == Types.resolved.t_i16 ) { ((short  [])ad._array)[x] = (short  ) v.i16Value();  }
-    else if (elementType == Types.resolved.t_i32 ) { ((int    [])ad._array)[x] =           v.i32Value();  }
-    else if (elementType == Types.resolved.t_i64 ) { ((long   [])ad._array)[x] =           v.i64Value();  }
-    else if (elementType == Types.resolved.t_u8  ) { ((byte   [])ad._array)[x] = (byte   ) v.u8Value();   }
-    else if (elementType == Types.resolved.t_u16 ) { ((char   [])ad._array)[x] = (char   ) v.u16Value();  }
-    else if (elementType == Types.resolved.t_u32 ) { ((int    [])ad._array)[x] =           v.u32Value();  }
-    else if (elementType == Types.resolved.t_u64 ) { ((long   [])ad._array)[x] =           v.u64Value();  }
-    else if (elementType == Types.resolved.t_bool) { ((boolean[])ad._array)[x] =           v.boolValue(); }
-    else                                           { ((Value  [])ad._array)[x] =           v;             }
+    if      (elementType.compareTo(Types.resolved.t_i8  ) == 0) { ((byte   [])ad._array)[x] = (byte   ) v.i8Value();   }
+    else if (elementType.compareTo(Types.resolved.t_i16 ) == 0) { ((short  [])ad._array)[x] = (short  ) v.i16Value();  }
+    else if (elementType.compareTo(Types.resolved.t_i32 ) == 0) { ((int    [])ad._array)[x] =           v.i32Value();  }
+    else if (elementType.compareTo(Types.resolved.t_i64 ) == 0) { ((long   [])ad._array)[x] =           v.i64Value();  }
+    else if (elementType.compareTo(Types.resolved.t_u8  ) == 0) { ((byte   [])ad._array)[x] = (byte   ) v.u8Value();   }
+    else if (elementType.compareTo(Types.resolved.t_u16 ) == 0) { ((char   [])ad._array)[x] = (char   ) v.u16Value();  }
+    else if (elementType.compareTo(Types.resolved.t_u32 ) == 0) { ((int    [])ad._array)[x] =           v.u32Value();  }
+    else if (elementType.compareTo(Types.resolved.t_u64 ) == 0) { ((long   [])ad._array)[x] =           v.u64Value();  }
+    else if (elementType.compareTo(Types.resolved.t_bool) == 0) { ((boolean[])ad._array)[x] =           v.boolValue(); }
+    else                                                        { ((Value  [])ad._array)[x] =           v;             }
   }
 
 
@@ -669,16 +729,16 @@ public class Intrinsics extends ANY
     // NYI: Properly determine generic argument type of array
     var elementType = elementType(arrayClazz);
     ad.checkIndex(x);
-    if      (elementType == Types.resolved.t_i8  ) { return new i8Value  (((byte   [])ad._array)[x]       ); }
-    else if (elementType == Types.resolved.t_i16 ) { return new i16Value (((short  [])ad._array)[x]       ); }
-    else if (elementType == Types.resolved.t_i32 ) { return new i32Value (((int    [])ad._array)[x]       ); }
-    else if (elementType == Types.resolved.t_i64 ) { return new i64Value (((long   [])ad._array)[x]       ); }
-    else if (elementType == Types.resolved.t_u8  ) { return new u8Value  (((byte   [])ad._array)[x] & 0xff); }
-    else if (elementType == Types.resolved.t_u16 ) { return new u16Value (((char   [])ad._array)[x]       ); }
-    else if (elementType == Types.resolved.t_u32 ) { return new u32Value (((int    [])ad._array)[x]       ); }
-    else if (elementType == Types.resolved.t_u64 ) { return new u64Value (((long   [])ad._array)[x]       ); }
-    else if (elementType == Types.resolved.t_bool) { return new boolValue(((boolean[])ad._array)[x]       ); }
-    else                                           { return              ((Value   [])ad._array)[x]        ; }
+    if      (elementType.compareTo(Types.resolved.t_i8  ) == 0) { return new i8Value  (((byte   [])ad._array)[x]       ); }
+    else if (elementType.compareTo(Types.resolved.t_i16 ) == 0) { return new i16Value (((short  [])ad._array)[x]       ); }
+    else if (elementType.compareTo(Types.resolved.t_i32 ) == 0) { return new i32Value (((int    [])ad._array)[x]       ); }
+    else if (elementType.compareTo(Types.resolved.t_i64 ) == 0) { return new i64Value (((long   [])ad._array)[x]       ); }
+    else if (elementType.compareTo(Types.resolved.t_u8  ) == 0) { return new u8Value  (((byte   [])ad._array)[x] & 0xff); }
+    else if (elementType.compareTo(Types.resolved.t_u16 ) == 0) { return new u16Value (((char   [])ad._array)[x]       ); }
+    else if (elementType.compareTo(Types.resolved.t_u32 ) == 0) { return new u32Value (((int    [])ad._array)[x]       ); }
+    else if (elementType.compareTo(Types.resolved.t_u64 ) == 0) { return new u64Value (((long   [])ad._array)[x]       ); }
+    else if (elementType.compareTo(Types.resolved.t_bool) == 0) { return new boolValue(((boolean[])ad._array)[x]       ); }
+    else                                                        { return              ((Value   [])ad._array)[x]        ; }
   }
 
 }

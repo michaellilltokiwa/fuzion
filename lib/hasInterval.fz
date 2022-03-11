@@ -45,7 +45,7 @@ hasInterval<T: hasInterval<T>> : integer<T> is
   #   a <  b: the interval from a to b, both inclusive
   #   a == b: the interval containing only one element, a
   #   a >  b: an empty interval
-  infix .. (upper T) : List<T>, Set<T> is
+  infix .. (upper T) : Set<T> is
 
     lower T is thiz
     # lower => hasInterval.this  # NYI: This does not work yet since the result type when doing clazz layout is hasInterval and not the actual clazz (i32, etc)
@@ -53,7 +53,7 @@ hasInterval<T: hasInterval<T>> : integer<T> is
     size T is if lower <= upper then upper - lower + one else zero
 
     # apply function f to all elements in this interval
-    redef forAll(f fun (T)) unit is
+    redef forAll(f T -> unit) unit is
       for
         x := lower, x + one
       while x <= upper
@@ -61,7 +61,7 @@ hasInterval<T: hasInterval<T>> : integer<T> is
 
     # create a stream of all the elements of this interval, in order.
     redef asStream ref : stream<T> is
-      x numOption<T> := lower
+      x := numOption lower
       redef hasNext bool is x.exists && x.val <= upper
       redef next T is res := x.val; set x := x +? one; res
 
@@ -71,7 +71,7 @@ hasInterval<T: hasInterval<T>> : integer<T> is
     contains (e T) => lower <= e <= upper
 
 
-    # Create a List that is steping through this interval skipping values. For a
+    # Create a Sequence that is stepping through this interval skipping values. For a
     # non-negative step parameter, the stream will return lower, lower+step,
     # lower+2*step, etc. as long as these values are <= upper.
     #
@@ -80,15 +80,29 @@ hasInterval<T: hasInterval<T>> : integer<T> is
     # that a negative step will produce a non-empty stream for an empty interval with
     # lower > upper!
     #
-    infix : (step T) : List<T>, Set<T> is
+    infix : (step T) : Set<T> is
 
       # create a stream of all the elements of this interval, in order.
       redef asStream ref : stream<T> is
-        x numOption<T> := lower
+        x := numOption lower
         redef hasNext bool is
           (step > zero && x.exists && x.val <= upper ||
            step < zero && x.exists && x.val >= upper    )
         redef next T is res := x.val; set x := x +? step; res
+
+
+      # list representation of values in this interval
+      #
+      redef asList list<T> is
+        cons (head T) :  Cons<T, list<T>> is
+          tail list<T> is
+            (lower+?step ? nil    => nil
+                         | next T => (next..upper:step).asList.asList)
+        if (step > zero && lower <= upper ||
+            step < zero && lower >= upper    )
+          cons lower
+        else
+          nil
 
 
       # does this range contain the given value?
@@ -96,9 +110,9 @@ hasInterval<T: hasInterval<T>> : integer<T> is
       contains (e T) => lower <= e <= upper && ((e - lower) %% step)
 
 
-      # use map implementation from List:
+      # use map implementation from Sequence:
       #
-      map<B>(f fun(T) B)  => mapList<B> f
+      map<B>(f T -> B)  => mapSequence f
 
 
     # create a list from this interval
@@ -110,9 +124,9 @@ hasInterval<T: hasInterval<T>> : integer<T> is
       if (lower > upper) nil else cons lower
 
 
-    # use map implementation from List:
+    # use map implementation from Sequence:
     #
-    map<B>(f fun(T) B)  => mapList<B> f
+    map<B>(f T -> B)  => mapSequence f
 
 
     # string representation of this interval, e.g., "1..10"
@@ -122,7 +136,6 @@ hasInterval<T: hasInterval<T>> : integer<T> is
 
   # the open interval from this to the maximum T value
   postfix .. () infix .. is
-    # hasInterval.this..max   # NYI: This does not work yet since the result type when doing clazz layout is hasInterval and not the actual clazz (i32, etc)
-    thiz..max
+    hasInterval.this..max
 
   # postfix .. : infix .. (max) is  # NYI: check: this should have the same effect using a sub-class

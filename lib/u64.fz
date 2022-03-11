@@ -36,15 +36,15 @@ u64(val u64) : wrappingInteger<u64>, hasInterval<u64>, u64s is
   redef wrappedOnNeg => !isZero
 
   # would addtion thiz + other cause an overflow or underflow?
-  redef overflowOnAdd (other u64) => max -° u64.this < other
+  redef overflowOnAdd (other u64) => max -° thiz < other
   redef underflowOnAdd(other u64) => false
 
   # would subtraction thiz - other cause an overflow or underflow?
   redef overflowOnSub (other u64) => false
-  redef underflowOnSub(other u64) => u64.this < other
+  redef underflowOnSub(other u64) => thiz < other
 
   # would multiplication thiz * other cause an overflow or underflow?
-  redef overflowOnMul (other u64) => if other == 0 false else (u64.this *° other / other) != u64.this
+  redef overflowOnMul (other u64) => if other == 0 false else (thiz *° other / other) != thiz
   redef underflowOnMul(other u64) => false
 
   # neg, add, sub, mul with wrap-around semantics
@@ -86,58 +86,61 @@ u64(val u64) : wrappingInteger<u64>, hasInterval<u64>, u64s is
 
   as_i8 i8
     pre
-      u64.this <= i8.max.as_u64
+      thiz <= i8.max.as_u64
     is
       low8bits.as_i8
   as_i16 i16
     pre
-      u64.this <= i16.max.as_u64
+      thiz <= i16.max.as_u64
     is
       low16bits.as_i16
   as_i32 i32
     pre
-      u64.this <= i32.max.as_u64
+      thiz <= i32.max.as_u64
     is
       low32bits.as_i32
   as_i64 i64
     pre
-      u64.this <= i64.max.as_u64
+      thiz <= i64.max.as_u64
 #    post
-#      analysis:  result.as_u64 == u64.this
+#      analysis:  result.as_u64 == thiz
     is
       castTo_i64
 # as_i128 i128 is as_u128.as_i128
   as_u8 u8
 #    pre
-#      u64.this <= u8.max.as_i64
+#      thiz <= u8.max.as_i64
 #    post
-#      analysis: result.as_u64 == u64.this
+#      analysis: result.as_u64 == thiz
     is
       low8bits
   as_u16 u16
 #    pre
-#      u64.this <= u16.max.as_i64
+#      thiz <= u16.max.as_i64
 #    post
-#      analysis: result.as_u64 == u64.this
+#      analysis: result.as_u64 == thiz
     is
       low16bits
   as_u32 u32
 #    pre
-#      u64.this <= u32.max.as_i64
+#      thiz <= u32.max.as_i64
 #    post
-#      analysis: result.as_u64 == u64.this
+#      analysis: result.as_u64 == thiz
     is
       low32bits
   as_u128 u128
 #    post
-#      analysis: result.as_u64 == u64.this
+#      analysis: result.as_u64 == thiz
     is
-      u128 0, u64.this
+      u128 0, thiz
 
   low8bits   u8  is intrinsic
   low16bits  u16 is intrinsic
   low32bits  u32 is intrinsic
   castTo_i64 i64 is intrinsic
+
+  # conversion to float
+  as_f64 f64 is intrinsic
 
   # NYI: max is redefined here only to solve repeated inheritance conflict. Since max inherited
   # from hasInterval is abstract, fz should not complain about this conflict.
@@ -146,7 +149,7 @@ u64(val u64) : wrappingInteger<u64>, hasInterval<u64>, u64s is
 
   # create hash code from this number
   hash u64 is
-    u64.this
+    thiz
 
 
   # find the highest 1 bit in this integer and return integer with
@@ -188,3 +191,29 @@ u64(val u64) : wrappingInteger<u64>, hasInterval<u64>, u64s is
     m := v & 0x_cccccccc_cccccccc; v := v - m + (m >> 2)
     m := v & 0x_f0f0f0f0_f0f0f0f0; v := v - m + (m >> 4)
     (v *° 0x_01010101_01010101 >> 56).as_i32
+
+
+# u64s -- unit type defining features related to u64 but not requiring an
+# instance
+#
+u64s : wrappingIntegers<u64> is
+
+  redef name => "u64"
+
+  redef zero => u64 0
+  redef one  => u64 1
+
+  redef min => u64 0
+  redef max => u64 0x_ffff_ffff_ffff_ffff
+
+
+# u64 -- returns value of unit type u64s
+#
+# This is a convenience feature that allows using, e.g., 'u64.sum' to
+# get the the monoid of (u64, infix +) instead of 'u64s.sum'.
+#
+# since this u64 with no arguments is a routine and not a constructor, it
+# does not define a type (which would cause a name clash with u64 with one
+# argument).
+#
+u64 => u64s

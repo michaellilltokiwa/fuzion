@@ -26,6 +26,8 @@ Fuzion language implementation.  If not, see <https://www.gnu.org/licenses/>.
 
 package dev.flang.ast;
 
+import dev.flang.util.SourcePosition;
+
 
 /**
  * Box is an expression that copies a value instance into a newly created
@@ -51,7 +53,7 @@ public class Box extends Expr
   /**
    * The type of this, set during creation.
    */
-  public Type _type;
+  public AbstractType _type;
 
 
   /**
@@ -69,18 +71,35 @@ public class Box extends Expr
    * Constructor
    *
    * @param value the value instance
+   *
+   * @param frmlT formal type the Expr should result in
+   */
+  public Box(Expr value, AbstractType frmlT)
+  {
+    if (PRECONDITIONS) require
+      (value != null,
+       frmlT.isGenericArgument() || !value.type().isRef() || value.isCallToOuterRef());
+
+    this._value = value;
+    var t = value.type();
+    this._type = frmlT.isGenericArgument() ? t : t.asRef();
+  }
+
+
+  /**
+   * Constructor for Box loaded from .fum/MIR module file be front end.
+   *
+   * @param value the value to be boxed.
    */
   public Box(Expr value)
   {
-    super(value.pos);
-
     if (PRECONDITIONS) require
-      (pos != null,
-       value != null,
-       !value.type().isRef() || value.isCallToOuterRef());
+      (value != null,
+       true /* NYI */ || !value.type().isRef() || value.isCallToOuterRef());
 
     this._value = value;
-    this._type = _value.type().asRef();
+    var t = value.type();
+    this._type = t.asRef();
   }
 
 
@@ -88,12 +107,21 @@ public class Box extends Expr
 
 
   /**
-   * typeOrNull returns the type of this expression or Null if the type is still
-   * unknown, i.e., before or during type resolution.
-   *
-   * @return this Expr's type or null if not known.
+   * The sourcecode position of this expression, used for error messages.
    */
-  public Type typeOrNull()
+  public SourcePosition pos()
+  {
+    return _value.pos();
+  }
+
+
+  /**
+   * type returns the type of this expression or Types.t_ERROR if the type is
+   * still unknown, i.e., before or during type resolution.
+   *
+   * @return this Expr's type or t_ERROR in case it is not known yet.
+   */
+  public AbstractType type()
   {
     return _type;
   }
@@ -109,11 +137,23 @@ public class Box extends Expr
    *
    * @return this.
    */
-  public Box visit(FeatureVisitor v, Feature outer)
+  public Box visit(FeatureVisitor v, AbstractFeature outer)
   {
     _value = _value.visit(v, outer);
-    v.action(this, outer);
     return this;
+  }
+
+
+  /**
+   * visit all the statements within this Box.
+   *
+   * @param v the visitor instance that defines an action to be performed on
+   * visited statements
+   */
+  public void visitStatements(StatementVisitor v)
+  {
+    super.visitStatements(v);
+    _value.visitStatements(v);
   }
 
 

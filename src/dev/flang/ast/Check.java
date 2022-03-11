@@ -48,7 +48,7 @@ public class Check implements Stmnt
 
 
   /**
-   * The soucecode position of this expression, used for error messages.
+   * The sourcecode position of this expression, used for error messages.
    */
   public final SourcePosition _pos;
 
@@ -73,7 +73,7 @@ public class Check implements Stmnt
 
 
   /**
-   * The soucecode position of this statment, used for error messages.
+   * The sourcecode position of this statment, used for error messages.
    */
   public SourcePosition pos()
   {
@@ -91,11 +91,25 @@ public class Check implements Stmnt
    *
    * @return this.
    */
-  public Check visit(FeatureVisitor v, Feature outer)
+  public Check visit(FeatureVisitor v, AbstractFeature outer)
   {
     cond.visit(v, outer);
     return this;
   }
+
+
+  /**
+   * visit all the statements within this Check.
+   *
+   * @param v the visitor instance that defines an action to be performed on
+   * visited statements
+   */
+  public void visitStatements(StatementVisitor v)
+  {
+    Stmnt.super.visitStatements(v);
+    cond.visitStatements(v);
+  }
+
 
   /**
    * Does this statement consist of nothing but declarations? I.e., it has no

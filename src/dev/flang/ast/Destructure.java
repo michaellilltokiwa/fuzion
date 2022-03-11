@@ -31,7 +31,7 @@ import java.util.Iterator;
 import java.util.TreeSet;
 
 import dev.flang.util.ANY;
-import dev.flang.util.Errors;
+import dev.flang.util.FuzionConstants;
 import dev.flang.util.List;
 import dev.flang.util.SourcePosition;
 
@@ -66,7 +66,7 @@ public class Destructure extends ANY implements Stmnt
 
 
   /**
-   * The soucecode position of this destructure, used for error messages.
+   * The sourcecode position of this destructure, used for error messages.
    */
   final SourcePosition _pos;
 
@@ -99,7 +99,7 @@ public class Destructure extends ANY implements Stmnt
   /**
    * Constructor
    *
-   * @param pos the soucecode position, used for error messages.
+   * @param pos the sourcecode position, used for error messages.
    *
    * @param n
    *
@@ -126,7 +126,7 @@ public class Destructure extends ANY implements Stmnt
 
 
   /**
-   * The soucecode position of this statment, used for error messages.
+   * The sourcecode position of this statment, used for error messages.
    */
   public SourcePosition pos()
   {
@@ -186,7 +186,7 @@ public class Destructure extends ANY implements Stmnt
                                        new List<String>(name),
                                        FormalGenerics.NONE,
                                        new List<Feature>(),
-                                       new List<Call>(),
+                                       new List<>(),
                                        new Contract(null, null, null),
                                        Impl.FIELD));
               }
@@ -194,12 +194,12 @@ public class Destructure extends ANY implements Stmnt
       }
     else
       {
-        check
+        if (CHECKS) check
           (!def);
         names = new List<String>();
         for (Feature f : fields)
           {
-            names.add(f._featureName.baseName());
+            names.add(f.featureName().baseName());
           }
       }
     return new Destructure(pos, names, fields, def, v).expand();
@@ -216,7 +216,7 @@ public class Destructure extends ANY implements Stmnt
    *
    * @return this
    */
-  public Stmnt visit(FeatureVisitor v, Feature outer)
+  public Stmnt visit(FeatureVisitor v, AbstractFeature outer)
   {
     _value = _value.visit(v, outer);
     return v.action(this, outer);
@@ -229,14 +229,14 @@ public class Destructure extends ANY implements Stmnt
    + NYI: Document
    */
   private void addAssign(Resolution res,
-                         Feature outer,
+                         AbstractFeature outer,
                          List<Stmnt> stmnts,
                          Feature tmp,
-                         Feature f,
+                         AbstractFeature f,
                          Iterator<String> names,
                          int select,
                          Iterator<Feature> fields,
-                         Type t)
+                         AbstractType t)
   {
     Expr thiz     = This.thiz(res, _pos, outer, outer);
     Call thiz_tmp = new Call(_pos, thiz    , tmp, -1    ).resolveTypes(res, outer);
@@ -247,7 +247,7 @@ public class Destructure extends ANY implements Stmnt
         Feature newF = fields.next();
         if (_isDefinition)
           {
-            newF.returnType = new FunctionReturnType(t);
+            newF._returnType = new FunctionReturnType(t);
           }
         assign = new Assign(res, _pos, newF, call_f, outer);
       }
@@ -274,18 +274,15 @@ public class Destructure extends ANY implements Stmnt
    *
    * @param outer the root feature that contains this statement.
    */
-  public Stmnt resolveTypes(Resolution res, Feature outer)
+  public Stmnt resolveTypes(Resolution res, AbstractFeature outer)
   {
     List<Stmnt> stmnts = new List<>();
     // NYI: This might fail in conjunction with type inference.  We should maybe
     // create the dcomposition code later, after resolveTypes is done.
-    Type t = _value.type();
+    var t = _value.type();
     if (t.isGenericArgument())
       {
-        Errors.error(_pos,
-                     "Destructuring not possible for value whose type is a generic argument.",
-                     "Type of expression is " + t + "\n" +
-                     "Cannot destructure value of generic argument type into (" + _names + ")");
+        AstErrors.destructuringForGeneric(_pos, t, _names);
       }
     else if (t != Types.t_ERROR)
       {
@@ -293,13 +290,12 @@ public class Destructure extends ANY implements Stmnt
           .stream()
           .filter(n -> !n.equals("_"))
           .filter(n -> Collections.frequency(_names, n) > 1)
-          .forEach(n -> Errors.error(_pos,
-                                     "Repeated entry in destructuring",
-                                     "Variable " + n + " appears "+Collections.frequency(_names, n)+" times."));
-        Feature tmp = new Feature(_pos,
+          .forEach(n -> AstErrors.destructuringRepeatedEntry(_pos, n, Collections.frequency(_names, n)));
+        Feature tmp = new Feature(res,
+                                  _pos,
                                   Consts.VISIBILITY_PRIVATE,
                                   t,
-                                  "#destructure" + id++,
+                                  FuzionConstants.DESTRUCTURE_PREFIX + id++,
                                   outer);
         tmp.scheduleForResolution(res);
         stmnts.add(tmp.resolveTypes(res, outer));
@@ -309,41 +305,31 @@ public class Destructure extends ANY implements Stmnt
         Iterator<String> names = _names.iterator();
         Iterator<Feature> fields = _fields == null ? null : _fields.iterator();
         List<String> fieldNames = new List<>();
-        for (Feature f : t.feature.arguments)
+        for (var f : t.featureOfType().arguments())
           {
             // NYI: check if f is visible
-            Type tf = f.resultTypeIfPresent(res, Type.NONE);
+            var tf = f.resultTypeIfPresent(res, Type.NONE);
             if (tf != null && tf.isOpenGeneric())
               {
                 Generic g = tf.genericArgument();
-                List<Type> frmlTs = g.replaceOpen(t._generics);
+                var frmlTs = g.replaceOpen(t.generics());
                 int select = 0;
-                for (Type tfs : g.replaceOpen(t._generics))
+                for (var tfs : g.replaceOpen(t.generics()))
                   {
-                    fieldNames.add(f._featureName.baseName() + "." + select);
+                    fieldNames.add(f.featureName().baseName() + "." + select);
                     addAssign(res, outer,stmnts, tmp, f, names, select, fields, tfs);
                     select++;
                   }
               }
             else
               {
-                fieldNames.add(f._featureName.baseName());
+                fieldNames.add(f.featureName().baseName());
                 addAssign(res, outer, stmnts, tmp, f, names, -1, fields, tf);
               }
           }
         if (fieldNames.size() != _names.size())
           {
-            int fn = fieldNames.size();
-            int nn = _names.size();
-            Errors.error(_pos,
-                         "Destructuring mismatch between number of visible fields and number of target variables.",
-                         "Found " + ((fn == 0) ? "no visible argument fields" :
-                                     (fn == 1) ? "one visible argument field" :
-                                     "" + fn + " visible argument fields"     ) + " " + fieldNames + "\n" +
-                         (nn == 0 ? "while there are no destructuring variables" :
-                          nn == 1 ? "while there is one destructuring variable: " + _names
-                                  : "while there are " + nn + " destructuring variables: " + _names) + ".\n"
-                         );
+            AstErrors.destructuringMisMatch(_pos, fieldNames, _names);
           }
       }
     else if (_fields != null && _isDefinition)
@@ -351,7 +337,7 @@ public class Destructure extends ANY implements Stmnt
         // to avoid subsequent errors:
         for (var f : _fields)
           {
-            f.returnType = new FunctionReturnType(Types.t_ERROR);
+            f._returnType = new FunctionReturnType(Types.t_ERROR);
           }
       }
     return new Block(_pos, stmnts);

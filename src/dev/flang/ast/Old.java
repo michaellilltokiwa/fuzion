@@ -32,7 +32,7 @@ package dev.flang.ast;
  *
  * @author Fridtjof Siebert (siebert@tokiwa.software)
  */
-public class Old extends Expr
+public class Old extends ExprWithPos
 {
 
 
@@ -51,13 +51,13 @@ public class Old extends Expr
   /**
    * Constructor
    *
-   * @param pos the soucecode position, used for error messages.
+   * @param pos the sourcecode position, used for error messages.
    *
    * @param e
    */
   public Old(Expr e)
   {
-    super(e.pos);
+    super(e.pos());
     this.e = e;
   }
 
@@ -73,14 +73,14 @@ public class Old extends Expr
    *
    * @param thiz the class that contains this expression.
    */
-  void loadCalledFeature(Resolution res, Feature thiz)
+  void loadCalledFeature(Resolution res, AbstractFeature thiz)
   {
     e.loadCalledFeature(res, thiz);
   }
 
 
   /**
-   * visit all the features, expressions, statements within this feature.
+   * visit all the statements within this Old.
    *
    * @param v the visitor instance that defines an action to be performed on
    * visited objects.
@@ -89,7 +89,7 @@ public class Old extends Expr
    *
    * @return this.
    */
-  public Old visit(FeatureVisitor v, Feature outer)
+  public Old visit(FeatureVisitor v, AbstractFeature outer)
   {
     e = e.visit(v, outer);
     return this;
@@ -97,14 +97,27 @@ public class Old extends Expr
 
 
   /**
-   * typeOrNull returns the type of this expression or Null if the type is still
-   * unknown, i.e., before or during type resolution.
+   * visit all the statements within this Old.
    *
-   * @return this Expr's type or null if not known.
+   * @param v the visitor instance that defines an action to be performed on
+   * visited statements
    */
-  public Type typeOrNull()
+  public void visitStatements(StatementVisitor v)
   {
-    return e.typeOrNull();
+    super.visitStatements(v);
+    e.visitStatements(v);
+  }
+
+
+  /**
+   * type returns the type of this expression or Types.t_ERROR if the type is
+   * still unknown, i.e., before or during type resolution.
+   *
+   * @return this Expr's type or t_ERROR in case it is not known yet.
+   */
+  public AbstractType type()
+  {
+    return e.typeForFeatureResultTypeInferencing();
   }
 
 

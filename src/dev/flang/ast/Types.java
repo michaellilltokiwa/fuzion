@@ -52,7 +52,7 @@ public class Types extends ANY
   /*----------------------------  constants  ----------------------------*/
 
 
-  private static final Map<Type, Type> types = new TreeMap<>();
+  private static Map<Type, Type> types;
 
   /**
    * Name of abstract features for function types:
@@ -82,7 +82,7 @@ public class Types extends ANY
    * Dummy name used for error type t_ERROR which is used in case of compilation
    * time errors.
    */
-  static final String ERROR_NAME = Errors.ERROR_STRING;
+  public static final String ERROR_NAME = Errors.ERROR_STRING;
 
 
   /**
@@ -94,47 +94,47 @@ public class Types extends ANY
                                  ERROR_NAME)));
 
   /* artificial type for the address of a value type, used for outer refs to value instances */
-  public static Type t_ADDRESS = new Type(ADDRESS_NAME);
+  public static Type t_ADDRESS;
 
   /* artificial type for Expr that does not have a well defined type such as the
    * union of two distinct types */
-  public static Type t_UNDEFINED = new Type(UNDEFINED_NAME);
+  public static Type t_UNDEFINED;
 
   /* artificial type for Expr with unknown type due to compilation error */
-  public static Type t_ERROR = new Type(ERROR_NAME);
+  public static Type t_ERROR;
 
   /* artificial feature used when feature is not known due to compilation error */
   public static Feature f_ERROR = new Feature(true);
 
   public static class Resolved
   {
-    public final Feature universe;
-    public final Type t_i8  ;
-    public final Type t_i16 ;
-    public final Type t_i32 ;
-    public final Type t_i64 ;
-    public final Type t_u8  ;
-    public final Type t_u16 ;
-    public final Type t_u32 ;
-    public final Type t_u64 ;
-    public final Type t_f32 ;
-    public final Type t_f64 ;
-    public final Type t_ref_i8  ;
-    public final Type t_ref_i16 ;
-    public final Type t_ref_i32 ;
-    public final Type t_ref_i64 ;
-    public final Type t_ref_u8  ;
-    public final Type t_ref_u16 ;
-    public final Type t_ref_u32 ;
-    public final Type t_ref_u64 ;
-    public final Type t_ref_f32 ;
-    public final Type t_ref_f64 ;
-    public final Type t_bool;
-    public final Type t_object;
-    public final Type t_sys;
-    public final Type t_string;
-    public final Type t_conststring;
-    public final Type t_unit;
+    public final AbstractFeature universe;
+    public final AbstractType t_i8  ;
+    public final AbstractType t_i16 ;
+    public final AbstractType t_i32 ;
+    public final AbstractType t_i64 ;
+    public final AbstractType t_u8  ;
+    public final AbstractType t_u16 ;
+    public final AbstractType t_u32 ;
+    public final AbstractType t_u64 ;
+    public final AbstractType t_f32 ;
+    public final AbstractType t_f64 ;
+    public final AbstractType t_ref_i8  ;
+    public final AbstractType t_ref_i16 ;
+    public final AbstractType t_ref_i32 ;
+    public final AbstractType t_ref_i64 ;
+    public final AbstractType t_ref_u8  ;
+    public final AbstractType t_ref_u16 ;
+    public final AbstractType t_ref_u32 ;
+    public final AbstractType t_ref_u64 ;
+    public final AbstractType t_ref_f32 ;
+    public final AbstractType t_ref_f64 ;
+    public final AbstractType t_bool;
+    public final AbstractType t_object;
+    public final AbstractType t_sys;
+    public final AbstractType t_string;
+    public final AbstractType t_conststring;
+    public final AbstractType t_unit;
 
     /* void will be used as the initial result type of tail recursive calls of
      * the form
@@ -143,116 +143,107 @@ public class Types extends ANY
      *
      * since the union of void  with any other type is the other type.
      */
-    public final Type t_void;
-    public final Feature f_void;
-    public final Feature f_choice;
-    public final Feature f_TRUE;
-    public final Feature f_FALSE;
-    public final Feature f_bool;
-    public final Feature f_bool_NOT;
-    public final Feature f_bool_AND;
-    public final Feature f_bool_OR;
-    public final Feature f_bool_IMPLIES;
-    public final Feature f_debug;
-    public final Feature f_debugLevel;
-    public final Feature f_function;
-    public final Feature f_function_call;
-    public final Feature f_safety;
-    public final Feature f_array;
-    public final Feature f_array_internalArray;
-    public final Feature f_sys;
-    public final Feature f_sys_array;
-    public final Feature f_sys_array_length;
-    public final Feature f_sys_array_data;
-    Resolved(Feature universe)
+    public final AbstractType t_void;
+    public final AbstractFeature f_void;
+    public final AbstractFeature f_choice;
+    public final AbstractFeature f_TRUE;
+    public final AbstractFeature f_FALSE;
+    public final AbstractFeature f_bool;
+    public final AbstractFeature f_bool_NOT;
+    public final AbstractFeature f_bool_AND;
+    public final AbstractFeature f_bool_OR;
+    public final AbstractFeature f_bool_IMPLIES;
+    public final AbstractFeature f_debug;
+    public final AbstractFeature f_debugLevel;
+    public final AbstractFeature f_function;
+    public final AbstractFeature f_function_call;
+    public final AbstractFeature f_safety;
+    public final AbstractFeature f_array;
+    public final AbstractFeature f_array_internalArray;
+    public final AbstractFeature f_sys;
+    public final AbstractFeature f_sys_array;
+    public final AbstractFeature f_sys_array_length;
+    public final AbstractFeature f_sys_array_data;
+    public static interface CreateType
+    {
+      AbstractType type(String name, boolean isRef);
+    }
+    public Resolved(SrcModule mod, CreateType ct, AbstractFeature universe)
     {
       this.universe = universe;
-      t_i8            = Type.type(      "i8"          , universe);
-      t_i16           = Type.type(      "i16"         , universe);
-      t_i32           = Type.type(      "i32"         , universe);
-      t_i64           = Type.type(      "i64"         , universe);
-      t_u8            = Type.type(      "u8"          , universe);
-      t_u16           = Type.type(      "u16"         , universe);
-      t_u32           = Type.type(      "u32"         , universe);
-      t_u64           = Type.type(      "u64"         , universe);
-      t_f32           = Type.type(      "f32"         , universe);
-      t_f64           = Type.type(      "f64"         , universe);
-      t_ref_i8        = Type.type(true, "i8"          , universe);
-      t_ref_i16       = Type.type(true, "i16"         , universe);
-      t_ref_i32       = Type.type(true, "i32"         , universe);
-      t_ref_i64       = Type.type(true, "i64"         , universe);
-      t_ref_u8        = Type.type(true, "u8"          , universe);
-      t_ref_u16       = Type.type(true, "u16"         , universe);
-      t_ref_u32       = Type.type(true, "u32"         , universe);
-      t_ref_u64       = Type.type(true, "u64"         , universe);
-      t_ref_f32       = Type.type(true, "f32"         , universe);
-      t_ref_f64       = Type.type(true, "f64"         , universe);
-      t_bool          = Type.type(      "bool"        , universe);
-      t_sys           = Type.type(      "sys"         , universe);
-      t_string        = Type.type(      "string"      , universe);
-      t_conststring   = Type.type(      "conststring" , universe);
-      t_object        = Type.type(      "Object"      , universe);
-      t_unit          = Type.type(      "unit"        , universe);
-      t_void          = Type.type(      "void"        , universe);
-      f_void          = universe.get("void");
-      f_choice        = universe.get("choice");
-      f_TRUE          = universe.get("TRUE");
-      f_FALSE         = universe.get("FALSE");
-      f_bool          = universe.get("bool");
-      f_bool_NOT      = f_bool.get("prefix !");
-      f_bool_AND      = f_bool.get("infix &&");
-      f_bool_OR       = f_bool.get("infix ||");
-      f_bool_IMPLIES  = f_bool.get("infix :");
-      f_debug         = universe.get("debug", 0);
-      f_debugLevel    = universe.get("debugLevel");
-      f_function      = universe.get(FUNCTION_NAME);
-      f_function_call = f_function.get("call");
-      f_safety        = universe.get("safety");
-      f_array         = universe.get("array", 1);
-      f_array_internalArray = f_array.get("internalArray");
-      f_sys                 = universe.get("sys");
-      f_sys_array           = f_sys.get("array");
-      f_sys_array_data      = f_sys_array.get("data");
-      f_sys_array_length    = f_sys_array.get("length");
+      t_i8            = ct.type("i8"          , false);
+      t_i16           = ct.type("i16"         , false);
+      t_i32           = ct.type("i32"         , false);
+      t_i64           = ct.type("i64"         , false);
+      t_u8            = ct.type("u8"          , false);
+      t_u16           = ct.type("u16"         , false);
+      t_u32           = ct.type("u32"         , false);
+      t_u64           = ct.type("u64"         , false);
+      t_f32           = ct.type("f32"         , false);
+      t_f64           = ct.type("f64"         , false);
+      t_ref_i8        = ct.type("i8"          , true );
+      t_ref_i16       = ct.type("i16"         , true );
+      t_ref_i32       = ct.type("i32"         , true );
+      t_ref_i64       = ct.type("i64"         , true );
+      t_ref_u8        = ct.type("u8"          , true );
+      t_ref_u16       = ct.type("u16"         , true );
+      t_ref_u32       = ct.type("u32"         , true );
+      t_ref_u64       = ct.type("u64"         , true );
+      t_ref_f32       = ct.type("f32"         , true );
+      t_ref_f64       = ct.type("f64"         , true );
+      t_bool          = ct.type("bool"        , false);
+      t_sys           = ct.type("sys"         , false);
+      t_string        = ct.type("string"      , false);
+      t_conststring   = ct.type("conststring" , false);
+      t_object        = ct.type("Object"      , false);
+      t_unit          = ct.type("unit"        , false);
+      t_void          = ct.type("void"        , false);
+      f_void          = universe.get(mod, "void");
+      f_choice        = universe.get(mod, "choice");
+      f_TRUE          = universe.get(mod, "TRUE");
+      f_FALSE         = universe.get(mod, "FALSE");
+      f_bool          = universe.get(mod, "bool");
+      f_bool_NOT      = f_bool.get(mod, "prefix !");
+      f_bool_AND      = f_bool.get(mod, "infix &&");
+      f_bool_OR       = f_bool.get(mod, "infix ||");
+      f_bool_IMPLIES  = f_bool.get(mod, "infix :");
+      f_debug         = universe.get(mod, "debug", 0);
+      f_debugLevel    = universe.get(mod, "debugLevel");
+      f_function      = universe.get(mod, FUNCTION_NAME);
+      f_function_call = f_function.get(mod, "call");
+      f_safety        = universe.get(mod, "safety");
+      f_array         = universe.get(mod, "array", 1);
+      f_array_internalArray = f_array.get(mod, "internalArray");
+      f_sys                 = universe.get(mod, "sys");
+      f_sys_array           = f_sys.get(mod, "array");
+      f_sys_array_data      = f_sys_array.get(mod, "data");
+      f_sys_array_length    = f_sys_array.get(mod, "length");
       resolved = this;
-      t_ADDRESS  .resolveArtificialType(universe.get("Object"));
+      t_ADDRESS  .resolveArtificialType(universe.get(mod, "Object"));
       t_UNDEFINED.resolveArtificialType(universe);
       t_ERROR    .resolveArtificialType(f_ERROR);
     }
-
-
-    /**
-     * Flag used to detect repeated calls to markInternallyUsed.
-     */
-    private boolean _doneInternallyUsed = false;
-
-    /**
-     * Mark internally used features as used.
-     */
-    void markInternallyUsed(Resolution res) {
-      if (!_doneInternallyUsed)
-        {
-          _doneInternallyUsed = true;
-          var tag = FuzionConstants.CHOICE_TAG_NAME;
-          universe.get("i8" ,1).get("val").markUsed(res, SourcePosition.builtIn);
-          universe.get("i16",1).get("val").markUsed(res, SourcePosition.builtIn);
-          universe.get("i32",1).get("val").markUsed(res, SourcePosition.builtIn);
-          universe.get("i64",1).get("val").markUsed(res, SourcePosition.builtIn);
-          universe.get("u8" ,1).get("val").markUsed(res, SourcePosition.builtIn);
-          universe.get("u16",1).get("val").markUsed(res, SourcePosition.builtIn);
-          universe.get("u32",1).get("val").markUsed(res, SourcePosition.builtIn);
-          universe.get("u64",1).get("val").markUsed(res, SourcePosition.builtIn);
-          universe.get("bool").get(tag) .markUsed(res, SourcePosition.builtIn);
-          universe.get("conststring")   .markUsed(res, SourcePosition.builtIn);
-          universe.get("conststring").get("isEmpty").markUsed(res, SourcePosition.builtIn);  // NYI: check why this is not found automatically
-          f_sys_array_data              .markUsed(res, SourcePosition.builtIn);
-          f_sys_array_length            .markUsed(res, SourcePosition.builtIn);
-          universe.get("unit")          .markUsed(res, SourcePosition.builtIn);
-          universe.get("void")          .markUsed(res, SourcePosition.builtIn);
-        }
+    Resolved(Resolution res, AbstractFeature universe)
+    {
+      this(res._module, (name, ref) -> Type.type(res, ref, name, universe), universe);
+      t_i8         .featureOfType().resolveTypes(res);
+      t_i16        .featureOfType().resolveTypes(res);
+      t_i32        .featureOfType().resolveTypes(res);
+      t_i64        .featureOfType().resolveTypes(res);
+      t_u8         .featureOfType().resolveTypes(res);
+      t_u16        .featureOfType().resolveTypes(res);
+      t_u32        .featureOfType().resolveTypes(res);
+      t_u64        .featureOfType().resolveTypes(res);
+      t_f32        .featureOfType().resolveTypes(res);
+      t_f64        .featureOfType().resolveTypes(res);
+      t_bool       .featureOfType().resolveTypes(res);
+      t_sys        .featureOfType().resolveTypes(res);
+      t_string     .featureOfType().resolveTypes(res);
+      t_conststring.featureOfType().resolveTypes(res);
+      t_object     .featureOfType().resolveTypes(res);
+      t_unit       .featureOfType().resolveTypes(res);
+      t_void       .featureOfType().resolveTypes(res);
     }
-
-
   }
 
   /*----------------------------  variables  ----------------------------*/
@@ -262,34 +253,51 @@ public class Types extends ANY
 
 
   /**
+   * Reset static fields such as the intern()ed types.
+   */
+  public static void reset()
+  {
+    types = new TreeMap<>();
+    resolved = null;
+    t_ADDRESS   = new Type(ADDRESS_NAME  );
+    t_UNDEFINED = new Type(UNDEFINED_NAME);
+    t_ERROR     = new Type(ERROR_NAME    );
+  }
+
+
+  /**
    * Find the unique instance of t
    */
-  public static Type intern(Type t)
+  public static AbstractType intern(AbstractType at)
   {
     if (PRECONDITIONS) require
-      (t.isGenericArgument() || t.feature != null || Errors.count() > 0);
+      ((!(at instanceof Type t)) || t.isGenericArgument() || t.feature != null || Errors.count() > 0);
 
-    if (!t.isGenericArgument())
+    if (at instanceof Type t)
       {
-        t.outerInterned();
-      }
-    var tg = t._generics.listIterator();
-    while (tg.hasNext())
-      {
-        tg.set(intern(tg.next()));
-      }
-    Type existing = t._interned;
-    if (existing == null)
-      {
-        existing = types.get(t);
+        if (!t.isGenericArgument())
+          {
+            Types.intern(t.outer());
+          }
+        var tg = t._generics.listIterator();
+        while (tg.hasNext())
+          {
+            tg.set(intern(tg.next()));
+          }
+        Type existing = t._interned;
         if (existing == null)
           {
-            types.put(t,t);
-            existing = t;
+            existing = types.get(t);
+            if (existing == null)
+              {
+                types.put(t,t);
+                existing = t;
+              }
+            t._interned = existing;
           }
-        t._interned = existing;
+        at = existing;
       }
-    return existing;
+    return at;
   }
 
 

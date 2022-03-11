@@ -1,0 +1,310 @@
+# This file is part of the Fuzion language implementation.
+#
+# The Fuzion language implementation is free software: you can redistribute it
+# and/or modify it under the terms of the GNU General Public License as published
+# by the Free Software Foundation, version 3 of the License.
+#
+# The Fuzion language implementation is distributed in the hope that it will be
+# useful, but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public
+# License for more details.
+#
+# You should have received a copy of the GNU General Public License along with The
+# Fuzion language implementation.  If not, see <https://www.gnu.org/licenses/>.
+
+
+# -----------------------------------------------------------------------
+#
+#  Tokiwa Software GmbH, Germany
+#
+#  Source code of Fuzion standard library feature Sequence
+#
+#  Author: Fridtjof Siebert (siebert@tokiwa.software)
+#
+# -----------------------------------------------------------------------
+
+# Sequence -- ancestor for features that can be converted to a 'list' or a
+# 'stream'
+#
+# Sequences are empty, finite or infinite ordered collections of instances
+# of a given type.  Sequences calculate elements lazily on demand.
+#
+# Sequence is a 'ref' type, i.e., different sub-features may be assigned
+# to a field of type 'Sequence'.
+#
+# Heirs of Sequence must implement either 'asList' or 'asStream'.  Failure
+# to implement any of these results in an endless recursion when the Sequence
+# is used.
+#
+Sequence<T> ref is
+
+
+  # create a list from this Sequence.
+  #
+  # A list is immutable, so it can be reused and shared between threads.
+  # Compared to a stream, a list may require more (heap) allocation.
+  #
+  # Default implementation uses asStream. Heirs must redefine at least
+  # one of asList or asStream.
+  #
+  asList list<T> is asStream.asList
+
+
+  # create a stream of T.
+  #
+  # A stream contains mutable state, so it cannot be reused or shared
+  # between threads.
+  #
+  # Default implementation uses asList.  Heirs must redefine at least
+  # one of asList or asStream.
+  #
+  asStream stream<T> is asList.asStream
+
+
+  # is this list empty?
+  #
+  isEmpty => asList.isEmpty
+
+
+  # count the number of elements in this Sequence.  Note that this typically
+  # runs forever if executed on an endless list
+  #
+  count => (mapSequence<i32> (_ -> 1)).fold i32.sum
+
+
+  # get the head of this list, panic if list is empty
+  #
+  first
+    pre
+      debug: !isEmpty
+    => asList.forceHead
+
+
+  # get the last element of this list, panic if list is empty
+  #
+  # This may take time in O(count), in particular, it may not terminate
+  # for an infinite list.
+  #
+  last
+    pre
+      debug: !isEmpty
+   => asList.last
+
+
+  # collect the contents of this Sequence into an array
+  #
+  asArray array<T> is
+    s := asStream
+    array<T> count i->s.next
+
+
+  # create a stream and call 'forAll f' on it
+  #
+  forAll(f T -> unit) unit is asStream.forAll f
+
+
+  # create a stream and have it consumed by f, infix operator synonyme of forAll.
+  #
+  infix | (f T -> unit) => forAll f
+
+
+  # create a stream, infix operator synonyme for asStream
+  #
+  postfix | => asStream
+
+
+  # create a new stream and apply 'f' to each element 'e' as long as 'f e'
+  #
+  forWhile(f T -> bool) unit is asStream.forWhile f
+
+
+  # create a new stream that contains the first elements of this stream for
+  # which 'f e' is false
+  #
+  before(f T -> bool) stream<T> is asStream.before f
+
+
+  # create a new stream and filter its elements using predicate f
+  #
+  filter   (f T -> bool) stream<T> is asStream.filter f
+
+
+  # create a new stream and filter its elements using predicate f, infix operator
+  # synonyme of filter.
+  #
+  infix |& (f T -> bool) => filter f
+
+
+  # create a new stream and filter its elements using predicate f, infix operator
+  # synonyme of filter.
+  #
+  # NYI: What is better, 'infix |&' or 'infix &', or something else?
+  #
+  infix & (f T -> bool) => filter f
+
+
+  # create a stream and check if predicate f holds for all elements produced
+  #
+  infix ∀ (f T -> bool) bool is asStream ∀ f
+
+
+  # create a stream and check if predicate f holds for at least one element produced
+  #
+  infix ∃ (f T -> bool) bool is asStream ∃ f
+
+
+  # create a list that consists only of the first n elements of this
+  # Sequence, fewer if this stream has fewer elements
+  #
+  take (n i32) => asList.take n
+
+
+  # create a list that consists of the elements of this Sequence except the first
+  # n elements
+  #
+  drop (n i32) => asList.drop n
+
+
+  # create a slice from this Sequence that consists of the elements starting at index
+  # from (including) up to index to (excluding).
+  #
+  slice(from, to i32) => drop(from).take to-from
+    # NYI: OPTIMIZATION: We could redefine this, e.g. to avoid copying array data
+    # on array.slice(from,to).asArray.
+
+
+  # Lazily take the first elements of a list for which predicate 'p' holds.
+  #
+  takeWhile (p T -> bool) => asList.takeWhile p
+
+
+  # Lazily drop the first elements of a list for which predicate 'p' holds.
+  #
+  dropWhile (p T -> bool) => asList.dropWhile p
+
+
+  # create a Sequence that consists of all the elements of this Sequence followed
+  # by all the elements of s
+  #
+  concatSequences (s Sequence<T>) Sequence<T> is asList.concat s.asList
+
+
+  # infix operand synonyme for concatSequences
+  #
+  infix ++ (s Sequence<T>) => asList ++ s.asList
+
+
+  # create a list that repeats the current Sequence indefinitely.  In case 'Sequence.this'
+  # is empty, returns 'nil'
+  #
+  cycle list<T> is asList.cycle
+
+
+  # create a lazy list of all the tails of this list, including the complete list
+  # 'list.this' and the empty list 'nil'.
+  #
+  tails list<list<T>> is asList.tails
+
+
+  # create a string representation of this list including all the string
+  # representations of its contents, separated by ',' and enclosed in '['
+  # and ']'.
+  #
+  redef asString => asList.asString
+
+
+  # create a string representation of this list including all the string
+  # representations of its contents, separated by 'sep'.
+  #
+  asString (sep string) => asList.asString sep
+
+
+  # map the Sequence to a new Sequence applying function f to all elements
+  #
+  # This performs a lazy mapping, f is called only when the elements
+  # in the list are accessed.
+  #
+  # NYI: As long as covariance for result type is not permitted we cannot
+  # call this 'map' since this would clash with, e.g., 'array.map'
+  #
+  mapSequence<B>(f T -> B) => asList.map f
+
+
+  # fold the elements of this Sequence using the given monoid.
+  #
+  # e.g., to sum the elements of a stream of i32, use s.fold i32.sum
+  #
+  fold (m Monoid<T>) => asList.fold m.e, m
+
+
+  # reduce this Sequence to R with an initial value init
+  # and a reducing function f
+  reduce<R>(init R, f (R,T) -> R) R is
+    match asList
+      nil => init
+      c Cons => c.tail.reduce<R> (f init c.head) f
+
+
+  # insert element v at position at
+  #
+  insert(at i32, v T)
+   pre
+     debug: at >= 0
+   =>
+    take at ++ [v] ++ drop at
+
+
+  # sort this Sequence using the total order defined by lessOrEqual
+  sort(lessOrEqual (T, T) -> bool) => sortedArray Sequence.this lessOrEqual
+
+
+  # sort this Sequence using total order defined for 'f a[i]'
+  sortBy<O: ordered<O>>(f T->O) => sort (a, b -> f a <= f b)
+
+
+  # create a new list from the result of applying 'f' to the
+  # elements of this list and 'b' in order.
+  #
+  zip<U,V>(b Sequence<U>, f (T,U)->V) => asList.zip0 b.asList f
+
+
+# Sequences -- unit type defining features related to Sequence but not requiring
+# an instance
+#
+Sequences is
+
+
+  # create an empty list
+  #
+  empty<T> Sequence<T> is
+    lists.empty<T>
+
+
+  # monoid of Sequences with infix concatentation operation.
+  #
+  concatMonoid<T> : Monoid<Sequence<T>> is
+
+    # associative operation
+    #
+    infix ∙ (a, b Sequence<T>) Sequence<T> is a.concatSequences b
+
+    # equality
+    #
+    redef infix == (a, b Sequence<T>) =>
+      fuzion.std.panic "NYI: Sequences.concatMonoid.infix ==, requires T : hasEquals"
+
+    # identity element
+    #
+    e => empty<T>
+
+
+  # determine the index of element x within list l.  0 if x is at the head
+  # of the list, 1 if it comes directly after head, etc. nil if x is not
+  # in the list.
+  #
+  indexIn<A: hasEquals<A>>(l Sequence<A>, x A) => (searchableList<A> l).indexOf x
+
+
+  # get the index of x within this list or nil if it does not exist
+  #
+  find<A: hasEquals<A>>(l Sequence<A>, x Sequence<A>) => (searchableList<A> l).find x

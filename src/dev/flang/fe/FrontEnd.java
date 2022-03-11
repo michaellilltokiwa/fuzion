@@ -26,32 +26,30 @@ Fuzion language implementation.  If not, see <https://www.gnu.org/licenses/>.
 
 package dev.flang.fe;
 
-import java.io.File;
 import java.io.IOException;
-import java.io.UncheckedIOException;
 
-import java.net.URI;
-import java.net.URISyntaxException;
+import java.nio.channels.Channels;
+import java.nio.channels.FileChannel;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 
-import java.util.TreeMap;
-
-import dev.flang.ast.Block;
-import dev.flang.ast.FeErrors;
-import dev.flang.ast.Feature;
-import dev.flang.ast.Impl;
-import dev.flang.ast.Resolution;
+import java.util.EnumSet;
 
 import dev.flang.mir.MIR;
 
-import dev.flang.parser.Parser;
+import dev.flang.ast.AbstractFeature;
+import dev.flang.ast.AstErrors;
+import dev.flang.ast.Feature;
+import dev.flang.ast.FeatureName;
+import dev.flang.ast.Types;
 
 import dev.flang.util.ANY;
 import dev.flang.util.Errors;
+import dev.flang.util.FuzionConstants;
+import dev.flang.util.SourceDir;
 import dev.flang.util.SourceFile;
-import dev.flang.util.SourcePosition;
 
 
 /**
@@ -62,43 +60,165 @@ import dev.flang.util.SourcePosition;
 public class FrontEnd extends ANY
 {
 
+  /*----------------------------  constants  ----------------------------*/
+
+
+  static FeatureName UNIVERSE_NAME = FeatureName.get(FuzionConstants.UNIVERSE_NAME, 0);
+
+
+  /*-----------------------------  classes  -----------------------------*/
+
+
+  /**
+   * Class for the Universe Feature.
+   */
+  class Universe extends Feature
+  {
+    { setState(Feature.State.LOADING); }
+    public boolean isUniverse()
+    {
+      return true;
+    }
+
+    public FeatureName featureName()
+    {
+      return UNIVERSE_NAME;
+    }
+
+    public AbstractFeature get(String name, int argcount)
+    {
+      AbstractFeature result = Types.f_ERROR;
+      var d = _module.declaredFeatures(this);
+      var set = (argcount >= 0
+                 ? FeatureName.getAll(d, name, argcount)
+                 : FeatureName.getAll(d, name          )).values();
+      if (set.size() == 1)
+        {
+          for (var f2 : set)
+            {
+              result = f2;
+            }
+        }
+      else if (set.isEmpty())
+        {
+          AstErrors.internallyReferencedFeatureNotFound(pos(), name, this, name);
+        }
+      else
+        { // NYI: This might happen if the user adds additional features
+          // with different argCounts. name should contain argCount to
+          // avoid this
+          AstErrors.internallyReferencedFeatureNotUnique(pos(), name + (argcount >= 0 ? " (" + Errors.argumentsString(argcount) : ""), set);
+        }
+      return result;
+    }
+  }
+
 
   /*----------------------------  variables  ----------------------------*/
 
 
   /**
-   * The universe is the implicit root of all features that
-   * themeselves do not have their own root.
+   * The module we are compiling.
    */
-  private Feature _universe;
-
-
-  /**
-   * Configuration
-   */
-  public final FrontEndOptions _options;
-
-
-  /**
-   * All the directories we are reading Fuzion sources form.
-   */
-  private final Dir[] _sourceDirs;
+  private SourceModule _module;
 
 
   /*--------------------------  constructors  ---------------------------*/
 
 
+  /**
+   * Create front end for given options.
+   */
   public FrontEnd(FrontEndOptions options)
   {
-    _options = options;
-    _sourceDirs = new Dir[SOURCE_PATHS.length + options._modules.size()];
-    for (int i = 0; i < SOURCE_PATHS.length; i++)
+    Types.reset();
+    var universe = new Universe();
+
+    var sourcePaths = sourcePaths(options);
+    var sourceDirs = new SourceDir[sourcePaths.length + options._modules.size()];
+    for (int i = 0; i < sourcePaths.length; i++)
       {
-        _sourceDirs[i] = new Dir(SOURCE_PATHS[i]);
+        sourceDirs[i] = new SourceDir(sourcePaths[i]);
       }
     for (int i = 0; i < options._modules.size(); i++)
       {
-        _sourceDirs[SOURCE_PATHS.length + i] = new Dir(FUZION_HOME.resolve(Path.of("modules")).resolve(Path.of(options._modules.get(i))));
+        sourceDirs[sourcePaths.length + i] = new SourceDir(options._fuzionHome.resolve(Path.of("modules")).resolve(Path.of(options._modules.get(i))));
+      }
+    LibraryModule[] dependsOn;
+    var save = options._saveBaseLib;
+    if (save == null)
+      {
+        var b = options._fuzionHome.resolve("modules").resolve("base.fum");
+        try (var ch = (FileChannel) Files.newByteChannel(b, EnumSet.of(StandardOpenOption.READ)))
+          {
+            var data = ch.map(FileChannel.MapMode.READ_ONLY, 0, ch.size());
+            var stdlib = new LibraryModule("base", data, new LibraryModule[0], universe);
+            dependsOn = new LibraryModule[] { stdlib };
+          }
+        catch (IOException io)
+          {
+            Errors.error("FrontEnd I/O error when reading module file",
+                         "While trying to read file '"+ b + "' received '" + io + "'");
+            dependsOn = null;
+          }
+      }
+    else
+      {
+        dependsOn = new LibraryModule[] { };
+      }
+    if (Errors.count() == 0)
+      {
+        _module = new SourceModule(options, sourceDirs, inputFile(options), options._main, dependsOn, universe);
+        _module.createASTandResolve();
+      }
+    if (save != null && Errors.count() == 0)
+      {
+        saveModule(save);
+      }
+  }
+
+
+  /**
+   * Get all the paths to use to read source code from
+   */
+  private Path[] sourcePaths(FrontEndOptions options)
+  {
+    return
+      (options._saveBaseLib != null  ) ? new Path[] { options._fuzionHome.resolve("lib") } :
+      (options._readStdin         ||
+       options._inputFile != null    ) ? new Path[] { }
+                                       : new Path[] { Path.of(".") };
+  }
+
+
+  /**
+   * Get the path of one additional main input file (like compiling from stdin
+   * or just one single source file).
+   */
+  private Path inputFile(FrontEndOptions options)
+  {
+    return
+      options._readStdin         ? SourceFile.STDIN   :
+      options._inputFile != null ? options._inputFile
+                                 : null;
+  }
+
+
+  /**
+   * Save _module to a module file
+   */
+  private void saveModule(Path p)
+  {
+    var data = _module.data();
+    System.out.println(" + " + p);
+    try (var os = Files.newOutputStream(p))
+      {
+        Channels.newChannel(os).write(data);
+      }
+    catch (IOException io)
+      {
+        Errors.error("FrontEnd I/O error when writing module file",
+                     "While trying to write file '"+ p + "' received '" + io + "'");
       }
   }
 
@@ -106,263 +226,16 @@ public class FrontEnd extends ANY
   /*-----------------------------  methods  -----------------------------*/
 
 
-
-  /**
-   * Run the given parser to parse statements. This is used for processing stdin
-   * or an explicit input file.  These require special treatment since it is
-   * allowed to declare initializes fields in here.
-   *
-   * @return the main feature found or null if none
-   */
-  String parseStdIn(Parser p)
-  {
-    var stmnts = p.stmntsEof();
-    ((Block) _universe.impl._code).statements_.addAll(stmnts);
-    boolean first = true;
-    String main = null;
-    for (var s : stmnts)
-      {
-        main = null;
-        if (s instanceof Feature f)
-          {
-            f.legalPartOfUniverse();  // suppress FeErrors.initialValueNotAllowed
-            if (first)
-              {
-                main = f.featureName().baseName();
-              }
-          }
-        first = false;
-      }
-    return main;
-  }
-
-
   public MIR createMIR()
   {
-    /* create the universe */
-    _universe = true ? Feature.createUniverse()
-                    : loadUniverse();
-    var main = _options._main;
-    if (_options._readStdin)
-      {
-        main = parseStdIn(new Parser(SourceFile.STDIN));
-      }
-    else if (_options._inputFile != null)
-      {
-        main = parseStdIn(new Parser(_options._inputFile));
-      }
-    _universe.findDeclarations(null);
-    var res = new Resolution(_options, _universe, (r, f) -> loadInnerFeatures(r, f));
-
-    // NYI: middle end starts here:
-
-    _universe.markUsed(res, SourcePosition.builtIn);
-    Feature d = main == null
-      ? _universe
-      : _universe.markUsedAndGet(res, main);
-
-    res.resolve(); // NYI: This should become the middle end phase!
-
-    if (false)  // NYI: Eventually, we might want to stop here in case of errors. This is disabled just to check the robustness of the next steps
-      {
-        Errors.showAndExit();
-      }
-    if (d != null && Errors.count() == 0)
-      {
-        if (d.arguments.size() != 0)
-          {
-            FeErrors.mainFeatureMustNotHaveArguments(d);
-          }
-        if (d.isField())
-          {
-            FeErrors.mainFeatureMustNotBeField(d);
-          }
-        if (d.impl == Impl.ABSTRACT)
-          {
-            FeErrors.mainFeatureMustNotBeAbstract(d);
-          }
-        if (d.impl == Impl.INTRINSIC)
-          {
-            FeErrors.mainFeatureMustNotBeIntrinsic(d);
-          }
-        if (!d.generics.list.isEmpty())
-          {
-            FeErrors.mainFeatureMustNotHaveTypeArguments(d);
-          }
-      }
-    return new MIR(d);
+    return _module.createMIR();
   }
 
 
-
-  /**
-   * NYI: Under development: load universe from sys/universe.fz.
-   */
-  Feature loadUniverse()
+  public SourceModule module()
   {
-    Feature result = parseFile(FUZION_HOME.resolve("sys").resolve("universe.fz"));
-    result.findDeclarations(null);
-    new Resolution(_options, result, (r, f) -> loadInnerFeatures(r, f));
-    return result;
+    return _module;
   }
-
-
-  /**
-   * Check if a sub-directory corresponding to the given feature exists in the
-   * source directory with the given root.
-   *
-   * @param root the top-level directory of the source directory
-   *
-   * @param f a feature
-   *
-   * @return a path from root, via the base names of f's outer features to a
-   * directory wtih f's base name, null if this does not exist.
-   */
-  private Dir dirExists(Dir root, Feature f) throws IOException, UncheckedIOException
-  {
-    var o = f.outer();
-    if (o == null)
-      {
-        return root;
-      }
-    else
-      {
-        var d = dirExists(root, o);
-        return d == null ? null : d.dir(f.featureName().baseName());
-      }
-  }
-
-
-  /**
-   * Check if p denotes a file that should be read implicitly as source code,
-   * i.e., its name ends with ".fz", it is a readable file and it is not the
-   * same as _options._inputFile (which will be read explicitly).
-   */
-  boolean isValidSourceFile(Path p)
-  {
-    try
-      {
-        return p.getFileName().toString().endsWith(".fz") &&
-          Files.isReadable(p) &&
-          (_options._inputFile == null || !Files.isSameFile(_options._inputFile, p));
-      }
-    catch (IOException e)
-      {
-        throw new UncheckedIOException(e);
-      }
-  }
-
-
-  /**
-   * During resolution, load all inner classes of this that are
-   * defined in separate files.
-   */
-  private void loadInnerFeatures(Resolution res, Feature f)
-  {
-    for (Dir root : _sourceDirs)
-      {
-        try
-          {
-            var d = dirExists(root, f);
-            if (d != null)
-              {
-                Files.list(d._dir)
-                  .forEach(p ->
-                           {
-                             if (isValidSourceFile(p))
-                               {
-                                 Feature inner = parseFile(p);
-                                 check
-                                   (inner != null || Errors.count() > 0);
-                                 if (inner != null)
-                                   {
-                                     inner.findDeclarations(f);
-                                     inner.scheduleForResolution(res);
-                                   }
-                               }
-                           });
-              }
-          }
-        catch (IOException | UncheckedIOException e)
-          {
-            Errors.warning("Problem when listing source directory '" + root + "': " + e);
-          }
-      }
-  }
-
-
-  /**
-   * Load and parse the fuzion source file for the feature with the
-   * given file name
-   *
-   * @param name a qualified name, e.g. "fuzion.std.out"
-   *
-   * @return the parsed source file or null in case of an error.
-   */
-  Feature parseFile(Path fname)
-  {
-    _options.verbosePrintln(2, " - " + fname);
-    return new Parser(fname).unit();
-  }
-
-
-
-  /* NYI: Cleanup: move this directory handling to dev.flang.util.Dir or similar: */
-  private static final Path FUZION_HOME;
-  private static final Path CURRENT_DIRECTORY;
-  private static final Path[] SOURCE_PATHS;
-  static {
-
-    CURRENT_DIRECTORY = Path.of(".");
-
-    // find fuzion home via classes directory:
-    String p = new File(FrontEnd.class.getProtectionDomain().getCodeSource().getLocation().getPath())
-      .getAbsolutePath()
-      // NYI properly decode all special characters in paths
-      .replace("%20", " ");
-
-    FUZION_HOME = Path.of(p).getParent();
-
-    SOURCE_PATHS = new Path[] { FUZION_HOME.resolve("lib"), CURRENT_DIRECTORY };
-  }
-
-  /**
-   * Class to cache all the sub-dirs within SOURCE_PATHS for loading inner
-   * features.
-   */
-  static class Dir
-  {
-    Path _dir;
-    TreeMap<String, Dir> _subDirs = null;
-
-    /*
-     * Create an entry for the given (sub-) directory
-     */
-    Dir(Path d)
-    {
-      _dir = d;
-    }
-
-    /**
-     * If this contains a sub-directory with given name, return it.
-     */
-    Dir dir(String name) throws IOException, UncheckedIOException
-    {
-      if (_subDirs == null)
-        { // on first call, create dir listing and cache it:
-          _subDirs = new TreeMap<>();
-          Files.list(_dir)
-            .forEach(p ->
-                     { if (Files.isDirectory(p))
-                         {
-                           _subDirs.put(p.getFileName().toString(), new Dir(p));
-                         }
-                     });
-        }
-      return _subDirs.get(name);
-    }
-  }
-
 
 }
 

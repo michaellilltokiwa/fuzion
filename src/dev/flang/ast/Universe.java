@@ -28,6 +28,7 @@ package dev.flang.ast;
 
 import java.util.Iterator;
 
+import dev.flang.util.FuzionConstants;
 import dev.flang.util.SourcePosition;
 
 
@@ -45,12 +46,9 @@ public class Universe extends Expr
 
   /**
    * Constructor
-   *
-   * @param pos the soucecode position, used for error messages.
    */
-  public Universe(SourcePosition pos)
+  public Universe()
   {
-    super(pos);
   }
 
 
@@ -58,12 +56,21 @@ public class Universe extends Expr
 
 
   /**
-   * typeOrNull returns the type of this expression or Null if the type is still
-   * unknown, i.e., before or during type resolution.
-   *
-   * @return this Expr's type or null if not known.
+   * The sourcecode position of this expression, used for error messages.
    */
-  public Type typeOrNull()
+  public SourcePosition pos()
+  {
+    return SourcePosition.builtIn;
+  }
+
+
+  /**
+   * type returns the type of this expression or Types.t_ERROR if the type is
+   * still unknown, i.e., before or during type resolution.
+   *
+   * @return this Expr's type or t_ERROR in case it is not known yet.
+   */
+  public AbstractType type()
   {
     return Types.resolved.universe.thisType();
   }
@@ -79,7 +86,7 @@ public class Universe extends Expr
    *
    * @return this.
    */
-  public Universe visit(FeatureVisitor v, Feature outer)
+  public Universe visit(FeatureVisitor v, AbstractFeature outer)
   {
     return this;
   }
@@ -92,7 +99,7 @@ public class Universe extends Expr
    */
   public String toString()
   {
-    return Feature.UNIVERSE_NAME;
+    return FuzionConstants.UNIVERSE_NAME;
   }
 
 }

@@ -28,8 +28,7 @@
 #
 # See Makefile for how to start fuzion to run this example.
 #
-gfx
-: Java  # inheriting Java makes Java packages visible
+gfx : Java  # inheriting Java makes Java packages visible
 is
 
   /* the following two values are geometry values that may be modified to alter
@@ -99,12 +98,12 @@ is
   sin240 := -866
 
 
-  G2D (g java.awt.Graphics, tx, ty, rot0 i32) is
+  G2D (g java.awt.Graphics, tx, ty, rot0 i32) ref is  # NYI: 'ref' due to lack of 'like this'
     rot := if rot0 >= 0 rot0 % 360 else rot0 % 360 + 360
 
     rotate (d i32) => G2D g tx ty rot+d
 
-    threeTimes(d Function<unit, G2D, java.awt.Color>) unit is
+    threeTimes(d (G2D, java.awt.Color) -> unit) unit is
       d  G2D.this              C1
       d (G2D.this.rotate -120) C2
       d (G2D.this.rotate -240) C3
@@ -138,19 +137,19 @@ is
       cir BACKGROUND 0 0 r
 
       // three arcs
-      threeTimes (fun (g G2D, c java.awt.Color) => g.arc c 0 0 r1 -30 120)
+      threeTimes (g, c -> g.arc c 0 0 r1 -30 120)
 
       // black circle in the center, radius to touch the sides of the inner triangle
       cir BACKGROUND 0 0 ((r - r2 - b) / 2)
 
       // black arcs around inner circles
-      threeTimes (fun (g G2D, c java.awt.Color) => g.arc BACKGROUND 0 -r+r2+b r2+b 90 210)
+      threeTimes (g, c -> g.arc BACKGROUND 0 -r+r2+b r2+b 90 210)
 
       // inner circles
-      threeTimes (fun (g G2D, c java.awt.Color) => g.cir c 0 -r+b+r2 r2)
+      threeTimes (g, c -> g.cir c 0 -r+b+r2 r2)
 
       // small circles
-      (rotate -120).threeTimes (fun (g G2D, c java.awt.Color) => g.cir c 0 -r+b+r2 r3)
+      (rotate -120).threeTimes (g, c -> g.cir c 0 -r+b+r2 r3)
 
 
   gfx // : java.lang.Thread_static    # NYI: causes NullPointerException in fz

@@ -26,7 +26,8 @@ Fuzion language implementation.  If not, see <https://www.gnu.org/licenses/>.
 
 package dev.flang.parser;
 
-import dev.flang.ast.Call;
+import dev.flang.ast.AbstractCall;
+import dev.flang.ast.AbstractFeature;
 import dev.flang.ast.Contract;
 import dev.flang.ast.Feature;
 import dev.flang.ast.FeatureVisitor;
@@ -68,7 +69,7 @@ public class FList extends ANY implements Stmnt
   /**
    * Constructor
    *
-   * @param pos the soucecode position, used for error messages.
+   * @param pos the sourcecode position, used for error messages.
    *
    * @param v
    *
@@ -95,7 +96,7 @@ public class FList extends ANY implements Stmnt
                List<List<String>> qnames,
                FormalGenerics g,
                List<Feature> a,
-               List<Call> i,
+               List<AbstractCall> i,
                Contract c,
                Impl p) {
     for (List<String> n : qnames)
@@ -109,7 +110,7 @@ public class FList extends ANY implements Stmnt
 
 
   /**
-   * The soucecode position of this statment, used for error messages.
+   * The sourcecode position of this statment, used for error messages.
    */
   public SourcePosition pos()
   {
@@ -129,7 +130,7 @@ public class FList extends ANY implements Stmnt
    *
    * @throws Error
    */
-  public FList visit(FeatureVisitor v, Feature outer)
+  public FList visit(FeatureVisitor v, AbstractFeature outer)
   {
     throw new Error("FList must be used only during parsing");
   }
@@ -157,7 +158,7 @@ public class FList extends ANY implements Stmnt
     if (_list.size() != 1)
       {
         result = null;
-        Errors.error(_list.get(1).pos,
+        Errors.error(_list.get(1).pos(),
                      "Source file must define exactly one feature, not " + _list.size()+".",
                      "Additional features must be declared as inner features or in separate files.");
       }

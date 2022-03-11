@@ -38,9 +38,9 @@
 sortedArray<T>
   (
 
-  # orginal, unsorted array
+  # orginal, unsorted Sequence
   #
-  from array<T>,
+  from Sequence<T>,
 
   # predicate defining total order on T.
   #
@@ -50,11 +50,11 @@ sortedArray<T>
   #   forAll a,b: lessOrEqual(a, b) || lessOrEqual(b, a)
   #   forAll a,b,c: (lessOrEqual(a, b) && lessOrEqual(b, c)): lessOrEqual(a, c)
   #
-  lessOrEqual fun(T, T) bool
+  lessOrEqual (T, T) -> bool
 
   )
 
-  : array<T> sort(from, 1).internalArray
+  : array<T> (sort from.asArray 1).internalArray
 
 is
 
@@ -78,7 +78,7 @@ is
   is
     # check if the array is fully sorted
     if heapSize >= a.length
-      a
+      a.asArray  # NYI: convert 'ref'-array due to lack of 'like this' back to non-'ref' array
     else
       # h1 is the mutable index within the current first heap, this is updated
       # by the function passed to the array constructor.
@@ -87,7 +87,7 @@ is
       # of array.
       h1 := 0;
 
-      na := array<T> a.length, fun (i i32) =>
+      na := array<T> a.length (i ->
         # index in current pair of heaps
         hi := i & (heapSize*2-1)
         # reset h1 in case we start new pair of heaps
@@ -111,6 +111,7 @@ is
         else
           # otherwise, return element from second heap
           a[i2]
+        )
 
       # continue sorting with doubled heap size
       sort na, 2*heapSize
@@ -159,7 +160,7 @@ is
     #
     # cmp must implement the same total order as 'T.infix <='.
     #
-    cmp fun (T) i32
+    cmp T -> i32
 
     ) option<i32>
 
@@ -179,3 +180,20 @@ is
         else               m
 
     binarySearch 0, length-1
+
+
+# sortedarray -- sorted one-dimensional immutable array of ordered elements
+#
+# This takes an unsorted array as an argument and returns a sorted one using
+# the order defined by the type of the elements T.
+#
+# See sortedArray(from, lessOrEqual) for details
+#
+sortedArray<T: ordered<T>>
+  (
+  # orginal, unsorted Sequence
+  from Sequence<T>
+  ) sortedArray<T>
+
+is
+  sortedArray<T> from (a,b -> a <= b)

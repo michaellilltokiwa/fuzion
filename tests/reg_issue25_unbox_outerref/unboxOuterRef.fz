@@ -23,7 +23,7 @@
 #
 # -----------------------------------------------------------------------
 
-# Regression test for #25: https://github.com/fridis/fuzion/issues/25
+# Regression test for #25: https://github.com/tokiwa-software/fuzion/issues/25
 #
 # A simple negative test for using an outer ref to a ref instance as a value
 #
@@ -38,7 +38,8 @@ unboxOuterRef is
       vs := v.asString
       say "in g: $vs $i"
     f is
-      g y.this  // when in 'ref y', we need to unbox 'y.this' here.
+#     g y.this   # y.this is not assignable to y, should be type 'like y.this', see #167
+      g (y i)
       unit
 
   v := y 42

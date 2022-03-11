@@ -36,7 +36,7 @@ import dev.flang.util.SourcePosition;
  *
  * @author Fridtjof Siebert (siebert@tokiwa.software)
  */
-public class Current extends Expr
+public class Current extends AbstractCurrent
 {
 
 
@@ -44,9 +44,9 @@ public class Current extends Expr
 
 
   /**
-   * The type of this, set during resolveTypes.
+   * The sourcecode position of this expression, used for error messages.
    */
-  private Type type_ = null;
+  private final SourcePosition _pos;
 
 
   /*--------------------------  constructors  ---------------------------*/
@@ -55,18 +55,19 @@ public class Current extends Expr
   /**
    * Constructor
    *
-   * @param pos the soucecode position, used for error messages.
+   * @param pos the sourcecode position, used for error messages.
    *
    * @param t the result type
    */
-  public Current(SourcePosition pos, Type t)
+  public Current(SourcePosition pos, AbstractType t)
   {
-    super(pos);
+    super(t);
 
     if (PRECONDITIONS) require
-      (t != null);
+      (pos != null,
+       t != null);
 
-    this.type_ = t;
+    this._pos = pos;
   }
 
 
@@ -74,42 +75,11 @@ public class Current extends Expr
 
 
   /**
-   * typeOrNull returns the type of this expression or Null if the type is still
-   * unknown, i.e., before or during type resolution.
-   *
-   * @return this Expr's type or null if not known.
+   * The sourcecode position of this expression, used for error messages.
    */
-  public Type typeOrNull()
+  public SourcePosition pos()
   {
-    return type_;
-  }
-
-
-  /**
-   * visit all the features, expressions, statements within this feature.
-   *
-   * @param v the visitor instance that defines an action to be performed on
-   * visited objects.
-   *
-   * @param outer the feature surrounding this expression.
-   *
-   * @return this.
-   */
-  public Current visit(FeatureVisitor v, Feature outer)
-  {
-    type_ = type_.visit(v, outer);
-    return this;
-  }
-
-
-  /**
-   * toString
-   *
-   * @return
-   */
-  public String toString()
-  {
-    return type_.featureOfType()._featureName.baseName() + ".this";
+    return _pos;
   }
 
 }

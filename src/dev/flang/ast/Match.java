@@ -45,7 +45,7 @@ import dev.flang.util.SourcePosition;
  *
  * @author Fridtjof Siebert (siebert@tokiwa.software)
  */
-public class Match extends Expr
+public class Match extends AbstractMatch
 {
 
 
@@ -58,25 +58,21 @@ public class Match extends Expr
   /**
    * The subject under investigation here.
    */
-  public Expr subject;
+  Expr _subject;
+  public Expr subject() { return _subject; }
+
 
   /**
    * The list of cases in this match expression
    */
-  public final List<Case> cases;
+  final List<AbstractCase> _cases;
+  public List<AbstractCase> cases() { return _cases; }
 
 
   /**
-   * Static type of this match or null if none. Set during resolveTypes().
+   * The sourcecode position of this expression, used for error messages.
    */
-  public Type type_;
-
-
-  /**
-   * Id to store the match's subject's clazz in the static outer clazz at
-   * runtime.
-   */
-  public int runtimeClazzId_ = -1;  // NYI: Used by dev.flang.be.interpreter, REMOVE!
+  private final SourcePosition _pos;
 
 
   /*--------------------------  constructors  ---------------------------*/
@@ -85,7 +81,7 @@ public class Match extends Expr
   /**
    * Constructor for a Match
    *
-   * @param pos the soucecode position, used for error messages.
+   * @param pos the sourcecode position, used for error messages.
    *
    * @param e the expression that is checked by this match, must be of a choice
    * type
@@ -94,21 +90,29 @@ public class Match extends Expr
    */
   public Match(SourcePosition pos,
                Expr e,
-               List<Case> c)
+               List<AbstractCase> c)
   {
-    super(pos);
-
     if (PRECONDITIONS) require
       (e != null,
        c != null,
        !c.isEmpty());
 
-    subject = e;
-    cases = c;
+    _subject = e;
+    _cases = c;
+    _pos = pos;
   }
 
 
   /*-----------------------------  methods  -----------------------------*/
+
+
+  /**
+   * The sourcecode position of this expression, used for error messages.
+   */
+  public SourcePosition pos()
+  {
+    return _pos;
+  }
 
 
   /**
@@ -121,11 +125,12 @@ public class Match extends Expr
    *
    * @return this.
    */
-  public Match visit(FeatureVisitor v, Feature outer)
+  public Match visit(FeatureVisitor v, AbstractFeature outer)
   {
-    subject = subject.visit(v, outer);
+    _subject = _subject.visit(v, outer);
+    v.action(this);
     v.action(this, outer);
-    for (Case c: cases)
+    for (var c: cases())
       {
         c.visit(v, outer);
       }
@@ -140,35 +145,35 @@ public class Match extends Expr
    *
    * @param outer the root feature that contains this statement.
    */
-  public void resolveTypes(Resolution res, Feature outer)
+  public void resolveTypes(Resolution res, AbstractFeature outer)
   {
-    var st = subject.type();
+    var st = _subject.type();
     if (st.isGenericArgument())
       {
-        FeErrors.matchSubjectMustNotBeTypeParameter(subject.pos(), st);
+        AstErrors.matchSubjectMustNotBeTypeParameter(_subject.pos(), st);
       }
-    st.featureOfType().resolveTypes(res);
+    if (st.featureOfType() instanceof Feature stf) { stf.resolveTypes(res); }
     if (!st.isChoice())
       {
-        FeErrors.matchSubjectMustBeChoice(subject.pos(), st);
+        AstErrors.matchSubjectMustBeChoice(_subject.pos(), st);
       }
     var cgs = st.choiceGenerics();
-    check
+    if (CHECKS) check
       (cgs != null || Errors.count() > 0);
     if (cgs != null)
       {
-        ListIterator<Type> i = cgs.listIterator();
+        var i = cgs.listIterator();
         while (i.hasNext())
           {
-            i.set(i.next().resolve(outer));
+            i.set(i.next().resolve(res, outer));
           }
         SourcePosition[] matched = new SourcePosition[cgs.size()];
         boolean ok = true;
-        for (Case c: cases)
+        for (var c: cases())
           {
-            ok &= c.resolveType(cgs, outer, matched);
+            ok &= ((Case) c).resolveType(res, cgs, outer, matched);
           }
-        var missingMatches = new List<Type>();
+        var missingMatches = new List<AbstractType>();
         for (var ix = 0; ix < cgs.size(); ix++)
           {
             if (matched[ix] == null && cgs.get(ix) != Types.t_ERROR)
@@ -178,53 +183,9 @@ public class Match extends Expr
           }
         if (!missingMatches.isEmpty() && ok)
           {
-            FeErrors.missingMatches(pos, cgs, missingMatches);
+            AstErrors.missingMatches(pos(), cgs, missingMatches);
           }
       }
-  }
-
-
-  /**
-   * Helper routine for typeOrNull to determine the type of this match statement
-   * on demand, i.e., as late as possible.
-   */
-  private Type typeFromCases()
-  {
-    Type result = null;
-    for (Case c: cases)
-      {
-        Type t = c.code.type();
-        result = result == null ? t : result.union(t);
-      }
-    return result;
-  }
-
-
-  /**
-   * typeOrNull returns the type of this expression or Null if the type is still
-   * unknown, i.e., before or during type resolution.
-   *
-   * @return this Expr's type or null if not known.
-   */
-  public Type typeOrNull()
-  {
-    if (type_ == null)
-      {
-        type_ = typeFromCases();
-      }
-    if (type_ == Types.t_UNDEFINED)
-      {
-        new IncompatibleResultsOnBranches(pos,
-                                          "Incompatible types in cases of match statement",
-                                          new Iterator<Expr>()
-                                          {
-                                            Iterator<Case> it = cases.iterator();
-                                            public boolean hasNext() { return it.hasNext(); }
-                                            public Expr next() { return it.next().code; }
-                                          });
-        return Types.t_ERROR;
-      }
-    return type_;
   }
 
 
@@ -244,11 +205,12 @@ public class Match extends Expr
    * @return the Stmnt this Expr is to be replaced with, typically an Assign
    * that performs the assignment to r.
    */
-  Match assignToField(Resolution res, Feature outer, Feature r)
+  Match assignToField(Resolution res, AbstractFeature outer, Feature r)
   {
-    for (Case c: cases)
+    for (var ac: cases())
       {
-        c.code = c.code.assignToField(res, outer, r);
+        var c = (Case) ac;
+        c._code = c._code.assignToField(res, outer, r);
       }
     return this;
   }
@@ -271,27 +233,9 @@ public class Match extends Expr
    * result. In particular, if the result is assigned to a temporary field, this
    * will be replaced by the statement that reads the field.
    */
-  public Expr propagateExpectedType(Resolution res, Feature outer, Type t)
+  public Expr propagateExpectedType(Resolution res, AbstractFeature outer, AbstractType t)
   {
     return addFieldForResult(res, outer, t);
-  }
-
-
-  /**
-   * Find used features, i.e., mark all features that are found to be the target of a call as used.
-   */
-  public void findUsedFeatures(Resolution res)
-  {
-    Feature sf = subject.type().featureOfType();
-    Feature ct = sf.choiceTag_;
-
-    check
-      (Errors.count() > 0 || ct != null);
-
-    if (ct != null)
-      {
-        ct.markUsed(res, pos);
-      }
   }
 
 
@@ -302,8 +246,8 @@ public class Match extends Expr
    */
   public String toString()
   {
-    var sb = new StringBuilder("match " + subject + "\n");
-    for (var c : cases)
+    var sb = new StringBuilder("match " + subject() + "\n");
+    for (var c : cases())
       {
         sb.append(c.toString()).append("\n");
       }

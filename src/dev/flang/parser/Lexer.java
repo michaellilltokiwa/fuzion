@@ -78,6 +78,7 @@ public class Lexer extends SourceFile
     t_stringBD,    // '}+-*$'     in "abc{x}+-*$x.".
     t_stringBB,    // '}+-*{'     in "abc{x}+-*{a+b}."
     t_this("this"),
+    t_env("env"),
     t_check("check"),
     t_else("else"),
     t_if("if"),
@@ -85,6 +86,7 @@ public class Lexer extends SourceFile
     t_is("is"),
     t_abstract("abstract"),
     t_intrinsic("intrinsic"),
+    t_intrinsic_constructor("intrinsic_constructor"),
     t_for("for"),
     t_in("in"),
     t_do("do"),
@@ -584,6 +586,125 @@ public class Lexer extends SourceFile
 
 
   /**
+   * short-hand for bracketTermWithNLs with atMinIndent==false and c==def.
+   */
+  <V> V bracketTermWithNLs(Token[] brackets, String rule, Callable<V> c)
+  {
+    return bracketTermWithNLs(brackets, rule, c, c);
+  }
+
+
+  /**
+   * short-hand for bracketTermWithNLs with c==def.
+   */
+  <V> V bracketTermWithNLs(boolean atMinIndent, Token[] brackets, String rule, Callable<V> c)
+  {
+    return bracketTermWithNLs(atMinIndent, brackets, rule, c, c);
+  }
+
+
+  /**
+   * short-hand for bracketTermWithNLs with atMinIndent==false.
+   */
+  <V> V bracketTermWithNLs(Token[] brackets, String rule, Callable<V> c, Callable<V> def)
+  {
+    return bracketTermWithNLs(false, brackets, rule, c, def);
+  }
+
+
+  /**
+   * Parse a term in brackets that may extend over several lines. In case this appears in an
+   * expression that must be in the same line, e.g.,
+   *
+   *   n := a * (b + c) - d
+   *
+   * continue the same line after the closing bracket, e.g.
+   *
+   *   n := a * (b
+   *         + c) - d
+   *
+   * @param atMinIndent may the closing bracket be at minIndent?  The opening
+   * bracket may always be at minIndent and if it is, the closing one may be as
+   * well. This parameter is usefule for code like
+   *
+   *   myFeature {
+   *     say "Hello"
+   *   }
+   *
+   * where the opening bracket is not at minIndent, but the closing one is.
+   *
+   * @param brackets the opening / closing bracket to use
+   *
+   * @param rule the parser rule we are processing, used in syntax error messages.
+   *
+   * @param c code to parse the inside of the brackets
+   *
+   * @param def code to produce a default result in case closing bracket follows
+   * immediately after opening bracket.
+   *
+   * @return value returned by c or def, resp.
+   */
+  <V> V bracketTermWithNLs(boolean atMinIndent, Token[] brackets, String rule, Callable<V> c, Callable<V> def)
+  {
+    var start = brackets[0];
+    var end   = brackets[1];
+    var ol = line();
+    var startsIndent = pos() == _minIndentStartPos;
+    match(atMinIndent, start, rule);
+    V result = relaxLineAndSpaceLimit(current() != end ? c : def);
+    var nl = line();
+    relaxLineAndSpaceLimit(() ->
+                           {
+                             match(startsIndent || atMinIndent, end, rule);
+                             return Void.TYPE; // is there a better unit type in Java?
+                           });
+    var sl = sameLine(-1);
+    if (sl == ol)
+      {
+        sl = nl;
+      }
+    sameLine(sl);
+    return result;
+  }
+
+
+  /**
+   * check if we can parse a bracket term and skip it if so.
+   *
+   * @param brackets the opening / closing bracket to use
+   *
+   * @param c code to parse the inside of the brackets
+   *
+   * @return true if both brackets are present and c returned true, Otherwise no
+   * bracket term could be pares and the parser/lexer is at an undefined
+   * position.
+   */
+  boolean skipBracketTermWithNLs(Token[] brackets, Callable<Boolean> c)
+  {
+    var start = brackets[0];
+    var end   = brackets[1];
+    var ol = line();
+    var startsIndent = pos() == _minIndentStartPos;
+    var result = skip(start) && relaxLineAndSpaceLimit(c);
+    if (result)
+      {
+        var nl = line();
+        result = relaxLineAndSpaceLimit(() -> {
+            return skip(startsIndent , end);
+          });
+        var sl = sameLine(-1);
+        if (sl == ol)
+          {
+            sl = nl;
+          }
+        sameLine(sl);
+      }
+    return result;
+  }
+
+
+
+  /**
    * Advance to the next token that is not ignore()d.
    */
   public void next()
@@ -764,11 +885,38 @@ public class Lexer extends SourceFile
                                                    : skipOp();
               break;
             }
+          /**
+OPERATOR  : ( '!'
+            | '$'
+            | '%'
+            | '&'
+            | '*'
+            | '+'
+            | '-'
+            | '.'
+            | ':'
+            | '<'
+            | '='
+            | '>'
+            | '?'
+            | '^'
+            | '|'
+            | '~'
+            )+
+          ;
+          */
           case K_OP      :   // '+'|'-'|'*'|'%'|'|'|'~'|'!'|'$'|'&'|'@'|':'|'<'|'>'|'='|'^'|'.')+;
             {
               token = skipOp();
               break;
             }
+          /**
+LF          : ( '\r'? '\n'
+                | '\r'
+                | '\f'
+              )
+            ;
+          */
           case K_WS      :   // spaces, tabs, lf, cr, ...
             {
               int last = p;
@@ -798,57 +946,102 @@ public class Lexer extends SourceFile
                                          : skipOp();
               break;
             }
+          /**
+COMMA       : ','
+            ;
+          */
           case K_COMMA   :   // ','
             {
               token = Token.t_comma;
               break;
             }
+          /**
+LPAREN      : '('
+            ;
+          */
           case K_LPAREN  :    // '('  round brackets or parentheses
             {
               token = Token.t_lparen;
               break;
             }
+          /**
+RPAREN      : ')'
+            ;
+          */
           case K_RPAREN  :    // ')'
             {
               token = Token.t_rparen;
               break;
             }
+          /**
+BRACEL      : '{'
+            ;
+          */
           case K_LBRACE  :    // '{'  curly brackets or braces
             {
               token = Token.t_lbrace;
               break;
             }
+          /**
+BRACER      : '}'
+            ;
+          */
           case K_RBRACE  :    // '}'
             {
               token = Token.t_rbrace;
               break;
             }
+          /**
+LBRACKET    : '['
+            ;
+          */
           case K_LCROCH  :    // '['  square brackets or crochets
             {
               token = Token.t_lcrochet;
               break;
             }
+          /**
+RBRACKET    : ']'
+            ;
+          */
           case K_RCROCH  :    // ']'
             {
               token = Token.t_rcrochet;
               break;
             }
+          /**
+SEMI        : ';'
+            ;
+          */
           case K_SEMI    :    // ';'
             {
               token = Token.t_semicolon;
               break;
             }
+          /**
+NUM_LITERAL : [0-9]+
+            ;
+          */
           case K_DIGIT   :    // '0'..'9'
             {
               _curLiteral = literal(p);
               token = Token.t_numliteral;
               break;
             }
+          /**
+IDENT     : ( 'a'..'z'
+            | 'A'..'Z'
+            )
+            ( 'a'..'z'
+            | 'A'..'Z'
+            | '0'..'9'
+            | '_'
+            )*
+          ;
+          */
           case K_LETTER  :    // 'A'..'Z', 'a'..'z'
             {
-              while (kind(curCodePoint()) == K_LETTER  ||
-                     kind(curCodePoint()) == K_DIGIT   ||
-                     kind(curCodePoint()) == K_NUMERIC   )
+              while (partOfIdentifier(curCodePoint()))
                 {
                   nextCodePoint();
                 }
@@ -867,11 +1060,32 @@ public class Lexer extends SourceFile
             }
           default:
             {
-              throw new Error("unexpected character kind: "+kind(p));
+              Errors.error(sourcePos(),
+                           "Unexpected unicode character \\u" + Integer.toHexString(0x1000000+p).substring(1).toUpperCase() + " found",
+                           null);
+              token = Token.t_error;
             }
           }
       }
     _curToken = token;
+  }
+
+
+  /**
+   * Check if the given code point may be part of an identifier.  This is true
+   * for letters, digits and numeric code points.
+   *
+   * @param cp a code point
+   *
+   * @return true iff cp may be part of an identifier, e.g., 'i', '3', '²', etc.
+   */
+  private boolean partOfIdentifier(int cp)
+  {
+    return switch (kind(cp))
+      {
+      case K_LETTER, K_DIGIT, K_NUMERIC -> true;
+      default -> false;
+      };
   }
 
 
@@ -910,10 +1124,9 @@ public class Lexer extends SourceFile
 
 
   /**
-   * Check if the current token in _sourceFile at pos()..endPos() is a keyword.
+   * Check if the given string is a keyword.
    *
-   * @return the corresponding keyword token such as Token.t_public if this is
-   * the case, Token.t_ident otherwise.
+   * @return true iff s is a Fuzion keyword.
    */
   public static boolean isKeyword(String s)
   {
@@ -1007,10 +1220,12 @@ public class Lexer extends SourceFile
    *
 LITERAL     : DIGITS_W_DOT EXPONENT
             ;
+fragment
 EXPONENT    : "E" PLUSMINUS DIGITS
             | "P" PLUSMINUS DIGITS
             |
             ;
+fragment
 PLUSMINUS   : "+"
             | "-"
             |
@@ -1155,7 +1370,7 @@ PLUSMINUS   : "+"
         }
       else
         {
-          return _mantissa.value();
+          return _mantissa.absValue();
         }
     }
 
@@ -1179,7 +1394,7 @@ PLUSMINUS   : "+"
     }
     BigInteger exponent()
     {
-      return _hasError || _exponent == null ? BigInteger.valueOf(0) : _exponent.value();
+      return _hasError || _exponent == null ? BigInteger.valueOf(0) : _exponent.signedValue();
     }
     int exponentBase()
     {
@@ -1274,6 +1489,7 @@ DIGITS_W_DOT: DIGITS
             | "0" "d" DEC_DIGIT_ DEC_DIGITS_ DEC_TAIL
             | "0" "x" HEX_DIGIT_ HEX_DIGITS_ HEX_TAIL
             ;
+fragment
 UNDERSCORE  : "_"
             |
             ;
@@ -1281,9 +1497,11 @@ BIN_DIGIT   : "0" | "1"
             ;
 BIN_DIGIT_  : UNDERSCORE BIN_DIGIT
             ;
+fragment
 BIN_DIGITS_ : BIN_DIGIT_ BIN_DIGITS_
             |
             ;
+fragment
 BIN_DIGITS  : BIN_DIGIT BIN_DIGITS
             |
             ;
@@ -1293,9 +1511,11 @@ OCT_DIGIT   : "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7"
             ;
 OCT_DIGIT_  : UNDERSCORE OCT_DIGIT
             ;
+fragment
 OCT_DIGITS_ : OCT_DIGIT_ OCT_DIGITS_
             |
             ;
+fragment
 OCT_DIGITS  : OCT_DIGIT OCT_DIGITS
             |
             ;
@@ -1305,9 +1525,11 @@ DEC_DIGIT   : "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9"
             ;
 DEC_DIGIT_  : UNDERSCORE DEC_DIGIT
             ;
+fragment
 DEC_DIGITS_ : DEC_DIGIT_ DEC_DIGITS_
             |
             ;
+fragment
 DEC_DIGITS  : DEC_DIGIT DEC_DIGITS
             |
             ;
@@ -1319,9 +1541,11 @@ HEX_DIGIT   : "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9"
             ;
 HEX_DIGIT_  : UNDERSCORE HEX_DIGIT
             ;
+fragment
 HEX_DIGITS_ : HEX_DIGIT_ HEX_DIGITS_
             |
             ;
+fragment
 HEX_DIGITS  : HEX_DIGIT HEX_DIGITS
             |
             ;
@@ -1463,16 +1687,23 @@ HEX_TAIL    : "." HEX_DIGITS
     }
 
 
-
+    /**
+     * The value, ignoring '-' and ingoring decimal '.' position (i.e., value of '123.456' is
+     * 123456).
+     */
+    BigInteger absValue()
+    {
+      return new BigInteger(_digits, _base._base);
+    }
 
     /**
      * The value, ignoring decimal '.' position (i.e., value of '123.456' is
      * 123456).
      */
-    BigInteger value()
+    BigInteger signedValue()
     {
-      var v = new BigInteger(_digits, _base._base);
-      return _negative ? v.negate() : v;
+      var res = absValue();
+      return _negative ? res.negate() : res;
     }
 
   }
@@ -1488,7 +1719,7 @@ HEX_TAIL    : "." HEX_DIGITS
     int startPos = _curPos;
     int p = curCodePoint();
 
-    check
+    if (CHECKS) check
       (p == '*');
 
     nextCodePoint();
@@ -1694,6 +1925,15 @@ HEX_TAIL    : "." HEX_DIGITS
    * is Token.t_op and the operator is op.  If so, advance to the next token
    * using next(). Otherwise, cause a syntax error.
    *
+COLON       : ":"
+            ;
+
+ARROW       : "=>"
+            ;
+
+PIPE        : "|"
+            ;
+   *
    * @param op the operator we want to see
    *
    * @param currentRule the current rule we are trying to parse
@@ -1760,11 +2000,11 @@ HEX_TAIL    : "." HEX_DIGITS
         setPos(_curPos);
         for (int i = 0; i < op.length(); i++)
           {
-            check
+            if (CHECKS) check
               (op.charAt(i) == curCodePoint());
             nextCodePoint();
           }
-        check
+        if (CHECKS) check
           (isOperator(op));
       }
   }
@@ -2127,12 +2367,11 @@ HEX_TAIL    : "." HEX_DIGITS
      */
     Token nextRaw()
     {
-      check
+      if (CHECKS) check
         (_stringLexer == this,
          _pos == -1);
 
       int p = curCodePoint();
-      var finishBy = StringEnd.QUOTE;
       switch (_state)
         {
         case EXPR_EXPECTED:
@@ -2337,6 +2576,135 @@ HEX_TAIL    : "." HEX_DIGITS
       }
     return result;
   }
+
+
+  /**
+   * Parse "(" if it is found
+   *
+   * @return true iff a "(" was found and skipped.
+   */
+  boolean skipLParen()
+  {
+    return skip(Token.t_lparen);
+  }
+
+
+  /**
+   * Parse given token and skip it. if it was found.
+   *
+   * @param t a token.
+   *
+   * @return true iff the current token was t and was skipped, otherwise no
+   * change is made.
+   */
+  boolean skip(Token t)
+  {
+    boolean result = false;
+    if (current() == t)
+      {
+        next();
+        result = true;
+      }
+    return result;
+  }
+
+
+  /**
+   * Parse given token and skip it. if it was found.
+   *
+   * @param t a token.
+   *
+   * @return true iff the current token was t and was skipped, otherwise no
+   * change is made.
+   */
+  boolean skip(boolean atMinIndent, Token t)
+  {
+    boolean result = false;
+    if (current(atMinIndent) == t)
+      {
+        next();
+        result = true;
+      }
+    return result;
+  }
+
+
+  /**
+   * Parse singe-char t_op.
+   *
+STAR        : "*"
+            ;
+QUESTION    : "?"
+            ;
+   *
+   * @param op the single-char operator
+   *
+   * @return true iff an t_op op was found and skipped.
+   */
+  boolean skip(char op)
+  {
+    boolean result = false;
+    if (isOperator(op))
+      {
+        next();
+        result = true;
+      }
+    return result;
+  }
+
+
+  /**
+   * Parse specific t_op.
+   *
+   * @param op the operator
+   *
+   * @return true iff an t_op op was found and skipped.
+   */
+  boolean skip(String op)
+  {
+    boolean result = false;
+    if (isOperator(op))
+      {
+        next();
+        result = true;
+      }
+    return result;
+  }
+
+
+  /**
+   * Parse specific t_op after splitting it off from the current op.
+   *
+   * @param op the operator
+   *
+   * @return true iff an t_op op was found and skipped.
+   */
+  boolean splitSkip(String op)
+  {
+    boolean result = false;
+    splitOperator(op);
+    if (isOperator(op))
+      {
+        next();
+        result = true;
+      }
+    return result;
+  }
+
+
+  /**
+   * Return the details of the numeric literal of the current t_numliteral token.
+   */
+  Literal skipNumLiteral()
+  {
+    if (PRECONDITIONS) require
+      (current() == Token.t_numliteral);
+
+    var result = curLiteral();
+    next();
+    return result;
+  }
+
 
 }
 

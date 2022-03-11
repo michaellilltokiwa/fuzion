@@ -42,14 +42,7 @@ public class FunctionReturnType extends ReturnType
   /**
    * The parsed type.
    */
-  Type type;
-
-
-  /**
-   * For a type declared as 'a.b.c.type', this gives the number of parts in the
-   * type, i.e., 4 in this example, 1 for 'i32'.
-   */
-  public final int depthInSource;
+  AbstractType type;
 
 
   /*--------------------------  constructors  ---------------------------*/
@@ -60,24 +53,9 @@ public class FunctionReturnType extends ReturnType
    *
    * @param t the parsed type
    */
-  public FunctionReturnType(Type t)
+  public FunctionReturnType(AbstractType t)
   {
     type = t;
-    var ot = t;
-    if (t == Types.t_UNDEFINED)
-      {
-        depthInSource = -1;
-      }
-    else
-      {
-        var d = 0;
-        while (ot != null)
-          {
-            ot = ot.outer_;
-            d++;
-          }
-        depthInSource = d;
-      }
   }
 
 
@@ -101,7 +79,7 @@ public class FunctionReturnType extends ReturnType
    *
    * @return the function return type.
    */
-  public Type functionReturnType()
+  public AbstractType functionReturnType()
   {
     return type;
   }
@@ -115,7 +93,7 @@ public class FunctionReturnType extends ReturnType
    *
    * @param outer the feature surrounding this expression.
    */
-  public void visit(FeatureVisitor v, Feature outer)
+  public void visit(FeatureVisitor v, AbstractFeature outer)
   {
     type = type.visit(v, outer);
   }

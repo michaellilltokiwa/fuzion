@@ -17,7 +17,7 @@
 #
 #  Tokiwa Software GmbH, Germany
 #
-#  Source code of Fuzion standard library feature psMap
+#  Source code of Fuzion standard library feature psSet
 #
 #  Author: Fridtjof Siebert (siebert@tokiwa.software)
 #
@@ -35,8 +35,10 @@
 # O(m*n log² n) for adding an element m times.
 #
 psSet<K : ordered<K>>
-  (psm psMap<K,unit>)
-  : Set<K>, List<K>
+  (psm ref psMap<K,unit>,  # NYI: 'ref' due to lack of 'like this'
+   dummy unit    # just to distinguish this from routine psSet(vs Sequence<K>)
+  )
+  : Set<K>
 is
 
 
@@ -57,11 +59,11 @@ is
 
   # add new element k to this set.
   #
-  add (k K) =>
+  add (k K) ref psSet<K> is  # NYI: 'ref' due to lack of 'like this'
     if has k
       psSet.this
     else
-      psSet<K> (psm.add k unit)
+      psSet (psm.add k unit) unit
 
 
   # create a sorted array from the elements of this set
@@ -86,18 +88,24 @@ is
 
   # union of two psSets
   #
-  infix ⋃ (other psSet<K>) => psSet<K> (psm ⋃ other.psm)
+  infix ⋃ (other ref psSet<K>) => psSet (psm ⋃ other.psm) unit  # NYI: 'ref' due to lack of 'like this'
 
 
-  # add all elements of the given List to this set
+  # intersection of two psSets
+  infix ⋂ (other ref psSet<K>) =>
+    s := (psSet.this ⋃ other).filter (x -> psSet.this.has x && other.has x)
+    psSet<K>.addAllFromStream s
+
+
+  # add all elements of the given Sequence to this set
   #
-  addAll (s List<K>) psSet<K> is
+  addAll (s Sequence<K>) ref psSet<K> is  # NYI: 'ref' due to lack of 'like this'
     addAllFromStream s.asStream
 
 
   # add all elements of the given stream to this set
   #
-  addAllFromStream (s stream<K>) psSet<K> is
+  addAllFromStream (s stream<K>) ref psSet<K> is  # NYI: 'ref' due to lack of 'like this'
     if s.hasNext
       add(s.next).addAllFromStream s
     else
@@ -120,7 +128,7 @@ has     -- NYI: 'has' keyword not supported yet, so the following require an ins
 
   # an empty psSet
   #
-  empty psSet<K> is psSet<K>
+  empty => psSet<K>
 
 
   # monoid of psSet with infix ⋃ operation.
@@ -128,4 +136,18 @@ has     -- NYI: 'has' keyword not supported yet, so the following require an ins
   union : Monoid<psSet<K>> is
     redef infix ∙ (a, b psSet<K>) => a ⋃ b
     redef infix == (a, b psSet<K>) => (a ⋃ b).size = a.size  # NYI: a bit expensive
-    redef e psSet<K> is empty
+    redef e => empty
+
+
+# psSet -- a partially sorted set based on psMap
+#
+# This feature creates an empty instance of psSet.
+#
+psSet<K : ordered<K>> => psSet psMap<K,unit> unit
+
+
+# psSet -- routine to initialize a partially sorted set from one Sequence
+#
+# This feature creates a pre-initialized instance of psSet.
+#
+psSet<K : ordered<K>> (vs Sequence<K>) => psSet<K>.addAll vs

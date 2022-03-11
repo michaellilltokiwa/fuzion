@@ -37,7 +37,7 @@ import dev.flang.util.SourcePosition;
  *
  * @author Fridtjof Siebert (siebert@tokiwa.software)
  */
-public class This extends Expr
+public class This extends ExprWithPos
 {
 
 
@@ -55,12 +55,12 @@ public class This extends Expr
    * the current feature this is executed in, i.e. the outer feature of the
    * feature that uses this inherits clause.
    */
-  private Feature cur_ = null;
+  private AbstractFeature cur_ = null;
 
   /**
    * The feature the this expression refers to, i.e,. for a.b.this this is a.b.
    */
-  private Feature feature_;
+  private AbstractFeature feature_;
 
 
   /*--------------------------  constructors  ---------------------------*/
@@ -69,7 +69,7 @@ public class This extends Expr
   /**
    * Constructor
    *
-   * @param pos the soucecode position, used for error messages.
+   * @param pos the sourcecode position, used for error messages.
    *
    * @param qual
    *
@@ -90,13 +90,13 @@ public class This extends Expr
   /**
    * Constructor to be used during type resolution.
    *
-   * @param pos the soucecode position, used for error messages.
+   * @param pos the sourcecode position, used for error messages.
    *
    * @param cur the current feature that contains this expression
    *
    * @param f the outer feature whose instance we want to access.
    */
-  public This(SourcePosition pos, Feature cur, Feature f)
+  public This(SourcePosition pos, AbstractFeature cur, AbstractFeature f)
   {
     super(pos);
 
@@ -114,7 +114,7 @@ public class This extends Expr
    * Constructor to be used for implicit This instances to be used before type
    * resolution.
    *
-   * @param pos the soucecode position, used for error messages.
+   * @param pos the sourcecode position, used for error messages.
    *
    * @param cur the current feature that contains this this expression
    *
@@ -138,7 +138,7 @@ public class This extends Expr
    *
    * @param res The Resolution instance to be used for resolveTypes().
    *
-   * @param pos the soucecode position, used for error messages.
+   * @param pos the sourcecode position, used for error messages.
    *
    * @param cur the current feature that contains this this expression
    *
@@ -146,7 +146,7 @@ public class This extends Expr
    *
    * @param the type resolved expression to access f.this.
    */
-  public static Expr thiz(Resolution res, SourcePosition pos, Feature cur, Feature f)
+  public static Expr thiz(Resolution res, SourcePosition pos, AbstractFeature cur, AbstractFeature f)
   {
     return new This(pos, cur, f).resolveTypes(res, cur);
   }
@@ -156,12 +156,12 @@ public class This extends Expr
 
 
   /**
-   * typeOrNull returns the type of this expression or Null if the type is still
-   * unknown, i.e., before or during type resolution.
+   * typeForFeatureResultTypeInferencing returns the type of this expression or
+   * null if the type is still unknown, i.e., before or during type resolution.
    *
    * @return this Expr's type or null if not known.
    */
-  public Type typeOrNull()
+  AbstractType typeForFeatureResultTypeInferencing()
   {
     return null;  // After type resolution, This is no longer part of the code.
   }
@@ -178,7 +178,7 @@ public class This extends Expr
    * @return this or an alternative Expr if the action performed during the
    * visit replaces this by the alternative.
    */
-  public Expr visit(FeatureVisitor v, Feature outer)
+  public Expr visit(FeatureVisitor v, AbstractFeature outer)
   {
     return v.action(this, outer);
   }
@@ -190,7 +190,7 @@ public class This extends Expr
    *
    * @param outer the root feature that contains this statement.
    */
-  public void findGenerics(Feature outer)
+  public void findGenerics(AbstractFeature outer)
   {
     // NYI: Check if qual starts with the name of a formal generic in outer or
     // outer.outer..., flag an error if this is the case.
@@ -208,13 +208,13 @@ public class This extends Expr
    * @return a call to the outer references to access the value represented by
    * this.
    */
-  public Expr resolveTypes(Resolution res, Feature outer)
+  public Expr resolveTypes(Resolution res, AbstractFeature outer)
   {
     Type type;
     if (qual_ != null)
       {
         int d = getThisDepth(outer);
-        Feature f = outer;
+        AbstractFeature f = outer;
         for (int i=0; i<d; i++)
           {
             f = f.outer();
@@ -230,10 +230,10 @@ public class This extends Expr
       }
 
     Expr getOuter = null;
-    Feature f = this.feature_;
+    var f = this.feature_;
     if (f.isUniverse())
       {
-        getOuter = new Universe(pos);
+        getOuter = new Universe();
       }
     else
       {
@@ -241,16 +241,17 @@ public class This extends Expr
          * an inherits call, cur_ is outer.outer() since this call is done
          * before outer is set up.
          */
-        Feature cur = cur_ == null ? outer : cur_;
-        getOuter = new Current(pos, cur.thisType());
+        var cur = cur_ == null ? outer : cur_;
+        getOuter = new Current(pos(), cur.thisType());
         while (cur != f)
           {
-            Feature or = cur.outerRef();
-            Expr c = new Call(pos, or._featureName.baseName(), Call.NO_GENERICS, Expr.NO_EXPRS, getOuter, or, null)
+            var or = cur.outerRef();
+            Expr c = new Call(pos(), or.featureName().baseName(), Call.NO_GENERICS, Expr.NO_EXPRS, getOuter, or, null)
               .resolveTypes(res, outer);
             if (cur.isOuterRefAdrOfValue())
               {
-                c = new Unbox(pos, c, cur.outer().thisType(), cur.outer());
+                c = new Unbox(c, cur.outer().thisType(), cur.outer())
+                  { public SourcePosition pos() { return This.this.pos(); } };
               }
             getOuter = c;
             cur = cur.outer();
@@ -297,7 +298,7 @@ public class This extends Expr
    *
    * @return
    */
-  private int getThisDepth(Feature feat)
+  private int getThisDepth(AbstractFeature feat)
   {
     Iterator<String> it = qual_.iterator();
     int d = getDepth(0, feat, it.next(), it);
@@ -310,13 +311,13 @@ public class This extends Expr
               .append(name);
           }
         var list = new List<String>();
-        Feature o = feat;
+        var o = feat;
         while (o.outer() != null) // exclude universe
           {
             list.add(o.qualifiedName());
             o = o.outer();
           }
-        FeErrors.outerFeatureNotFoundInThis(this, feat, qname.toString(), list);
+        AstErrors.outerFeatureNotFoundInThis(this, feat, qname.toString(), list);
       }
 
     return d;
@@ -326,15 +327,15 @@ public class This extends Expr
   /**
    * recursive helper function for getThisDepth()
    */
-  private int getDepth(int d, Feature feat, String name, Iterator<String> it)
+  private int getDepth(int d, AbstractFeature feat, String name, Iterator<String> it)
   {
-    if (feat._featureName.baseName().equals(name))
+    if (feat.featureName().baseName().equals(name))
       {
         return d;
       }
     else
       {
-        Feature outer = feat.outer();
+        var outer = feat.outer();
         if (outer == null)
           {
             d = -1;
@@ -344,8 +345,8 @@ public class This extends Expr
             d = getDepth(d + 1, outer, name, it);
             if ((d >= 0) && it.hasNext())
               {
-                d = it.next().equals(feat._featureName.baseName()) ? d - 1
-                                                                   : -1;
+                d = it.next().equals(feat.featureName().baseName()) ? d - 1
+                                                                    : -1;
               }
           }
       }

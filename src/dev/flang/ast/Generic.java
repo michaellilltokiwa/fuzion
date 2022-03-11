@@ -47,7 +47,7 @@ public class Generic extends ANY
 
 
   /**
-   * The soucecode position of this feature declaration, used for error
+   * The sourcecode position of this feature declaration, used for error
    * messages.
    */
   public final SourcePosition _pos;
@@ -69,7 +69,7 @@ public class Generic extends ANY
    * the constraint on this generic paremter, null for the implicit Object
    * constraint.
    */
-  private Type _constraint;
+  private AbstractType _constraint;
 
 
   /**
@@ -110,7 +110,7 @@ public class Generic extends ANY
   /**
    * Constructor for an unconstraint formal generic parameter.
    *
-   * @param pos the soucecode position, used for error messages.
+   * @param pos the sourcecode position, used for error messages.
    *
    * @param index the index in the formal generics declaration, starting at 0
    *
@@ -130,7 +130,7 @@ public class Generic extends ANY
   /**
    * Constructor for a constrainted formal generic parameter.
    *
-   * @param pos the soucecode position, used for error messages.
+   * @param pos the sourcecode position, used for error messages.
    *
    * @param index the index in the formal generics declaration, starting at 0
    *
@@ -139,7 +139,7 @@ public class Generic extends ANY
    * @param constraint the constraint on the generic paremter, null for the
    * implicit Object constraint.
    */
-  public Generic(SourcePosition pos, int index, String name, Type constraint)
+  public Generic(SourcePosition pos, int index, String name, AbstractType constraint)
   {
     if (PRECONDITIONS) require
       (pos != null,
@@ -191,7 +191,7 @@ public class Generic extends ANY
    *
    * @param outer the feature surrounding this expression.
    */
-  public void visit(FeatureVisitor v, Feature outer)
+  public void visit(FeatureVisitor v, AbstractFeature outer)
   {
     if (_constraint != null)
       {
@@ -209,17 +209,17 @@ public class Generic extends ANY
    *
    * @param outer the root feature that contains this statement.
    */
-  public void resolveTypes(Resolution res, Feature outer)
+  public void resolveTypes(Resolution res, AbstractFeature outer)
   {
     if (PRECONDITIONS) require
       (outer == feature());
 
     if (_constraint != null)
       {
-        _constraint = _constraint.resolve(outer);
+        _constraint = _constraint.resolve(res, outer);
         if (_constraint.isGenericArgument())
           {
-            FeErrors.constraintMustNotBeGenericArgument(this);
+            AstErrors.constraintMustNotBeGenericArgument(this);
           }
       }
   }
@@ -275,7 +275,7 @@ public class Generic extends ANY
    *
    * @return
    */
-  public Feature feature()
+  public AbstractFeature feature()
   {
     if (PRECONDITIONS) require
       (_formalGenerics != null);
@@ -289,18 +289,27 @@ public class Generic extends ANY
    *
    * @return
    */
-  public Type constraint()
+  public AbstractType constraint()
   {
     if (PRECONDITIONS) require
       (feature().state().atLeast(Feature.State.RESOLVED_DECLARATIONS));
 
-    Type result = (_constraint == null) ? Types.resolved.t_object
-                                        : _constraint;
+    var result = (_constraint == null) ? Types.resolved.t_object
+                                       : _constraint;
 
     if (POSTCONDITIONS) ensure
       (result != null);
 
     return result;
+  }
+
+
+  /**
+   * Return the name of this formal generic.
+   */
+  public String name()
+  {
+    return _name;
   }
 
 
@@ -320,16 +329,16 @@ public class Generic extends ANY
    *
    * @param actualGenerics the actual generics that replace this.
    */
-  public Type replace(List<Type> actualGenerics)
+  public AbstractType replace(List<AbstractType> actualGenerics)
   {
     if (PRECONDITIONS) require
       (!isOpen(),
        Errors.count() > 0 || _formalGenerics.sizeMatches(actualGenerics));
 
-    Type result;
+    AbstractType result;
     if (_select >= 0)
       {
-        List<Type> openTypes = _selectFrom.replaceOpen(actualGenerics);
+        var openTypes = _selectFrom.replaceOpen(actualGenerics);
         result = _select < openTypes.size()
           ? openTypes.get(_select)
           : // This is not an error, we can run into this situation, e.g., for
@@ -343,13 +352,13 @@ public class Generic extends ANY
       {
         result = null;
         int i = index();
-        Iterator<Type> actuals = actualGenerics.iterator();
+        var actuals = actualGenerics.iterator();
         while (i > 0 && actuals.hasNext())
           {
             actuals.next();
             i--;
           }
-        check
+        if (CHECKS) check
           (Errors.count() > 0 || actuals.hasNext());
         result = actuals.hasNext() ? actuals.next() : Types.t_ERROR;
       }
@@ -370,29 +379,29 @@ public class Generic extends ANY
    * @return the part of actualGenerics that this is replaced by, May be an
    * empty list or an arbitrarily long list.
    */
-  public List<Type> replaceOpen(List<Type> actualGenerics)
+  public List<AbstractType> replaceOpen(List<AbstractType> actualGenerics)
   {
     if (PRECONDITIONS) require
       (isOpen(),
        _formalGenerics.sizeMatches(actualGenerics));
 
-    Iterator<Generic> formals = _formalGenerics.list.iterator();
-    Iterator<Type>    actuals = actualGenerics.iterator();
+    var formals = _formalGenerics.list.iterator();
+    var actuals = actualGenerics.iterator();
 
     // fist, skip all formal/actual generics until we reached the last formal:
     Generic formal = formals.next();
     while (formals.hasNext())
       {
-        check
+        if (CHECKS) check
           (formal != this);
         actuals.next();
         formal = formals.next();
       }
-    check
+    if (CHECKS) check
       (formal == this);
 
     // Now, return the tail of actuals:
-    return actuals.hasNext() ? new List<Type>(actuals)
+    return actuals.hasNext() ? new List<>(actuals)
                              : Type.NONE;
   }
 
@@ -423,7 +432,7 @@ public class Generic extends ANY
    */
   public String toString()
   {
-    return _name+(_constraint == null ? "" : " -> "+_constraint);
+    return _name;
   }
 
 

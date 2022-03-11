@@ -6,7 +6,7 @@ The Fuzion language implementation is free software: you can redistribute it
 and/or modify it under the terms of the GNU General Public License as published
 by the Free Software Foundation, version 3 of the License.
 
-The Fuzion language implementation is distributed in the hope that it will be
+The Fuzion language imbooplementation is distributed in the hope that it will be
 useful, but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public
 License for more details.
@@ -28,37 +28,30 @@ package dev.flang.fuir;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
-import java.nio.charset.StandardCharsets;
 
 import java.util.TreeMap;
 import java.util.TreeSet;
 
-import dev.flang.ast.Assign; // NYI: remove dependency
-import dev.flang.ast.Block; // NYI: remove dependency
+import dev.flang.air.Clazz;
+import dev.flang.air.Clazzes;
+
+import dev.flang.ast.AbstractAssign; // NYI: remove dependency
+import dev.flang.ast.AbstractCall; // NYI: remove dependency
+import dev.flang.ast.AbstractConstant; // NYI: remove dependency
+import dev.flang.ast.AbstractFeature; // NYI: remove dependency
+import dev.flang.ast.AbstractMatch; // NYI: remove dependency
 import dev.flang.ast.BoolConst; // NYI: remove dependency
 import dev.flang.ast.Box; // NYI: remove dependency
-import dev.flang.ast.Call; // NYI: remove dependency
-import dev.flang.ast.Check; // NYI: remove dependency
-import dev.flang.ast.Current; // NYI: remove dependency
 import dev.flang.ast.Expr; // NYI: remove dependency
-import dev.flang.ast.Feature; // NYI: remove dependency
 import dev.flang.ast.If; // NYI: remove dependency
-import dev.flang.ast.Impl; // NYI: remove dependency
-import dev.flang.ast.InitArray; // NYI: remove dependency
+import dev.flang.ast.InlineArray; // NYI: remove dependency
 import dev.flang.ast.NumLiteral; // NYI: remove dependency
-import dev.flang.ast.Match; // NYI: remove dependency
-import dev.flang.ast.Nop; // NYI: remove dependency
 import dev.flang.ast.Stmnt; // NYI: remove dependency
-import dev.flang.ast.StrConst; // NYI: remove dependency
 import dev.flang.ast.Tag; // NYI: remove dependency
 import dev.flang.ast.Types; // NYI: remove dependency
 import dev.flang.ast.Unbox; // NYI: remove dependency
-import dev.flang.ast.Universe; // NYI: remove dependency
 
-import dev.flang.ir.Backend;
-import dev.flang.ir.BackendCallable;
-import dev.flang.ir.Clazz;
-import dev.flang.ir.Clazzes;
+import dev.flang.ir.IR;
 
 import dev.flang.util.ANY;
 import dev.flang.util.Errors;
@@ -73,38 +66,12 @@ import dev.flang.util.SourcePosition;
  *
  * @author Fridtjof Siebert (siebert@tokiwa.software)
  */
-public class FUIR extends ANY
+public class FUIR extends IR
 {
 
 
   /*----------------------------  constants  ----------------------------*/
 
-
-  private static final int CLAZZ_BASE   = 0x10000000;
-
-  private static final int CODE_BASE = 0x30000000;
-
-  public enum ClazzKind
-  {
-    Routine,
-    Field,
-    Intrinsic,
-    Abstract,
-    Choice
-  }
-
-  public enum ExprKind
-  {
-    Assign,
-    Box,
-    Unbox,
-    Call,
-    Current,
-    Const,
-    Match,
-    Tag,
-    Pop,
-  }
 
   public enum ContractKind
   {
@@ -167,15 +134,6 @@ public class FUIR extends ANY
   }
 
 
-  /**
-   * Dummy Expr for Pop.  This is needed only temporily as long as we use
-   * the AST instances instead of proper bytecodes.
-   *
-   * NYI: remove once bytecode instructions are here.
-   */
-  static final Expr WIPE_STACK = new NumLiteral(42);
-
-
   /*----------------------------  variables  ----------------------------*/
 
 
@@ -186,32 +144,15 @@ public class FUIR extends ANY
 
 
   final Map2Int<Clazz> _clazzIds = new MapComparable2Int(CLAZZ_BASE);
-  final Map2Int<List<Object>> _codeIds = new Map2Int(CODE_BASE);
 
 
   /*--------------------------  constructors  ---------------------------*/
 
 
-  public FUIR(Clazz main, boolean findClazzes)
+  public FUIR(Clazz main)
   {
     _main = main;
-    if (findClazzes)
-      {
-        Clazzes.findAllClasses(new Backend()
-          {
-            public BackendCallable callable(boolean dynamic,
-                                            Clazz innerClazz,
-                                            Clazz outerClazz)
-            {
-              return new BackendCallable()
-                {
-                  public Clazz inner() { return innerClazz; }
-                  public Clazz outer() { return outerClazz; }
-              };
-            }
-          }
-          , main());
-      }
+    Clazzes.findAllClasses(main());
   }
 
 
@@ -351,7 +292,8 @@ public class FUIR extends ANY
     for (var i = 0; i < result.size(); i++)
       {
         res[i] = _clazzIds.get(result.get(i));
-        check(res[i] != -1);
+        if (CHECKS) check
+          (res[i] != -1);
       }
     return res;
   }
@@ -399,8 +341,8 @@ public class FUIR extends ANY
     var fc = _clazzIds.get(fcl);
     var f = fc.feature();
     return f.isOuterRef() &&
-      !fc._outer._outer.isRef() &&
-      !fc._outer._outer.feature().isBuiltInPrimitive();
+      !fc.resultClazz().isRef() &&
+      !fc.resultClazz().feature().isBuiltInPrimitive();
   }
 
 
@@ -418,43 +360,33 @@ public class FUIR extends ANY
   }
 
 
-  public ClazzKind clazzKind(int cl)
+  public FeatureKind clazzKind(int cl)
   {
     return clazzKind(_clazzIds.get(cl));
   }
 
 
-  ClazzKind clazzKind(Clazz cc)
+  FeatureKind clazzKind(Clazz cc)
   {
-    if (cc.isChoice())
+    var ff = cc.feature();
+    return switch (ff.kind())
       {
-        return ClazzKind.Choice;
-      }
-    else
-      {
-        var ff = cc.feature();
-        switch (ff.impl.kind_)
-          {
-          case Routine    :
-          case RoutineDef : return ClazzKind.Routine;
-          case Field      :
-          case FieldDef   :
-          case FieldActual:
-          case FieldInit  : return ClazzKind.Field;
-          case Intrinsic  : return ClazzKind.Intrinsic;
-          case Abstract   : return ClazzKind.Abstract;
-          default: throw new Error ("Unexpected feature impl kind: "+ff.impl.kind_);
-          }
-      }
+      case Routine    -> FeatureKind.Routine;
+      case Field      -> FeatureKind.Field;
+      case Intrinsic  -> FeatureKind.Intrinsic;
+      case Abstract   -> FeatureKind.Abstract;
+      case Choice     -> FeatureKind.Choice;
+      default         -> throw new Error ("Unexpected feature kind: "+ff.kind());
+      };
   }
 
   public String clazzBaseName(int cl)
   {
     var cc = _clazzIds.get(cl);
     var res = cc.feature().featureName().baseName();
-    if (!cc._type._generics.isEmpty())
+    if (!cc._type.generics().isEmpty())
       {
-        res = res + cc._type._generics.toString("<",",",">");
+        res = res + cc._type.generics().toString("<",",",">");
       }
     return res;
   }
@@ -472,7 +404,7 @@ public class FUIR extends ANY
   public String clazzIntrinsicName(int cl)
   {
     if (PRECONDITIONS) require
-      (clazzKind(cl) == ClazzKind.Intrinsic);
+      (clazzKind(cl) == FeatureKind.Intrinsic);
 
     var cc = _clazzIds.get(cl);
     return cc.feature().qualifiedName();
@@ -633,6 +565,32 @@ public class FUIR extends ANY
 
 
   /**
+   * Is a clazz cl's clazzOuterRef() a value type that survives the call to
+   * cl?  If this is the case, we need to heap allocate the outer ref.
+   *
+   * @param cl a clazz id
+   *
+   * @return true if cl's may be kept alive longer than through its original
+   * constructor call since inner instances stay alive.
+   */
+  public boolean clazzOuterRefEscapes(int cl)
+  {
+    var cc = _clazzIds.get(cl);
+    var or = cc.outerRef();
+    var cco = cc._outer;
+    if (or == null || cco.isUnitType())
+      {
+        return false;
+      }
+    else
+      {
+        var rc = or.resultClazz();
+        return !rc.isRef() && !rc.feature().isBuiltInPrimitive() && cc.feature().isConstructor();
+      }
+  }
+
+
+  /**
    * Get the id of clazz Object.
    *
    * @return clazz id of clazz Object
@@ -751,18 +709,18 @@ public class FUIR extends ANY
 
   /**
    * add the code of feature ff to code.  In case ff has inherits calls, also
-   * include the code of the inhreted features.
+   * include the code of the inherited features.
    *
    * @param code a list that code should be added to.
    *
    * @param ff a routine or constructor feature.
    */
-  private void addCode(Clazz cc, List<Object> code, Feature ff)
+  private void addCode(Clazz cc, List<Object> code, AbstractFeature ff)
   {
-    for (Call p: ff.inherits)
+    for (var p: ff.inherits())
       {
         /*
-NYI: Any side-effects in p.target or p._actuals will be executed twice, once for
+NYI: Any side-effects in p.target() or p.actuals() will be executed twice, once for
      the precondition and once for the inlinded call! See this example:
 
 hw25 is
@@ -784,23 +742,61 @@ hw25 is
   if (count == 3) say "PASS" else say "FAIL"
         */
 
-        toStack(code, p);
-        toStack(code, p.target);
-        check
-          (p._actuals.size() == p.calledFeature().arguments.size());
-        for (var i = 0; i < p._actuals.size(); i++)
+        var pf = p.calledFeature();
+        var of = pf.outerRef();
+        var or = (of == null) ? null : (Clazz) cc._inner.get(of);  // NYI: ugly cast
+        toStack(code, p.target());
+        if (or != null && !or.resultClazz().isUnitType())
           {
-            var a = p._actuals.get(i);
-            var f = p.calledFeature().arguments.get(i);
+            if (!or.resultClazz().isRef() &&
+                !or.resultClazz().feature().isBuiltInPrimitive())
+              {
+                code.add(ExprKind.AdrOf);
+              }
+            code.add(ExprKind.Dup);
+            code.add(ExprKind.Current);
+            code.add(or);  // field clazz means assignment to field
+          }
+        if (CHECKS) check
+          (p.actuals().size() == p.calledFeature().arguments().size());
+        for (var i = 0; i < p.actuals().size(); i++)
+          {
+            var a = p.actuals().get(i);
+            var f = pf.arguments().get(i);
             toStack(code, a);
-            code.add(new Current(cc.feature().pos(), cc._type));
+            code.add(ExprKind.Current);
             // Field clazz means assign value to that field
             code.add((Clazz) cc.getRuntimeData(p.parentCallArgFieldIds_ + i));
           }
         addCode(cc, code, p.calledFeature());
       }
-    toStack(code, ff.impl._code);
+    toStack(code, ff.code());
   }
+
+
+  /**
+   * Code for a routine or precondition prolog.
+   *
+   * This adds code to initialize outer reference, must be done at the
+   * beginning of every routine and precondition.
+   *
+   * @param cc the routine we are creating code for.
+   */
+  private List<Object> prolog(Clazz cc)
+  {
+    List<Object> code = new List<>();
+    var vcc = cc.asValue();
+    var or = vcc.outerRef();
+    var cco = cc._outer;
+    if (or != null && !cco.isUnitType())
+      {
+        code.add(ExprKind.Outer);
+        code.add(ExprKind.Current);
+        code.add(or);
+      }
+    return code;
+  }
+
 
 
   /**
@@ -813,11 +809,11 @@ hw25 is
   public int clazzCode(int cl)
   {
     if (PRECONDITIONS) require
-      (clazzKind(cl) == ClazzKind.Routine);
+      (clazzKind(cl) == FeatureKind.Routine);
 
     var cc = _clazzIds.get(cl);
     var ff = cc.feature();
-    List<Object> code = new List<>();
+    var code = prolog(cc);
     addCode(cc, code, ff);
     return _codeIds.add(code);
   }
@@ -841,16 +837,17 @@ hw25 is
   public int clazzContract(int cl, ContractKind ck, int ix)
   {
     if (PRECONDITIONS) require
-      (clazzKind(cl) == ClazzKind.Routine   ||
-       clazzKind(cl) == ClazzKind.Field     ||
-       clazzKind(cl) == ClazzKind.Intrinsic ||
-       clazzKind(cl) == ClazzKind.Abstract     ,
+      (clazzKind(cl) == FeatureKind.Routine   ||
+       clazzKind(cl) == FeatureKind.Field     ||
+       clazzKind(cl) == FeatureKind.Intrinsic ||
+       clazzKind(cl) == FeatureKind.Abstract     ,
        ix >= 0);
 
-    var ff = _clazzIds.get(cl).feature();
-    var cc = ff.contract;
-    var cond = (cc != null && ck == ContractKind.Pre  ? cc.req :
-                cc != null && ck == ContractKind.Post ? cc.ens : null);
+    var cc = _clazzIds.get(cl);
+    var ff = cc.feature();
+    var ccontract = ff.contract();
+    var cond = (ccontract != null && ck == ContractKind.Pre  ? ccontract.req :
+                ccontract != null && ck == ContractKind.Post ? ccontract.ens : null);
     // NYI: PERFORMANCE: Always iterating the conditions results in performance
     // quadratic in the number of conditions.  This could be improved by
     // filtering BoolConst.TRUE once and reusing the resulting cond.
@@ -864,8 +861,16 @@ hw25 is
           }
         i++;
       }
-    List<Object> code = cond != null && i < cond.size() ? toStack(cond.get(i).cond) : null;
-    return code != null ? _codeIds.add(code) : -1;
+    if (cond != null && i < cond.size())
+      {
+        var code = prolog(cc);
+        toStack(code, cond.get(i).cond);
+        return _codeIds.add(code);
+      }
+    else
+      {
+        return -1;
+      }
   }
 
 
@@ -899,9 +904,10 @@ hw25 is
       {
       case Abstract : return false;
       case Choice   : return false;
-      case Intrinsic: return true;
+      case Intrinsic: return !cc.isAbsurd();
       case Routine  :
-      case Field    : return cc.isInstantiated() && cc != Clazzes.conststring.getIfCreated();
+      case Field    :
+        return (cc.isInstantiated() || cc.feature().isOuterRef()) && cc != Clazzes.conststring.getIfCreated() && !cc.isAbsurd();
       default: throw new Error("unhandled case: " + clazzKind(cc));
       }
   }
@@ -932,152 +938,45 @@ hw25 is
   }
 
 
-  /*--------------------------  stack handling  -------------------------*/
-
-
-  List<Object> toStack(Stmnt s)
+  /**
+   * Get the id of clazz consstring.internalArray
+   *
+   * @param the id of connststring.internalArray or -1 if that clazz was not created.
+   */
+  public int clazz_conststring_internalArray()
   {
-    List<Object> result = new List<>();
-    toStack(result, s);
-    return result;
+    var cc = Clazzes.constStringInternalArray;
+    return cc == null ? -1 : _clazzIds.get(cc);
   }
-  void toStack(List<Object> l, Stmnt s) { toStack(l, s, false); }
-  void toStack(List<Object> l, Stmnt s, boolean dumpResult)
-  {
-    if (PRECONDITIONS) require
-      (l != null,
-       s != null);
 
-    if (s instanceof Assign a)
-      {
-        toStack(l, a._value);
-        toStack(l, a._target);
-        l.add(a);
-      }
-    else if (s instanceof Unbox u)
-      {
-        toStack(l, u.adr_);
-        if (u._needed)
-          {
-            l.add(u);
-          }
-      }
-    else if (s instanceof Box b)
-      {
-        toStack(l, b._value);
-        l.add(b);
-      }
-    else if (s instanceof Block b)
-      {
-        // for (var st : b.statements_)
-        for (int i=0; i<b.statements_.size(); i++)
-          {
-            var st = b.statements_.get(i);
-            toStack(l, st, dumpResult || i < b.statements_.size()-1);
-          }
-      }
-    else if (s instanceof BoolConst)
-      {
-        l.add(s);
-      }
-    else if (s instanceof Current)
-      {
-        l.add(s);
-      }
-    else if (s instanceof If i)
-      {
-        // if is converted to If, blockId, elseBlockId
-        toStack(l, i.cond);
-        l.add(i);
-        List<Object> block = toStack(i.block);
-        l.add(new NumLiteral(_codeIds.add(block)));
-        Stmnt elseBlock;
-        if (i.elseBlock != null)
-          {
-            elseBlock = i.elseBlock;
-          }
-        else if (i.elseIf != null)
-          {
-            elseBlock = i.elseIf;
-          }
-        else
-          {
-            elseBlock = new Block(i.pos(), new List<>());
-          }
-        List<Object> elseBlockCode = toStack(elseBlock);
-        l.add(new NumLiteral(_codeIds.add(elseBlockCode)));
-      }
-    else if (s instanceof NumLiteral)
-      {
-        l.add(s);
-      }
-    else if (s instanceof Call c)
-      {
-        toStack(l, c.target);
-        for (var a : c._actuals)
-          {
-            toStack(l, a);
-          }
-        l.add(c);
-        if (dumpResult)
-          {
-            l.add(WIPE_STACK);
-          }
-      }
-    else if (s instanceof Match m)
-      {
-        toStack(l, m.subject);
-        l.add(m);
-        for (var c : m.cases)
-          {
-            var caseCode = toStack(c.code);
-            l.add(new NumLiteral(_codeIds.add(caseCode)));
-          }
-      }
-    else if (s instanceof Tag t)
-      {
-        toStack(l, t._value);
-        l.add(t);
-      }
-    else if (s instanceof Nop)
-      {
-      }
-    else if (s instanceof Universe)
-      {
-        var un = (Universe) s;
-      }
-    else if (s instanceof StrConst)
-      {
-        l.add(s);
-      }
-    else if (s instanceof InitArray)
-      {
-        l.add(s);
-      }
-    else if (s instanceof Check c)
-      {
-        // NYI: Check not supported yet
-        //
-        // l.add(s);
-      }
-    else
-      {
-        System.err.println("Missing handling of "+s.getClass()+" in FUIR.toStack");
-      }
+
+  /**
+   * Get the id of clazz sys.array<u8>.data
+   *
+   * @param the id of connststring.internalArray or -1 if that clazz was not created.
+   */
+  public int clazz_sysArray_u8_data()
+  {
+    var cc = Clazzes.sysArray_u8_data;
+    return cc == null ? -1 : _clazzIds.get(cc);
+  }
+
+
+  /**
+   * Get the id of clazz sys.array<u8>.length
+   *
+   * @param the id of connststring.internalArray or -1 if that clazz was not created.
+   */
+  public int clazz_sysArray_u8_length()
+  {
+    var cc = Clazzes.sysArray_u8_length;
+    return cc == null ? -1 : _clazzIds.get(cc);
   }
 
 
   /*--------------------------  accessing code  -------------------------*/
 
 
-  public boolean withinCode(int c, int ix)
-  {
-    if (PRECONDITIONS) require
-      (ix >= 0);
-
-    var code = _codeIds.get(c);
-    return ix < code.size();
-  }
 
   public ExprKind codeAt(int c, int ix)
   {
@@ -1086,111 +985,22 @@ hw25 is
 
     ExprKind result;
     var e = _codeIds.get(c).get(ix);
-    if (e == WIPE_STACK) // Take care: must be first since WIPE_STACK is NumLiteral (for now)
-      {
-        result = ExprKind.Pop;
-      }
-    else if (e instanceof Assign ||
-             e instanceof Clazz    )  /* Clazz represents the field we assign a value to */
+    if (e instanceof Clazz    )  /* Clazz represents the field we assign a value to */
       {
         result = ExprKind.Assign;
       }
-    else if (e instanceof Box)
-      {
-        result = ExprKind.Box;
-      }
-    else if (e instanceof Unbox)
-      {
-        result = ExprKind.Unbox;
-      }
-    else if (e instanceof Call)
-      {
-        result = ExprKind.Call;
-      }
-    else if (e instanceof Current)
-      {
-        result = ExprKind.Current;
-      }
-    else if (e instanceof If    ||
-             e instanceof Match    )
-      {
-        result = ExprKind.Match;
-      }
-    else if (e instanceof Tag)
-      {
-        result = ExprKind.Tag;
-      }
-    else if (e instanceof BoolConst ||
-             e instanceof NumLiteral  ||
-             e instanceof StrConst  ||
-             e instanceof InitArray   )
-      {
-        result = ExprKind.Const;
-      }
     else
       {
+        result = super.codeAt(c, ix);
+      }
+    if (result == null)
+      {
         Errors.fatal((e instanceof Stmnt s) ? s.pos() :
-                     (e instanceof Clazz z) ? z._type.pos : null,
+                     (e instanceof Clazz z) ? z._type.pos() : null,
                      "Stmnt not supported in FUIR.codeAt", "Statement class: " + e.getClass());
         result = ExprKind.Current; // keep javac from complaining.
       }
     return result;
-  }
-
-
-  public int codeSizeAt(int c, int ix)
-  {
-    int result = 1;
-    var s = codeAt(c, ix);
-    if (s == FUIR.ExprKind.Match)
-      {
-        result = result + matchCaseCount(c, ix);
-      }
-    return result;
-  }
-
-
-  /**
-   * Get the clazz field that is assigned to with the given assignment
-   *
-   * @parm cl a clazz id
-   *
-   * @param c code id
-   *
-   * @param ix index of assignment in code referred to by c
-   *
-   * @return the clazz id of the field that is assigned or -1 if that field
-   * is unused, so the assignment is not needed.
-   */
-  public int assignedField(int cl, int c, int ix)
-  {
-    if (PRECONDITIONS) require
-      (ix >= 0,
-       withinCode(c, ix),
-       codeAt(c, ix) == ExprKind.Assign);
-
-    var outerClazz = _clazzIds.get(cl);
-    var s = _codeIds.get(c).get(ix);
-    var fc = (s instanceof Assign a)
-      ? (Clazz) outerClazz.getRuntimeData(a.tid_ + 1)
-      : (Clazz) s;
-    return fc == null ? -1 : _clazzIds.get(fc);
-  }
-
-  public int assignOuterClazz(int cl, int c, int ix)
-  {
-    if (PRECONDITIONS) require
-      (ix >= 0,
-       withinCode(c, ix),
-       codeAt(c, ix) == ExprKind.Assign);
-
-    var outerClazz = _clazzIds.get(cl);
-    var s = _codeIds.get(c).get(ix);
-    var ocl = (s instanceof Assign a)
-      ? (Clazz) outerClazz.getRuntimeData(a.tid_)  // NYI: This should be the same as assignedField._outer
-      : outerClazz; // assignment to arg field in inherits call, so outer clazz is current instance
-
-    return _clazzIds.get(ocl);
   }
 
 
@@ -1274,113 +1084,159 @@ hw25 is
 
 
   /**
-   * Get the inner clazz for a non dynamic call or the static clazz of a dynamic
-   * call.
+   * Get the code for a comment expression.  This is used for debugging.
    *
-   * @param cl index of clazz containing the call
+   * @param cl index of clazz containing the comment
    *
-   * @param c code block containing the call
+   * @param c code block containing the comment
    *
-   * @param ix index of the call
-   *
-   * @return the clazz that has to be called
+   * @param ix index of the comment
    */
-  public int callCalledClazz(int cl, int c, int ix)
+  public String comment(int cl, int c, int ix)
   {
     if (PRECONDITIONS) require
       (ix >= 0,
        withinCode(c, ix),
-       codeAt(c, ix) == ExprKind.Call);
+       codeAt(c, ix) == ExprKind.Comment);
 
-    var outerClazz = _clazzIds.get(cl);
-    var call = (Call) _codeIds.get(c).get(ix);
-    var innerClazz = ((dev.flang.ir.BackendCallable)outerClazz.getRuntimeData(call.sid_)).inner();
-    return _clazzIds.get(innerClazz);
+    return (String) _codeIds.get(c).get(ix);
   }
 
 
   /**
-   * Get the possible inner clazzes for a dynamic call
+   * Get the inner clazz for a non dynamic access or the static clazz of a dynamic
+   * access.
    *
-   * NYI: This should not only return the list of inner clazzes, but a mapping
-   * from outer clazzes to corresponding inner clazzes since different outer
-   * clazzes could result in calls to the same inner clazz.
+   * @param cl index of clazz containing the access
    *
-   * @param outerClazz the caller
+   * @param c code block containing the access
    *
-   * @param call the call
+   * @param ix index of the access
    *
-   * @return a list with an even number of element pairs with call target
-   * clazzes at even indices followed by the corresponding inner clazz to be
-   * called for this target.
+   * @return the clazz that has to be accessed or -1 if the access is an
+   * assignment to a field that is unused, so the assignment is not needed.
    */
-  private List<Clazz> callCalledClazzes(Clazz outerClazz, Call call)
+  public int accessedClazz(int cl, int c, int ix)
   {
     if (PRECONDITIONS) require
-      (call != null,
-       outerClazz != null);
+      (ix >= 0,
+       withinCode(c, ix),
+       codeAt(c, ix) == ExprKind.Call   ||
+       codeAt(c, ix) == ExprKind.Assign    );
 
-    var cf = call.calledFeature();
-    var bc         = (dev.flang.ir.BackendCallable) outerClazz.getRuntimeData(call.sid_);
-    var tclazz     = bc.outer();
-    var innerClazz = bc.inner();
-    var result = new List<Clazz>();
-    for (var cl : tclazz.heirs())
+    var outerClazz = _clazzIds.get(cl);
+    var s = _codeIds.get(c).get(ix);
+    Clazz innerClazz =
+      (s instanceof AbstractCall   call) ? (Clazz) outerClazz.getRuntimeData(call.sid_ + 0) :
+      (s instanceof AbstractAssign a   ) ? (Clazz) outerClazz.getRuntimeData(a   .tid_ + 1) :
+      (s instanceof Clazz          fld ) ? fld :
+      (Clazz) (Object) new Object() { { if (true) throw new Error("acccessedClazz found unexpected Stmnt."); } } /* Java is ugly... */;
+
+    return innerClazz == null ? -1 : _clazzIds.get(innerClazz);
+  }
+
+
+  /**
+   * Get the possible inner clazzes for a dynamic call or assignment to a field
+   *
+   * @param cl index of clazz containing the access
+   *
+   * @param c code block containing the access
+   *
+   * @param ix index of the call
+   *
+   * @return an array with an even number of element pairs with accessed target
+   * clazzes at even indices followed by the corresponding inner clazz of the
+   * feature to be accessed for this target.
+   */
+  public int[] accessedClazzes(int cl, int c, int ix)
+  {
+    if (PRECONDITIONS) require
+      (ix >= 0,
+       withinCode(c, ix),
+       codeAt(c, ix) == ExprKind.Call   ||
+       codeAt(c, ix) == ExprKind.Assign    ,
+       accessIsDynamic(cl, c, ix));
+
+    var outerClazz = _clazzIds.get(cl);
+    var s =  _codeIds.get(c).get(ix);
+    Clazz tclazz;
+    AbstractFeature f;
+
+    if (s instanceof AbstractCall call)
       {
-        var in = cl._dynamicBinding.inner(cf);
+        f = call.calledFeature();
+        tclazz     = (Clazz) outerClazz.getRuntimeData(call.sid_ + 1);
+      }
+    else if (s instanceof AbstractAssign ass)
+      {
+        var assignedField = (Clazz) outerClazz.getRuntimeData(ass.tid_+ 1);
+        tclazz = (Clazz) outerClazz.getRuntimeData(ass.tid_);  // NYI: This should be the same as assignedField._outer
+        f = assignedField.feature();
+      }
+    else if (s instanceof Clazz fld)
+      {
+        tclazz = (Clazz) fld._outer;
+        f = fld.feature();
+      }
+    else
+      {
+        throw new Error();
+      }
+    var innerClazzes = new List<Clazz>();
+    for (var clz : tclazz.heirs())
+      {
+        if (CHECKS) check
+          (clz.isRef() == tclazz.isRef());
+        var in = (Clazz) clz._inner.get(f);  // NYI: cast would fail for open generic field
         if (in != null && clazzNeedsCode(in))
           {
-            result.add(cl);
-            result.add(in);
+            innerClazzes.add(clz);
+            innerClazzes.add(in);
           }
       }
-    return result;
-  }
 
-
-  /**
-   * Get the possible inner clazzes for a dynamic call
-   *
-   * @param cl index of clazz containing the call
-   *
-   * @param c code block containing the call
-   *
-   * @param ix index of the call
-   *
-   * @return an array with an even number of element pairs with call target
-   * clazzes at even indices followed by the corresponding inner clazz to be
-   * called for this target.
-   */
-  public int[] callCalledClazzes(int cl, int c, int ix)
-  {
-    if (PRECONDITIONS) require
-      (ix >= 0,
-       withinCode(c, ix),
-       codeAt(c, ix) == ExprKind.Call);
-
-    var outerClazz = _clazzIds.get(cl);
-    var call = (Call) _codeIds.get(c).get(ix);
-    var innerClazzes = callCalledClazzes(outerClazz, call);
     var innerClazzIds = new int[innerClazzes.size()];
     for (var i = 0; i < innerClazzes.size(); i++)
       {
         innerClazzIds[i] = _clazzIds.get(innerClazzes.get(i));
-        check(innerClazzIds[i] != -1);
+        if (CHECKS) check
+          (innerClazzIds[i] != -1);
       }
     return innerClazzIds;
   }
 
-  public boolean callIsDynamic(int cl, int c, int ix)
+
+  /**
+   * Is an access to a feature (assignment, call) dynamic?
+   *
+   * @param cl index of clazz containing the access
+   *
+   * @param c code block containing the access
+   *
+   * @param ix index of the acces
+   *
+   * @return true iff the assignment or call requires dynamic binding depending
+   * on the actual target type.
+   */
+  public boolean accessIsDynamic(int cl, int c, int ix)
   {
     if (PRECONDITIONS) require
       (ix >= 0,
        withinCode(c, ix),
-       codeAt(c, ix) == ExprKind.Call);
+       codeAt(c, ix) == ExprKind.Assign ||
+       codeAt(c, ix) == ExprKind.Call  );
 
     var outerClazz = _clazzIds.get(cl);
-    var call = (Call) _codeIds.get(c).get(ix);
-    var outer = ((dev.flang.ir.BackendCallable)outerClazz.getRuntimeData(call.sid_)).outer();
-    return call.isDynamic() && outer.isRef();
+    var s = _codeIds.get(c).get(ix);
+    var res =
+      (s instanceof AbstractAssign ass ) ? ((Clazz) outerClazz.getRuntimeData(ass.tid_)).isRef() : // NYI: This should be the same as assignedField._outer
+      (s instanceof Clazz          arg ) ? outerClazz.isRef() && !arg.feature().isOuterRef() : // assignment to arg field in inherits call (dynamic if outerlClazz is ref)
+                                                                                       // or to outer ref field (not dynamic)
+      (s instanceof AbstractCall   call) ? call.isDynamic() && ((Clazz) outerClazz.getRuntimeData(call.sid_ + 1)).isRef() :
+      new Object() { { if (true) throw new Error("acccessIsDynamic found unexpected Stmnt."); } } == null /* Java is ugly... */;
+
+    return res;
   }
 
 
@@ -1410,20 +1266,38 @@ hw25 is
        codeAt(c, ix) == ExprKind.Call);
 
     var outerClazz = _clazzIds.get(cl);
-    var call = (Call) _codeIds.get(c).get(ix);
-    return call.isInheritanceCall_;
+    var call = (AbstractCall) _codeIds.get(c).get(ix);
+    return call.isInheritanceCall();
   }
 
-  public int callTargetClazz(int cl, int c, int ix)
+
+  /**
+   * Get the target (outer) clazz of a feature access
+   *
+   * @param cl index of clazz containing the access
+   *
+   * @param c code block containing the access
+   *
+   * @param ix index of the access
+   *
+   * @return index of the static outer clazz of the accessed feature.
+   */
+  public int accessTargetClazz(int cl, int c, int ix)
   {
     if (PRECONDITIONS) require
       (ix >= 0,
        withinCode(c, ix),
-       codeAt(c, ix) == ExprKind.Call);
+       codeAt(c, ix) == ExprKind.Assign ||
+       codeAt(c, ix) == ExprKind.Call  );
 
-    var call = (Call) _codeIds.get(c).get(ix);
     var outerClazz = _clazzIds.get(cl);
-    var tclazz = ((dev.flang.ir.BackendCallable)outerClazz.getRuntimeData(call.sid_)).outer();
+    var s = _codeIds.get(c).get(ix);
+    var tclazz =
+      (s instanceof AbstractAssign ass ) ? (Clazz) outerClazz.getRuntimeData(ass.tid_) : // NYI: This should be the same as assignedField._outer
+      (s instanceof Clazz          arg ) ? outerClazz : // assignment to arg field in inherits call, so outer clazz is current instance
+      (s instanceof AbstractCall   call) ? (Clazz) outerClazz.getRuntimeData(call.sid_ + 1) :
+      (Clazz) (Object) new Object() { { if (true) throw new Error("acccessTargetClazz found unexpected Stmnt."); } } /* Java is ugly... */;
+
     return _clazzIds.get(tclazz);
   }
 
@@ -1450,21 +1324,21 @@ hw25 is
     Clazz clazz;
     var ic = _codeIds.get(c).get(ix);
     var t = ((Expr) ic).type();
-    if      (t == Types.resolved.t_bool  ) { clazz = Clazzes.bool       .get(); }
-    else if (t == Types.resolved.t_i8    ) { clazz = Clazzes.i8         .get(); }
-    else if (t == Types.resolved.t_i16   ) { clazz = Clazzes.i16        .get(); }
-    else if (t == Types.resolved.t_i32   ) { clazz = Clazzes.i32        .get(); }
-    else if (t == Types.resolved.t_i64   ) { clazz = Clazzes.i64        .get(); }
-    else if (t == Types.resolved.t_u8    ) { clazz = Clazzes.u8         .get(); }
-    else if (t == Types.resolved.t_u16   ) { clazz = Clazzes.u16        .get(); }
-    else if (t == Types.resolved.t_u32   ) { clazz = Clazzes.u32        .get(); }
-    else if (t == Types.resolved.t_u64   ) { clazz = Clazzes.u64        .get(); }
-    else if (t == Types.resolved.t_f32   ) { clazz = Clazzes.f32        .get(); }
-    else if (t == Types.resolved.t_f64   ) { clazz = Clazzes.f64        .get(); }
-    else if (t == Types.resolved.t_string) { clazz = Clazzes.conststring.get(); } // NYI: a slight inconsistency here, need to change AST
-    else if (ic instanceof InitArray)
+    if      (t.compareTo(Types.resolved.t_bool  ) == 0) { clazz = Clazzes.bool       .getIfCreated(); }
+    else if (t.compareTo(Types.resolved.t_i8    ) == 0) { clazz = Clazzes.i8         .getIfCreated(); }
+    else if (t.compareTo(Types.resolved.t_i16   ) == 0) { clazz = Clazzes.i16        .getIfCreated(); }
+    else if (t.compareTo(Types.resolved.t_i32   ) == 0) { clazz = Clazzes.i32        .getIfCreated(); }
+    else if (t.compareTo(Types.resolved.t_i64   ) == 0) { clazz = Clazzes.i64        .getIfCreated(); }
+    else if (t.compareTo(Types.resolved.t_u8    ) == 0) { clazz = Clazzes.u8         .getIfCreated(); }
+    else if (t.compareTo(Types.resolved.t_u16   ) == 0) { clazz = Clazzes.u16        .getIfCreated(); }
+    else if (t.compareTo(Types.resolved.t_u32   ) == 0) { clazz = Clazzes.u32        .getIfCreated(); }
+    else if (t.compareTo(Types.resolved.t_u64   ) == 0) { clazz = Clazzes.u64        .getIfCreated(); }
+    else if (t.compareTo(Types.resolved.t_f32   ) == 0) { clazz = Clazzes.f32        .getIfCreated(); }
+    else if (t.compareTo(Types.resolved.t_f64   ) == 0) { clazz = Clazzes.f64        .getIfCreated(); }
+    else if (t.compareTo(Types.resolved.t_string) == 0) { clazz = Clazzes.conststring.getIfCreated(); } // NYI: a slight inconsistency here, need to change AST
+    else if (ic instanceof InlineArray)
       {
-        throw new Error("NYI: FUIR support for InitArray still missing");
+        throw new Error("NYI: FUIR support for InlineArray still missing");
       }
     else { throw new Error("Unexpected type for ExprKind.Const: " + t); }
     return _clazzIds.get(clazz);
@@ -1483,15 +1357,12 @@ hw25 is
        codeAt(c, ix) == ExprKind.Const);
 
     var ic = _codeIds.get(c).get(ix);
-    var t = ((Expr) ic).type();
-    if      (ic instanceof BoolConst     ) { return new byte[] { ((BoolConst) ic).b ? (byte) 1 : (byte) 0 }; }
-    else if (ic instanceof NumLiteral    ) { return ((NumLiteral) ic).data(); }
-    else if (t == Types.resolved.t_string) { return ((StrConst) ic).str.getBytes(StandardCharsets.UTF_8); }
-    else if (ic instanceof InitArray)
+    if      (ic instanceof AbstractConstant co) { return co.data(); }
+    else if (ic instanceof InlineArray)
       {
-        throw new Error("NYI: FUIR support for InitArray still missing");
+        throw new Error("NYI: FUIR support for InlineArray still missing");
       }
-    throw new Error("Unexpected constant type " + t + ", expected bool, i32, u32, i64, u64, or string");
+    throw new Error("Unexpected constant type " + ((Expr) ic).type() + ", expected bool, i32, u32, i64, u64, or string");
   }
 
 
@@ -1516,35 +1387,9 @@ hw25 is
     var cc = _clazzIds.get(cl);
     var s = _codeIds.get(c).get(ix);
     Clazz ss = s instanceof If
-      ? cc.getRuntimeClazz(((If) s).runtimeClazzId_)
-      : cc.getRuntimeClazz(((Match) s).runtimeClazzId_);
+      ? cc.getRuntimeClazz(((If)            s).runtimeClazzId_)
+      : cc.getRuntimeClazz(((AbstractMatch) s).runtimeClazzId_);
     return _clazzIds.get(ss);
-  }
-
-
-  /**
-   * For a match statement, get the number of cases
-   *
-   * @param c code block containing the match
-   *
-   * @param ix index of the match
-   *
-   * @return the number of cases
-   */
-  public int matchCaseCount(int c, int ix)
-  {
-    if (PRECONDITIONS) require
-      (ix >= 0,
-       withinCode(c, ix),
-       codeAt(c, ix) == ExprKind.Match);
-
-    var s = _codeIds.get(c).get(ix);
-    int result = 2; // two cases for If
-    if (s instanceof Match m)
-      {
-        result = m.cases.size();
-      }
-    return result;
   }
 
 
@@ -1573,10 +1418,10 @@ hw25 is
     var cc = _clazzIds.get(cl);
     var s = _codeIds.get(c).get(ix);
     int result = -1; // no field for If
-    if (s instanceof Match m)
+    if (s instanceof AbstractMatch m)
       {
-        var mc = m.cases.get(cix);
-        var f = mc.field;
+        var mc = m.cases().get(cix);
+        var f = mc.field();
         var fc = f != null && Clazzes.isUsed(f, cc) ? cc.getRuntimeClazz(mc.runtimeClazzId_) : null;
         result = fc != null ? _clazzIds.get(fc) : -1;
       }
@@ -1614,12 +1459,12 @@ hw25 is
       }
     else
       {
-        var match = (Match) s;
+        var match = (AbstractMatch) s;
         var ss = cc.getRuntimeClazz(match.runtimeClazzId_);
-        var mc = match.cases.get(cix);
-        var f = mc.field;
+        var mc = match.cases().get(cix);
+        var f = mc.field();
         var fc = f != null && Clazzes.isUsed(f, cc) ? cc.getRuntimeClazz(mc.runtimeClazzId_) : null;
-        int nt = f != null ? 1 : mc.types.size();
+        int nt = f != null ? 1 : mc.types().size();
         var resultL = new List<Integer>();
         int tag = 0;
         for (var cg : ss.choiceGenerics())

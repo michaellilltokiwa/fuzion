@@ -8,11 +8,11 @@ Please check [https://flang.dev](https://flang.dev) for language and implementat
 ## Clone
 > Note that the current directory must not contain any spaces.
 
-    git clone https://github.com/fridis/fuzion
+    git clone https://github.com/tokiwa-software/fuzion
 
 ## Requirements
 
-- OpenJDK 16, e.g., https://adoptopenjdk.net/releases.html?variant=openjdk16&jvmVariant=hotspot
+- OpenJDK 17, e.g., https://github.com/adoptium/temurin17-binaries/releases/download/jdk-17%2B35/OpenJDK17-jdk_x64_linux_hotspot_17_35.tar.gz
 - clang-10 LLVM C compiler (on ubuntu: sudo apt-get install clang-10)
 - GNU make
 
@@ -20,14 +20,17 @@ Please check [https://flang.dev](https://flang.dev) for language and implementat
 > Note that building from powershell/cmd does not work yet.
 
 1) Install chocolatey: https://chocolatey.org/install
-2) choco install git openjdk make msys2 diffutils
-3) in C:\tools\msys64\msys2_shell.cmd change line: 'rem set MSYS2_PATH_TYPE=inherit' to 'set MSYS2_PATH_TYPE=inherit'
-4) execute: C:\tools\msys64\msys2_shell.cmd
-5) pacman -S mingw-w64-x86_64-clang
+2) In Powershell:
+    1) choco install git openjdk make msys2 diffutils
+    2) [Environment]::SetEnvironmentVariable("Path","c:\tools\msys64\mingw64\bin;" + $env:Path , "User")
+3) In file C:\tools\msys64\msys2_shell.cmd change line: 'rem set MSYS2_PATH_TYPE=inherit' to 'set MSYS2_PATH_TYPE=inherit'
+4) In msys2 shell (execute C:\tools\msys64\msys2_shell.cmd):
+    1) pacman -S mingw-w64-x86_64-clang
+    2) make
 
 ## Build
 
-> Make sure java/javac commands from OpenJDK 16 and clang 10 binary are in $PATH.
+> Make sure java/javac commands from OpenJDK and clang binary are in $PATH.
 
     cd fuzion
     make

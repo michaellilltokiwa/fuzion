@@ -28,46 +28,57 @@
 # NYI: Check if stream should be replaced by a lazy list, which is a choice
 # of either nil or a tuple (head, tail). This should avoid the need to store
 # mutable state.
-stream<T> ref is
+stream<T> ref : Sequence<T> is
 
   # create a list from this stream
   #
-  asList list<T> is
+  redef asList list<T> is
     fromStream list<T> is
       if hasNext
         h := next;
-        ref : Cons<T,list<T>> {
-            memoizedTail option<some<list<T>>> := nil
-            head => h
-            tail =>
-              if !memoizedTail.exists
-                set memoizedTail := some fromStream
-              memoizedTail.unwrap.val
-          }
+        ref : Cons<T,list<T>>
+          memoizedTail option<some<list<T>>> := nil
+          head => h
+          tail =>
+            if !memoizedTail.exists
+              set memoizedTail := some fromStream
+            memoizedTail.get.val
       else
         nil
     fromStream
 
 
+  # create a stream of T.
+  #
+  # A stream contains mutable state, so it cannot be reused or shared
+  # between threads.
+  #
+  # Default implementation uses asList.  Heirs must redefine at least
+  # one of asList or asStream.
+  #
+  redef asStream stream<T> is stream.this
+
+
   # apply f to all elements in this stream
   #
-  forAll(f fun (T)) unit is while hasNext do f(next)
+  redef forAll(f T -> unit) unit is while hasNext do f(next)
 
 
   # apply f to all elements in this stream, infix operator synonyme of forAll.
   #
-  infix | (f fun (T)) unit is while hasNext do f(next)
+  redef infix | (f T -> unit) unit is while hasNext do f(next)
 
 
   # apply 'f' to each element 'e' as long as 'f e'
   #
-  forWhile(f fun (T) bool) unit is while hasNext && f(next)
+  redef forWhile(f T -> bool) unit is while hasNext && f(next)
 
 
   # create a new stream that contains the first elements of this stream for
   # which 'f e' is false
   #
-  before(f fun (T) bool) ref : stream<T> is
+  redef before(f T -> bool) stream<T> is before0 f
+  before0(f T -> bool) ref : stream<T> is
     nextCache := stream.this.next  # NYI should be option<T> and set to None if !stream.this.hasNext
     redef hasNext => !f(nextCache)
     redef next T is
@@ -78,7 +89,8 @@ stream<T> ref is
 
   # create new stream from all elements for which predicate f is true
   #
-  filter(f fun (T) bool) ref : stream<T> is
+  redef filter(f T -> bool) stream<T> is filter0 f
+  filter0(f T -> bool) ref : stream<T> is
     cache T := ?  # NYI: should be option<T>
     cacheOk := false
     next2
@@ -97,7 +109,7 @@ stream<T> ref is
   # create a new stream from all elements for which predicate f is true, infix
   # operator synonyme of filter.
   #
-  infix |& (f fun (T) bool) stream<T> is filter(f)
+  redef infix |& (f T -> bool) stream<T> is filter(f)
 
 
   # create a new stream from all elements for which predicate f is true, infix
@@ -105,19 +117,19 @@ stream<T> ref is
   #
   # NYI: What is better, 'infix |&' or 'infix &', or something else?
   #
-  infix & (f fun (T) bool) => filter f
+  redef infix & (f T -> bool) => filter f
 
 
   # check if predicate f holds for all elements produced by this stream
   #
-  infix ∀ (f fun (T) bool) bool is
+  redef infix ∀ (f T -> bool) bool is
     while hasNext: f next   # hasNext implies f next
     until !hasNext
 
 
   # check if predicate f holds for at least one element produced by this stream
   #
-  infix ∃ (f fun (T) bool) bool is
+  redef infix ∃ (f T -> bool) bool is
     while hasNext
     until f next
 
@@ -149,46 +161,27 @@ stream<T> ref is
   # print the elements of this stream
   #
   print unit is
-    forAll(fun (x T) is
+    forAll (x ->
       yak x
       if hasNext then yak ", ")
 
 
   # count the elements of this stream
   #
-  count i32 is
-    # NYI: check if this works: map<i32>(fun f(x T) => 1).fold i32.sum
-    res := 0
-    forAll(fun (x T) is set res := res + 1)
-    res
+  redef count i32 is
+    # NYI: check if this works: map<i32>(x -> 1).fold i32.sum
+    asList.map<i32>(x -> 1).fold i32.sum
 
 
   # collect all items from this stream into an array
   #
-  asArray array<T> is
+  redef asArray array<T> is
     for
-      a := (marray<T> 0, (sys.array<T> 0), unit), a.add x
+      a := (marray 0 (sys.array<T> 0) unit), a.add x
     while hasNext
       x := next
     else
       a.as_array
-
-
-  # create a stream that consists only of the first n elements of this
-  # stream, fewer if this stream has fewer elements
-  #
-  take (n i32) ref : stream<T> is
-    remaining := n
-    hasNext => remaining > 0 && stream.this.hasNext
-    next => set remaining := remaining - 1; stream.this.next
-
-
-  # drop n elements of this stream, then continue with the remaining stream
-  #
-  drop (n i32) =>
-    for i in 0..n-1 while hasNext
-    do next
-    stream.this
 
 
   # create a stream that consists of all be the elements if this stream followed
@@ -199,19 +192,18 @@ stream<T> ref is
     next => if (stream.this.hasNext) stream.this.next else s.next
 
 
-  # infix operand synonyme for concatStreams
-  #
-  infix ++ (s stream<T>) stream<T> is concatStreams s
-
-
   # create a string from the elements of this stream
   #
   redef asString ref string is
-    # NYI: check if this works: map<string>(fun (x T) => x.asString).fold strings.concat ", "
+    # NYI: check if this works: map<string>(x-> x.asString).fold strings.concat ", "
     #
-    res := ""
-    forAll(fun (x T) is set res := res + x.asString; if hasNext then set res := res + ", ")
-    res
+    stream.this.asString ", "
+
+
+  # create a string representation of this list including all the string
+  # representations of its contents, separated by 'sep'.
+  #
+  redef asString (sep string) => asList.asString sep
 
 
   # map the stream to a new stream applying function f to all elements
@@ -219,18 +211,16 @@ stream<T> ref is
   # This performs a lazy mapping, f is called only when the elements
   # are taken from the stream.
   #
-  map<B>(f fun(T) B) stream<B> is
+  map<B>(f T -> B) stream<B> is
     ref : stream<B>
-      {
-        hasNext => stream.this.hasNext
-        next B is f stream.this.next
-      }
+      hasNext => stream.this.hasNext
+      next B is f stream.this.next
 
 
   # NYI: This currently does not work with the C backend since generics resolution
   # for stream.this.next confuses the type from the outer feature (T) with the type
   # from the inherited feature (B).
-  map_broken <B>(f fun(T) B) : stream<B> is
+  map_broken <B>(f T -> B) : stream<B> is
     hasNext => stream.this.hasNext
     next B is f stream.this.next
 
@@ -239,7 +229,7 @@ stream<T> ref is
   #
   # e.g., to sum the elements of a stream of i32, use s.fold i32.sum
   #
-  fold (m Monoid<T>) => fold m.e, m
+  redef fold (m Monoid<T>) => fold m.e, m
 
 
   # fold the elements of this stream using the given monoid m and initial value s.

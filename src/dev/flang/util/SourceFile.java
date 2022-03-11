@@ -107,13 +107,6 @@ public class SourceFile extends ANY
   public static Path STDIN = Path.of("-");
 
 
-  /**
-   * Special value for fileName argument of constructor for internal file not
-   * read from file system.
-   */
-  public static Path BUILT_IN = Path.of("--builtin--");
-
-
   /*-----------------------------  statics  -----------------------------*/
 
 
@@ -169,6 +162,23 @@ public class SourceFile extends ANY
    * Load UTF-8 encoded source code from given file and reset the position to
    * the beginning of this file.
    */
+  public SourceFile(Path fileName, byte[] sf)
+  {
+    if (PRECONDITIONS) require
+      (fileName != null);
+
+    _fileName = fileName;
+    _bytes = sf;
+    _pos = 0;
+    _cur = BAD_CODEPOINT;
+    _size = 0;
+  }
+
+
+  /**
+   * Load UTF-8 encoded source code from given file and reset the position to
+   * the beginning of this file.
+   */
   public SourceFile(Path fileName)
   {
     if (PRECONDITIONS) require
@@ -178,9 +188,8 @@ public class SourceFile extends ANY
     byte[] sf;
     try
       {
-        sf = fileName == BUILT_IN ? new byte[0]              :
-             fileName == STDIN    ? System.in.readAllBytes()
-                                  : Files    .readAllBytes(fileName);
+        sf = fileName == STDIN ? System.in.readAllBytes()
+                               : Files    .readAllBytes(fileName);
       }
     catch (IOException e)
       {
@@ -189,6 +198,7 @@ public class SourceFile extends ANY
                      "");
         sf = new byte[0];
       }
+
     _bytes = sf;
     _pos = 0;
     _cur = BAD_CODEPOINT;
@@ -752,7 +762,7 @@ public class SourceFile extends ANY
    *
    * @param pos a byte position
    *
-   * @return the line number, 1..lines().length
+   * @return the line number, 1..lines().length.  return 0 for empty file.
    */
   public int lineNum(int pos)
   {
@@ -765,7 +775,8 @@ public class SourceFile extends ANY
       -l - 2; // l == -ip-1, where ip is the element behind the desired line index (ip == line + 1), so line == ip - 1 = -l - 2
 
     if (POSTCONDITIONS) ensure
-      (line >= 1,
+      (lines().length == 1 || line >= 1,
+       _bytes.length != 0 || line == 0,
        line <  lines().length);
 
     return line;
@@ -895,6 +906,34 @@ public class SourceFile extends ANY
                           i < byteLength());
 
     return _bytes[i];
+  }
+
+
+  /**
+   * Get the raw bytes of this file
+   *
+   * @return the byte array
+   */
+  public byte[] bytes()
+  {
+    return _bytes;
+  }
+
+
+  /**
+   * Get bytes of codepoint starting at the given position
+   *
+   * @param pos an index in the file
+   *
+   * @return the byte[] at given index
+   */
+  public byte[] bytesAt(int pos) {
+    var codePointSize = codePointSize(pos);
+    byte[] result = new byte[codePointSize];
+    for (int i = 0; i < codePointSize; i++) {
+      result[i] = byteAt(pos+i);
+    }
+    return result;
   }
 
 }

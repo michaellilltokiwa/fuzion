@@ -127,21 +127,18 @@ import dev.flang.util.List;
 public class Resolution extends ANY
 {
 
-  public interface InnerFeaturesLoader
-  {
-    void loadInnerFeatures(Resolution res, Feature f);
-  }
 
   /*----------------------------  variables  ----------------------------*/
-
-
-  final InnerFeaturesLoader innerFeaturesLoader; // =  (f) -> loadInnerFeatures(f);
 
 
   final FuzionOptions _options;
 
 
-  final Feature universe;
+  final AbstractFeature universe;
+
+
+  public final SrcModule _module;
+
 
   /**
    * List of features scheduled for inheritance resolution
@@ -188,16 +185,6 @@ public class Resolution extends ANY
    */
   final List<Feature> forCheckTypes2 = new List<>();
 
-  /**
-   * List of features scheduled for feature index resolution
-   */
-  final List<Feature> forFindingUsedFeatures = new List<>();
-
-  /**
-   * List of features scheduled for feature index resolution
-   */
-  final List<Feature> forFeatureIndex = new List<>();
-
 
   /*--------------------------  constructors  ---------------------------*/
 
@@ -206,14 +193,12 @@ public class Resolution extends ANY
    * Constructor to Resolve the universe.
    */
   public Resolution(FuzionOptions options,
-                    Feature universe,
-                    InnerFeaturesLoader ifl)
+                    AbstractFeature universe,
+                    SrcModule sm)
   {
     this.universe = universe;
     this._options = options;
-    this.innerFeaturesLoader = ifl;
-    universe.scheduleForResolution(this);
-    resolve();
+    this._module = sm;
   }
 
 
@@ -335,32 +320,6 @@ public class Resolution extends ANY
 
 
   /**
-   * Add a feature to the set of features scheduled for feature index
-   * resolution
-   */
-  void scheduleForFindUsedFeatures(Feature f)
-  {
-    if (PRECONDITIONS) require
-      (f.state() == Feature.State.CHECKED_TYPES2);
-
-    forFindingUsedFeatures.add(f);
-  }
-
-
-  /**
-   * Add a feature to the set of features scheduled for feature index
-   * resolution
-   */
-  void scheduleForFeatureIndexResolution(Feature f)
-  {
-    if (PRECONDITIONS) require
-      (f.state() == Feature.State.FOUND_USED_FEATURES);
-
-    forFeatureIndex.add(f);
-  }
-
-
-  /**
    * Resolve all entries in the lists for resolution (forInheritance, etc.) up
    * to state RESOLVED_TYPES.
    */
@@ -404,7 +363,7 @@ public class Resolution extends ANY
       {
         if (Types.resolved == null)
           {
-            new Types.Resolved(universe);
+            new Types.Resolved(this, universe);
           }
 
         Feature f = forType.removeFirst();
@@ -451,17 +410,6 @@ public class Resolution extends ANY
         // point:
         result = false;
       }
-    else if (!forFindingUsedFeatures.isEmpty())
-      {
-        Types.resolved.markInternallyUsed(this);
-        Feature f = forFindingUsedFeatures.removeFirst();
-        f.findUsedFeatures(this);
-      }
-    else if (!forFeatureIndex.isEmpty())
-      {
-        Feature f = forFeatureIndex.removeFirst();
-        f.resolveFeatureIndex(this);
-      }
     else
       {
         result = false;
@@ -477,14 +425,17 @@ public class Resolution extends ANY
    *
    * @param f the feature to be resolved
    */
-  void resolveDeclarations(Feature f)
+  public void resolveDeclarations(AbstractFeature af)
   {
-    f.scheduleForResolution(this);
-    f.resolveInheritance(this);
-    f.resolveDeclarations(this);
+    if (af instanceof Feature f)
+      {
+        f.scheduleForResolution(this);
+        f.resolveInheritance(this);
+        f.resolveDeclarations(this);
+      }
 
     if (POSTCONDITIONS) ensure
-      (f.state().atLeast(Feature.State.RESOLVED_DECLARATIONS));
+      (af.state().atLeast(Feature.State.RESOLVED_DECLARATIONS));
   }
 
 }

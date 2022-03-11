@@ -34,8 +34,8 @@ import java.lang.reflect.Modifier;
 
 import dev.flang.ast.Types;
 
-import dev.flang.ir.Clazz;
-import dev.flang.ir.Clazzes;
+import dev.flang.air.Clazz;
+import dev.flang.air.Clazzes;
 
 import dev.flang.util.ANY;
 
@@ -250,7 +250,7 @@ public class JavaInterface extends ANY
     var ok = e == null;
     if (resultClazz.feature().qualifiedName().equals("outcome"))
       {
-        var valClazz = resultClazz.choiceGenerics_.get(ok ? 0 : 1);
+        var valClazz = resultClazz._choiceGenerics.get(ok ? 0 : 1);
         var res = ok ? javaObjectToPlainInstance(o, valClazz)
                      : javaThrowableToError     (e, valClazz);
         result = Interpreter.tag(resultClazz, valClazz, res);
@@ -269,7 +269,7 @@ public class JavaInterface extends ANY
 
 
   /**
-   * Convert a Java object returned from a refelction call to the corresponding
+   * Convert a Java object returned from a reflection call to the corresponding
    * Fuzion value.
    *
    * @param o a Java Object
@@ -295,9 +295,21 @@ public class JavaInterface extends ANY
     else
       {
         var result = new Instance(resultClazz);
-        if (result.refs.length > 0 /* better check that result is heir of fuzion.java.JavaObject */ )
+        for (var e : Layout.get(resultClazz)._offsets0.entrySet())
           {
-            result.refs[0] = new JavaRef(o);
+            var f = e.getKey();
+            var off = (Integer) e.getValue();
+            var v = switch (f.featureName().baseName())
+              {
+              case "javaRef"   -> new JavaRef(o);
+              case "forbidden" -> Value.NO_VALUE;
+              default -> f.isOuterRef() ? new Instance(resultClazz._outer)
+                                        : (Value) (Object) new Object() { { if (true) throw new Error("unexpected field in fuzion.java.Array: "+f.qualifiedName()); }};
+              };
+            if (v != Value.NO_VALUE)
+              {
+                result.refs[off] = v;
+              }
           }
         return result;
       }
@@ -316,7 +328,7 @@ public class JavaInterface extends ANY
        resultClazz != null);
 
     var result = new Instance(resultClazz);
-    check
+    if (CHECKS) check
       (result.refs.length == 1);    // an 'error' has exactly one ref field of type string
     result.refs[0] = Interpreter.value(e.toString());
 
@@ -328,15 +340,12 @@ public class JavaInterface extends ANY
    * Convert an instance of 'sys.array<Object>' to a Java Object[] with
    * the corresponding Java values.
    *
-   * @param v a value of type 'sys.array<Object>'.
+   * @param v a value of type ArrayData as it is stored in 'sys.array.data'.
    *
    * @return corresponding Java array.
    */
   static Object[] instanceToJavaObjects(Value v)
   {
-    if (PRECONDITIONS) require
-      (v.instance().clazz().feature() == Types.resolved.f_sys_array);
-
     var a = v.arrayData();
     var sz = a.length();
     var result = new Object[sz];
@@ -360,14 +369,15 @@ public class JavaInterface extends ANY
    * @param thiz target instance for a virtual call, null for static method or
    * constructor call
    *
-   * @param args array of arguments to be passed to the method or constructor
+   * @param args array of arguments to be passed to the method or constructor,
+   * must be of type array data, i.e., the value in sys.array<JavaObject>.data.
    *
    * @param resultClazz the result type of the constructed instance
    */
   static Value call(String clName, String name, String sig, Object thiz, Value args, Clazz resultClazz)
   {
     if (PRECONDITIONS) require
-      ((clName != null) != (thiz != null));
+      (clName != null);
 
     Object res = null;
     Throwable err = null;

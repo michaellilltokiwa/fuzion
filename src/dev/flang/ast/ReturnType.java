@@ -68,15 +68,12 @@ public abstract class ReturnType extends ANY
    *
    * @return the function result type.
    */
-  public Type functionReturnType()
+  public AbstractType functionReturnType()
   {
     if (PRECONDITIONS) require
       (!isConstructorType());
 
-    check
-      (false); // this is redefined for FuncionReturnType
-
-    return null; // not reached
+    throw new Error(); // this is redefined for FuncionReturnType
   }
 
 
@@ -88,7 +85,7 @@ public abstract class ReturnType extends ANY
    *
    * @param outer the feature surrounding this expression.
    */
-  public abstract void visit(FeatureVisitor v, Feature outer);
+  public abstract void visit(FeatureVisitor v, AbstractFeature outer);
 
 
 }

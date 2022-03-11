@@ -75,7 +75,7 @@ integer<T : integer<T>> : numeric<T> is
       b.gcd(thiz % b)  # tail recursion
 
   # create a fraction
-  infix /-/ (other T) => fraction(thiz, other)
+  infix /-/ (other T) => fraction thiz other
 
   # create a fraction via unicode fraction slash \u2044 '⁄ '
   infix ⁄ (other T) => integer.this /-/ other
@@ -131,26 +131,24 @@ integer<T : integer<T>> : numeric<T> is
     pre
       debug: u32 1 < base <= 36
   is
-    ref : string {
-        redef utf8 ref : List<u8> is
-          redef asStream stream<u8> is
-            b := from_u32 base
-            if thiz.sign >= 0
-              ref : stream<u8> {
-                  p := thiz.highest b
-                  redef hasNext => p.sign > 0
-                  redef next =>
-                    d := (thiz / p % b).to_u32.as_u8
-                    r := if (d < 10) strings.zeroChar + d else strings.aChar + (d - u8 10)
-                    set p := p / b
-                    r
-                }
-            else
-              p := -? thiz
-              match p
-                v T   => ("-" + v .asString base).utf8.asStream
-                _ nil => (("-" + (-(thiz / b)).asString base) + (-(thiz % b)).asString base).utf8.asStream
-      }
+    ref : string
+      redef utf8 ref : Sequence<u8> is
+        redef asStream stream<u8> is
+          b := from_u32 base
+          if thiz.sign >= 0
+            ref : stream<u8>
+              p := thiz.highest b
+              redef hasNext => p.sign > 0
+              redef next =>
+                d := (thiz / p % b).to_u32.as_u8
+                r := if (d < 10) strings.zeroChar + d else strings.aChar + (d - u8 10)
+                set p := p / b
+                r
+          else
+            p := -? thiz
+            match p
+              v T   => ("-" + v .asString base).utf8.asStream
+              _ nil => (("-" + (-(thiz / b)).asString base) + (-(thiz % b)).asString base).utf8.asStream
 
 
   # convert this to a number using the given base.  If negative, add "-" as
@@ -181,26 +179,36 @@ integer<T : integer<T>> : numeric<T> is
   bin => integer.this.asString 2
 
 
-  # creeate binary representation with given number of digits.
+  # create binary representation with given number of digits.
   #
-  bin(len i32) => integer.this.asString len, 2
+  bin(len i32) => integer.this.asString len 2
 
 
-  # creeate octal representation
+  # create octal representation
   #
   oct => integer.this.asString 8
 
 
-  # creeate octal representation with given number of digits.
+  # create octal representation with given number of digits.
   #
-  oct(len i32) => integer.this.asString len, 8
+  oct(len i32) => integer.this.asString len 8
 
 
-  # creeate hexadecimal representation
+  # create decimal representation
+  #
+  dec => integer.this.asString 10
+
+
+  # create decimal representation with given number of digits.
+  #
+  dec(len i32) => integer.this.asString len 10
+
+
+  # create hexadecimal representation
   #
   hex => integer.this.asString 16
 
 
-  # creeate hexadecimal representation with given number of digits.
+  # create hexadecimal representation with given number of digits.
   #
-  hex(len i32) => integer.this.asString len, 16
+  hex(len i32) => integer.this.asString len 16

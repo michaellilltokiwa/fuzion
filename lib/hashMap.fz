@@ -61,7 +61,7 @@ is
   /* NYI: local */
   contents :=
     for
-      mcontents := (marray <option<tuple<K,V>>> allocatedSize, nil), mcontents
+      mcontents := marray <option<tuple<K,V>>> allocatedSize nil, mcontents
       k in ks
       v in vs
     do
@@ -103,7 +103,7 @@ is
     retrieve (at i32) option<V> is
       match contents[at]
         nil     => nil
-        t tuple<K,V> =>
+        t tuple =>
           (ek, v) := t
           if ek = k
             v
@@ -119,13 +119,21 @@ is
 
   # get a stream of all key/value pairs in this map
   #
-  items List<tuple<K,V>> is
-    res : List<tuple<K,V>> is
+  items Sequence<tuple<K,V>> is
+    res : Sequence<tuple<K,V>> is
       redef asStream =>
         contents
           .asStream
-          .filter         (fun (o option<tuple<K,V>>) => o??)
-          .map<tuple<K,V>>(fun (o option<tuple<K,V>>) => match o
-                                                           nil     => fuzion.std.panic "filter failed"
-                                                           t tuple => t)
+          .filter         (o -> o??)
+          .map<tuple<K,V>>(o -> match o
+                                  nil     => fuzion.std.panic "filter failed"
+                                  t tuple => t)
     res
+
+
+# hashMap -- convenience routine to create an empty instance of hashMap
+#
+#
+hashMap<K : hasHash<K>, V> => (hashMap
+                                 Sequences.empty<K>.asArray
+                                 Sequences.empty<V>.asArray)

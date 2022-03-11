@@ -50,6 +50,8 @@ public class Impl extends ANY
 
   public static final Impl INTRINSIC = new Impl(Kind.Intrinsic);
 
+  public static final Impl INTRINSIC_CONSTRUCTOR = new Impl(Kind.Intrinsic);
+
   /**
    * A dummy Impl instance used in case of parsing error.
    */
@@ -60,7 +62,7 @@ public class Impl extends ANY
 
 
   /**
-   * The soucecode position of this expression, used for error messages.
+   * The sourcecode position of this expression, used for error messages.
    */
   public final SourcePosition pos;
 
@@ -75,10 +77,9 @@ public class Impl extends ANY
    *
    */
   Expr _initialValue;
-  public Expr initialValue() { return _initialValue; }
 
 
-  Feature _outerOfInitialValue = null;
+  AbstractFeature _outerOfInitialValue = null;
 
 
   public enum Kind
@@ -106,7 +107,7 @@ public class Impl extends ANY
   /**
    * Implementation of a feature
    *
-   * @param pos the soucecode position, used for error messages.
+   * @param pos the sourcecode position, used for error messages.
    *
    * @param e the code or initial value
    *
@@ -125,13 +126,13 @@ public class Impl extends ANY
    * Implementation of a argument field feature whose type if inferred from the
    * actual argument.
    *
-   * @param pos the soucecode position, used for error messages.
+   * @param pos the sourcecode position, used for error messages.
    *
    * @param e the actual argument to a call to a.outer()
    *
    * @param outerOfInitialValue the outer feature that contains e.
    */
-  public Impl(SourcePosition pos, Expr e, Feature outerOfInitialValue)
+  public Impl(SourcePosition pos, Expr e, AbstractFeature outerOfInitialValue)
   {
     this(pos, e, outerOfInitialValue, Kind.FieldActual);
   }
@@ -140,7 +141,7 @@ public class Impl extends ANY
   /**
    * Implementation of a feature
    *
-   * @param pos the soucecode position, used for error messages.
+   * @param pos the sourcecode position, used for error messages.
    *
    * @param e the code or initial value
    *
@@ -148,7 +149,7 @@ public class Impl extends ANY
    *
    * @param kind the kind
    */
-  private Impl(SourcePosition pos, Expr e, Feature outerOfInitialValue, Kind kind)
+  private Impl(SourcePosition pos, Expr e, AbstractFeature outerOfInitialValue, Kind kind)
   {
     if (PRECONDITIONS) require
                          (true || (kind == Kind.FieldActual) == (outerOfInitialValue != null)); // NYI
@@ -164,7 +165,7 @@ public class Impl extends ANY
       }
     else
       {
-        check
+        if (CHECKS) check
           (kind == Kind.Routine    ||
            kind == Kind.RoutineDef    );
         this._code = e;
@@ -191,7 +192,7 @@ public class Impl extends ANY
 
 
   /**
-   * Check if the return type of a feature f.returnType is allowed in
+   * Check if the return type of a feature f.returnType() is allowed in
    * conjunction with this feature implementation. Cause a compiler Error and
    * return a value return type if this is not the case.
    *
@@ -200,29 +201,27 @@ public class Impl extends ANY
   public ReturnType checkReturnType(Feature f)
   {
     if (PRECONDITIONS) require
-      (f.impl == this);
+      (f.impl() == this);
 
-    ReturnType rt = f.returnType;
+    ReturnType rt = f.returnType();
 
     switch (kind_)
       {
       case FieldInit:
         // Field initialization of the form
         //
-        //   i int = 0;
+        //   i int := 0;
         //
         // needs a normal function return type:
         //
         if (rt == NoType.INSTANCE)
           {
-            FeErrors.missingResultTypeForField(f);
+            AstErrors.missingResultTypeForField(f);
             rt = new FunctionReturnType(Types.t_ERROR);
           }
         else if (!(rt instanceof FunctionReturnType))
           {
-            Errors.error(f.pos,
-                         "Illegal result type >>" + rt + "<< in field declaration with initializaton using \"=\"",
-                         "Field declared: " + f.qualifiedName());
+            AstErrors.illegalResultType(f, rt);
             rt = new FunctionReturnType(Types.t_ERROR);
           }
         break;
@@ -237,11 +236,7 @@ public class Impl extends ANY
         //
         if (rt != NoType.INSTANCE)
           {
-            Errors.error(f.pos,
-                         "Illegal result type >>" + rt + "<< in field definition using \":=\"",
-                         "For field definition using \":=\", the type is determined automatically, " +
-                         "it must not be given explicitly.\n" +
-                         "Field declared: " + f.qualifiedName());
+            AstErrors.illegalResultTypeDef(f, rt);
             rt = NoType.INSTANCE;
           }
         break;
@@ -249,19 +244,17 @@ public class Impl extends ANY
       case Field:
         // A field declaration of the form
         //
-        //   f type;
+        //   f type := ?;
         //
         // requires a type
         if (rt == NoType.INSTANCE)
           {
-            FeErrors.missingResultTypeForField(f);
+            AstErrors.missingResultTypeForField(f);
             rt = new FunctionReturnType(Types.t_ERROR);
           }
         else if (!(rt instanceof FunctionReturnType))
           {
-            Errors.error(f.pos,
-                         "Illegal result type >>" + rt + "<< in field declaration",
-                         "Field declared: " + f.qualifiedName());
+            AstErrors.illegalResultTypeNoInit(f, rt);
             rt = new FunctionReturnType(Types.t_ERROR);
           }
         break;
@@ -275,11 +268,7 @@ public class Impl extends ANY
         //
         if (rt != NoType.INSTANCE)
           {
-            Errors.error(f.pos,
-                         "Illegal result type >>" + rt + "<< in feature definition using \"=>\"",
-                         "For function definition using \"=>\", the type is determined automatically, " +
-                         "it must not be given explicitly.\n" +
-                         "Feature declared: " + f.qualifiedName());
+            AstErrors.illegalResultTypeRoutineDef(f, rt);
             rt = NoType.INSTANCE;
           }
         break;
@@ -309,7 +298,7 @@ public class Impl extends ANY
    *
    * @param outer the feature surrounding this expression.
    */
-  public void visit(FeatureVisitor v, Feature outer)
+  public void visit(FeatureVisitor v, AbstractFeature outer)
   {
     if (this._code != null)
       {
@@ -333,12 +322,12 @@ public class Impl extends ANY
    *
    * @param outer the feature that contains this implementation.
    */
-  private boolean needsImplicitAssignmentToResult(Feature outer)
+  private boolean needsImplicitAssignmentToResult(AbstractFeature outer)
   {
     return
       (this._code != null) &&
       outer.hasResultField() &&
-      !outer.hasAssignmentsToResult();
+      outer instanceof Feature fouter && !fouter.hasAssignmentsToResult();
   }
 
 
@@ -355,7 +344,7 @@ public class Impl extends ANY
    *
    * @param t the expected type.
    */
-  public void propagateExpectedType(Resolution res, Feature outer)
+  public void propagateExpectedType(Resolution res, AbstractFeature outer)
   {
     if (needsImplicitAssignmentToResult(outer))
       {
@@ -384,18 +373,19 @@ public class Impl extends ANY
    *
    * @param outer the feature that contains this implementation.
    */
-  public void resolveSyntacticSugar2(Resolution res, Feature outer)
+  public void resolveSyntacticSugar2(Resolution res, AbstractFeature outer)
   {
     if (needsImplicitAssignmentToResult(outer))
       {
-        Feature resultField = outer.resultField();
-        var endPos = (this._code instanceof Block) ? ((Block) this._code).closingBracePos_ : this._code.pos;
+        var resultField = outer.resultField();
+        var endPos = (this._code instanceof Block) ? ((Block) this._code).closingBracePos_ : this._code.pos();
         Assign ass = new Assign(res,
                                 endPos,
                                 resultField,
-                                this._code.box(resultField.resultType()),
+                                this._code,
                                 outer);
-        this._code = new Block (this._code.pos,
+        ass._value = this._code.box(ass._assignedField.resultType());  // NYI: move to constructor of Assign?
+        this._code = new Block (this._code.pos(),
                                 endPos,
                                 new List<Stmnt>(ass));
       }

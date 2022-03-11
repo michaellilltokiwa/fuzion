@@ -38,7 +38,7 @@ import dev.flang.util.SourcePosition;
  *
  * @author Fridtjof Siebert (siebert@tokiwa.software)
  */
-public class If extends Expr
+public class If extends ExprWithPos
 {
 
 
@@ -65,7 +65,7 @@ public class If extends Expr
    */
   public If elseIf;
 
-  public Type _type;
+  public AbstractType _type;
 
 
   /**
@@ -194,12 +194,12 @@ public class If extends Expr
 
 
   /**
-   * Helper routine for typeOrNull to determine the type of this if statement on
-   * demand, i.e., as late as possible.
+   * Helper routine for typeForFeatureResultTypeInferencing to determine the
+   * type of this if statement on demand, i.e., as late as possible.
    */
-  private Type typeFromIfOrElse()
+  private AbstractType typeFromIfOrElse()
   {
-    Type result;
+    AbstractType result;
     if (hasUntakenElseBranch())
       {
         result = Types.resolved.t_unit;
@@ -210,31 +210,32 @@ public class If extends Expr
         Iterator<Expr> it = branches();
         while (it.hasNext())
           {
-            result = result.union(it.next().type());
+            var t = it.next().typeForFeatureResultTypeInferencing();
+            result = result == null || t == null ? null : result.union(t);
           }
+      }
+    if (result == Types.t_UNDEFINED)
+      {
+        new IncompatibleResultsOnBranches(pos(),
+                                          "Incompatible types in branches of if statement",
+                                          branches());
+        result = Types.t_ERROR;
       }
     return result;
   }
 
 
   /**
-   * typeOrNull returns the type of this expression or Null if the type is still
-   * unknown, i.e., before or during type resolution.
+   * type returns the type of this expression or Types.t_ERROR if the type is
+   * still unknown, i.e., before or during type resolution.
    *
-   * @return this Expr's type or null if not known.
+   * @return this Expr's type or t_ERROR in case it is not known yet.
    */
-  public Type typeOrNull()
+  public AbstractType type()
   {
     if (_type == null)
       {
         _type = typeFromIfOrElse();
-      }
-    if (_type == Types.t_UNDEFINED)
-      {
-        new IncompatibleResultsOnBranches(pos,
-                                          "Incompatible types in branches of if statement",
-                                          branches());
-        _type = Types.t_ERROR;
       }
     return _type;
   }
@@ -269,10 +270,10 @@ public class If extends Expr
    */
   public void checkTypes()
   {
-    Type t = cond.type();
+    var t = cond.type();
     if (!Types.resolved.t_bool.isAssignableFrom(t))
       {
-        FeErrors.ifConditionMustBeBool(cond.pos, t);
+        AstErrors.ifConditionMustBeBool(cond.pos(), t);
       }
   }
 
@@ -287,7 +288,7 @@ public class If extends Expr
    *
    * @return this.
    */
-  public If visit(FeatureVisitor v, Feature outer)
+  public If visit(FeatureVisitor v, AbstractFeature outer)
   {
     cond = cond.visit(v, outer);
     block = block.visit(v, outer);
@@ -301,6 +302,28 @@ public class If extends Expr
       }
     v.action(this, outer);
     return this;
+  }
+
+
+  /**
+   * visit all the statements within this If.
+   *
+   * @param v the visitor instance that defines an action to be performed on
+   * visited statements
+   */
+  public void visitStatements(StatementVisitor v)
+  {
+    super.visitStatements(v);
+    cond.visitStatements(v);
+    block.visitStatements(v);
+    if (elseBlock != null)
+      {
+        elseBlock.visitStatements(v);
+      }
+    if (elseIf != null)
+      {
+        elseIf.visitStatements(v);
+      }
   }
 
 
@@ -320,7 +343,7 @@ public class If extends Expr
    * @return the Stmnt this Expr is to be replaced with, typically an Assign
    * that performs the assignment to r.
    */
-  If assignToField(Resolution res, Feature outer, Feature r)
+  If assignToField(Resolution res, AbstractFeature outer, Feature r)
   {
     block = block.assignToField(res, outer, r);
     if (elseBlock != null)
@@ -348,7 +371,7 @@ public class If extends Expr
    *
    * @param t the expected type.
    */
-  public void propagateExpectedType(Resolution res, Feature outer)
+  public void propagateExpectedType(Resolution res, AbstractFeature outer)
   {
     if (cond != null)
       {
@@ -374,7 +397,7 @@ public class If extends Expr
    * result. In particular, if the result is assigned to a temporary field, this
    * will be replaced by the statement that reads the field.
    */
-  public Expr propagateExpectedType(Resolution res, Feature outer, Type t)
+  public Expr propagateExpectedType(Resolution res, AbstractFeature outer, AbstractType t)
   {
     return addFieldForResult(res, outer, t);
   }

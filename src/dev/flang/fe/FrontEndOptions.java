@@ -71,13 +71,32 @@ public class FrontEndOptions extends FuzionOptions
   final String _main;
 
 
+  /**
+   * Path to the Fuzion home directory, never null.
+   */
+  final Path _fuzionHome;
+
+
+  /**
+   * Path to save the base library module to, null if not saving the standard lib.
+   */
+  final Path _saveBaseLib;
+
+
+  /**
+   * When saving to a .fum module file, erase internal names of features since
+   * they should not be needed. This can be disabled for debugging.
+   */
+  final boolean _eraseInternalNamesInLib;
+
+
   /*--------------------------  constructors  ---------------------------*/
 
 
   /**
    * Costructor initializing fields as given.
    */
-  public FrontEndOptions(int verbose, List<String> modules, int fuzionDebugLevel, boolean fuzionSafety, boolean readStdin, String main)
+  public FrontEndOptions(int verbose, Path fuzionHome, Path saveBaseLib, boolean eraseInternalNamesInLib, List<String> modules, int fuzionDebugLevel, boolean fuzionSafety, boolean readStdin, String main)
   {
     super(verbose,
           fuzionDebugLevel,
@@ -85,10 +104,15 @@ public class FrontEndOptions extends FuzionOptions
 
     if (PRECONDITIONS) require
                          (verbose >= 0,
-                          readStdin || main != null,
+                          fuzionHome != null,
+                          readStdin || main != null || saveBaseLib != null,
                           !readStdin || main == null,
+                          saveBaseLib == null || !readStdin && main == null,
                           modules != null);
 
+    _fuzionHome = fuzionHome;
+    _saveBaseLib = saveBaseLib;
+    _eraseInternalNamesInLib = eraseInternalNamesInLib;
     _readStdin = readStdin;
     Path inputFile = null;
     if (main != null)
@@ -108,6 +132,10 @@ public class FrontEndOptions extends FuzionOptions
                   {
                     inputFile = p;
                     main = null;
+                  }
+                else
+                  {
+                    Errors.fatal("file does not exist: " + p, "");
                   }
               }
           }
