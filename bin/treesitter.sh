@@ -43,20 +43,21 @@ fi
 
 NEW_LINE=$'\n'
 SCRIPTPATH="$( cd -- "$(dirname "$0")" >/dev/null 2>&1 ; pwd -P )"
-cd $SCRIPTPATH/..
+cd "$SCRIPTPATH"/..
 
-#
-EBNF_LEXER=$(pcregrep -M "^[a-zA-Z0-9_]+[ ]*:(\n|.)*?( ;)" ./src/dev/flang/parser/Lexer.java)
-EBNF_PARSER=$(pcregrep -M "^[a-zA-Z0-9_]+[ ]*:(\n|.)*?( ;)" ./src/dev/flang/parser/Parser.java)
+RULE_MATCHER="^(fragment\n)*[a-zA-Z0-9_]+[ ]*:(\n|.)*?( ;)"
+EBNF_LEXER=$(pcregrep -M "$RULE_MATCHER" ./src/dev/flang/parser/Lexer.java)
+EBNF_PARSER=$(pcregrep -M "$RULE_MATCHER" ./src/dev/flang/parser/Parser.java)
 
 # combine parser and lexer
-EBNF="${EBNF_LEXER}${NEW_LINE}${EBNF_PARSER}"
+EBNF="${EBNF_PARSER}${NEW_LINE}${EBNF_LEXER}"
+
 # remove comments
 EBNF=$(sed 's/ [-#//].*//g' <<< "$EBNF")
 # replace " by '
 EBNF=$(sed 's/"/\x27/g' <<< "$EBNF")
 # replace : by ::=
-EBNF=$(sed 's/[^\x27]:[^\x27]/::=/g' <<< "$EBNF")
+EBNF=$(sed 's/:/::=/g' <<< "$EBNF")
 # replace newline by space
 EBNF=$(tr '\n' ' ' <<< "$EBNF")
 # replace ; by newline
@@ -70,10 +71,14 @@ EBNF="rules:${NEW_LINE}$EBNF"
 # replace trailing | by NOTHING
 EBNF=$(sed -e 's/|\s*$/|NOTHING/g' <<< "$EBNF")
 EBNF=$(sed -e 's/|\s*)/|NOTHING)/g' <<< "$EBNF")
+# remove fragment at line start
+EBNF=$(sed -e 's/^  fragment /  /g' <<< "$EBNF")
+
 # NYI
 EBNF=$(sed -e 's/[a-z]=//g' <<< "$EBNF")
 
-echo "$EBNF"
+EBNF="$EBNF${NEW_LINE}  EOF ::= 'EOF'${NEW_LINE}  NOTHING ::= 'NOTHING'"
+
 
 echo "$EBNF" > build/fuzion_w3c.ebnf
-./bin/ebnf2treesitter.lua build/fuzion_w3c.ebnf > build/fuzion_treesitter.json
+./bin/ebnf2treesitter.lua build/fuzion_w3c.ebnf > build/fuzion_treesitter.js

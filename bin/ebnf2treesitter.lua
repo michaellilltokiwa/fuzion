@@ -662,7 +662,7 @@ local function source_error(comment, source_info)
   .. " rule '" .. source_info.lhs .. "' defined at line " .. source_info.start_line
   .. "\n" .. source_info.rhs
   print(msg)
-  error("")
+  error(msg)
 end
 local function maybe_add_reference_impl(node, current_word, externals, source_info, alias)
   local id = format_reference(table.concat(current_word))
