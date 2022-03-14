@@ -181,7 +181,7 @@ unit        : stmnts EOF
 
 
   /**
-   * Parse zero or more semicolons
+   * Parse zero or more semicolons or a line break
    *
 semiOrFlatLF: semi
             | LF
