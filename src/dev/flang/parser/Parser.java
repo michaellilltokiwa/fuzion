@@ -2038,7 +2038,7 @@ stringTermB : '}any chars&quot;'
       default          :
         return
           isStartedString(current())
-          || isNamePrefix()    // Matches call and qualThis
+          || isNamePrefix()    // Matches call, qualThis and env
           || isAnonymousPrefix() // matches anonymous inner feature declaration
           ;
       }
@@ -3035,6 +3035,7 @@ destructrSet: "set" "(" argNames ")" ":=" exprInLine
    *
 callOrFeatOrThis  : anonymous
                   | qualThis
+                  | env
                   | plainLambda
                   | call
                   ;
@@ -3044,6 +3045,7 @@ callOrFeatOrThis  : anonymous
     return
       isAnonymousPrefix()   ? anonymous()   : // starts with value/ref/:/fun/name
       isQualThisPrefix()    ? qualThis()    : // starts with name
+      isEnvPrefix()         ? env()         : // starts with name
       isPlainLambdaPrefix() ? plainLambda() : // x,y,z post result = x*y*z -> x*y*z
       isNamePrefix()        ? call(null)      // starts with name
                             : null;
@@ -3141,6 +3143,44 @@ qualThis    : name ( dot name )* dot "this"
         result = skip(Token.t_this);
       }
     return result;
+  }
+
+  /**
+   * Parse env
+   *
+env         : simpletype dot "env"
+            ;
+   */
+  Env env()
+  {
+    var t = simpletype(true);
+    var e = new Env(posObject(), t);
+    match(Token.t_env, "env");
+    return e;
+  }
+
+
+  /**
+   * Check if the current position starts an env.  Does not change the
+   * position of the parser.
+   *
+   * @return true iff the next token(s) start a env
+   */
+  boolean isEnvPrefix()
+  {
+    return isNamePrefix() && fork().skipEnvPrefix();
+  }
+
+
+  /**
+   * Check if the current position starts an env.  Does not change the
+   * position of the parser.
+   *
+   * @return true iff the next token(s) start an env.
+   */
+  boolean skipEnvPrefix()
+  {
+    return skipSimpletype(true) && skip(Token.t_env);
   }
 
 
@@ -3471,7 +3511,7 @@ typeOpt     : type
     SourcePosition pos = posObject();
     if (skip(Token.t_ref))
       {
-        result = simpletype();
+        result = simpletype(false);
         result.setRef();
       }
     else if (skip(Token.t_fun))
@@ -3502,7 +3542,7 @@ typeOpt     : type
       }
     else
       {
-        result = simpletype();
+        result = simpletype(false);
         if (skip("->"))
           {
             result = Type.funType(pos, type(), new List<>(result));
@@ -3523,7 +3563,7 @@ typeOpt     : type
     boolean result;
     if (skip(Token.t_ref))
       {
-        result = skipSimpletype();
+        result = skipSimpletype(false);
       }
     else if (skip(Token.t_fun))
       {
@@ -3547,7 +3587,7 @@ typeOpt     : type
       }
     else
       {
-        result = skipSimpletype() && (!skip("->") || skipSimpletype());
+        result = skipSimpletype(false) && (!skip("->") || skipSimpletype(false));
       }
     return result;
   }
@@ -3562,15 +3602,18 @@ simpletype  : name actualGens
               )
             ;
    */
-  Type simpletype()
+  Type simpletype(boolean expectEnv)
   {
     Type result = null;
     do
       {
-        result = new Type(posObject(),
-                          name(),
-                          actualGens(),
-                          result);
+        if (result == null || !expectEnv || current() != Token.t_env)
+          {
+            result = new Type(posObject(),
+                              name(),
+                              actualGens(),
+                              result);
+          }
       }
     while (skipDot());
     return result;
@@ -3583,12 +3626,15 @@ simpletype  : name actualGens
    * @return true iff the next token(s) is a simpletype, otherwise no simpletype
    * was found and the parser/lexer is at an undefined position.
    */
-  boolean skipSimpletype()
+  boolean skipSimpletype(boolean expectEnv)
   {
-    boolean result;
+    boolean result = false;
     do
       {
-        result = skipName() && skipActualGens();
+        if (!result || !expectEnv || current() != Token.t_env)
+          {
+            result = skipName() && skipActualGens();
+          }
       }
     while (result && skipDot());
     return result;

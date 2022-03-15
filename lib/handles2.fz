@@ -23,33 +23,26 @@
 #
 # -----------------------------------------------------------------------
 
-# handles provide a means to create handles that refer to update-able
+# handles2 provide a means to create handles that refer to update-able
 # cells.
 #
 # handles is a state monad.  It provides features to create several
 # handles that refer to modifiable value and features to 'get', 'put' or
 # 'update' this value.
 #
-private handles<T,X>(
-
+# For performance, this implementation uses mutable state. It can consequently
+# only be used as a one-way monad.
+#
+private handles2<T,X>(
   # the inner value of this monad
   v X,
 
-  # array containing values stored for the handles
-  #
-  # NYI: As soon as one-way monads are enforced, this array can be implemented
-  # using marray, reducing the overhead of an update from O(count) to O(1)!
-  #
-  private ar array<T>,
+  lastOpt option<handle2<T>>,
 
   # action to be taken: plain nomad, install or replace?
   redef r onewayMonadModes
-  ) : onewayMonad<X, handles<T,X>> r
+  ) : onewayMonad<X, handles2<T,X>> r
 is
-
-  # number of handles created
-  private count => ar.length
-
 
   # create a new instance with one additional handle
   #
@@ -58,17 +51,16 @@ is
   new (
     # initial value refered to by the new handle
     w T
-    ) handles<T,X>
+    ) handles2<T,X>
   post
     result.hasLast
   is
-    na := array<T> count+1 (i -> if (i < count) ar[i] else w)
-    handles<T,X> v na mode
+    handles2<T,X> v (handle2 w unit) mode
 
 
   # has one element been created using 'new'?
   #
-  hasLast => count > 0
+  hasLast => lastOpt??
 
 
   # return the last handle that was created by 'new'
@@ -77,7 +69,7 @@ is
     pre
       hasLast
    =>
-    handle<T> count-1 unit
+    lastOpt.get
 
 
   # a one-way feature to create a new handle and update the monad
@@ -96,22 +88,28 @@ is
   #
   get (
     # a handle created by 'new'
-    h handle<T>
+    h handle2<T>
     )
    =>
-    ar[h.x]
+    h.get
 
 
   # create a new instance with new value refered to by a given handle
   #
   put (
     # a handle created by 'new'
-    h handle<T>,
+    h handle2<T>,
 
     # the new value to be stored with 'h'
     w T)
+  pre
+    match mode
+      onewayMonadMode.plain   => false  # must be used as onewayMonad only
+      onewayMonadMode.default => false
+      onewayMonadMode.inst, onewayMonadMode.repl => true
    =>
-    handles<T,X> v (ar.put h.x w) mode
+    h.put w
+    handles2<T,X> v lastOpt mode
 
 
   # create a new instance with the value refered to by a given handle read and
@@ -119,91 +117,84 @@ is
   #
   update (
     # a handle created by 'new'
-    h handle<T>,
+    h handle2<T>,
 
     # function calculcating the new value from the old value
     f T->T
     )
+  pre
+    match mode
+      onewayMonadMode.plain   => false  # must be used as onewayMonad only
+      onewayMonadMode.default => false
+      onewayMonadMode.inst, onewayMonadMode.repl => true
    =>
-    update0 h.x f
+    h.put (f h.get)
+    handles2<T,X> v lastOpt mode
 
 
-  # create a new instance with the value refered to by a given handle read and
-  # updated.
-  #
-  private update0 (
-    # a handle created by 'new'
-    x i32,
+  infix >>= (f X -> handles2<T,X>) => bind<X> f
 
-    # function calculcating the new value from the old value
-    f T->T
-    )
-   =>
-    handles<T,X> v (ar.put x (f ar[x])) mode
+  bind <B> (f X -> handles2<T,B>) handles2<T,B> is
+    handles2<T,B> (f v).v lastOpt onewayMonadMode.plain
 
+  return<B> (w B) => handles2<T,B> w lastOpt onewayMonadMode.plain
 
-  infix >>= (f X -> handles<T,X>) => bind<X> f
-
-  bind <B> (f X -> handles<T,B>) handles<T,B> is
-    handles<T,B> (f v).v ar onewayMonadMode.plain
-
-  return<B> (w B) => handles<T,B> w ar onewayMonadMode.plain
-
-# short-hand for creating and installing an empty set of handles of given type.
+# short-hand for creating and installing an empty set of handles2 of given type.
 #
-handles<T>(rr ()->unit) =>
-  handles<T,unit> unit (array<T> 0 x->do) (onewayMonadMode.inst rr)
+handles2<T>(rr ()->unit) =>
+  handles2<T,unit> unit nil (onewayMonadMode.inst rr)
   unit
 
-# short-hand for creating an empty set of handles of given type.
+# short-hand for creating an empty set of handles2 of given type.
 #
-handles_<T> => handles<T,unit> unit (array<T> 0 x->do) onewayMonadMode.plain
+handles2_<T> => handles2<T,unit> unit nil onewayMonadMode.plain
 
 
 # short-hand for accessing handles monad for given type in current environment
 #
-handles<T> =>
-  handles_type<T>.installDefault
-  handles<T,unit>.env
+handles2<T> =>
+  handles2_type<T>.installDefault
+  handles2<T,unit>.env
 
 
-# handle value created by 'handles.new'
+# handle value created by 'handles2.new'
 #
-private handle<T>(
-  # the index in 'handles.ar'
-  private x i32,
+private handle2<T>(
+
+  # get value stored in this handle
+  #
+  get T,
+
+  # additional dummy arg to distinguish this from handles2(v)
   private _ unit
-  )
+
+  ) ref
 is
 
-  # set value stored in this handle to new_x
+  # set value stored in this handle to new_val
   #
-  put(new_x T) is
-    _ := update old_x->new_x
+  put(new_val T) is
+    set get := new_val
+    handles2<T,unit>.env.replace
 
   # update value stored in this handle using f.
   #
   update(f T->T) =>
-    handles<T>.update0 x f
+    set get := f get
+    handles2<T,unit>.env.replace
     get
-
-  # get value stored in this handle
-  #
-  get =>
-    handles<T>.ar[x]
-
 
 # unit type containing features related to handles but nor requiring an instance
 #
-handles_type<T> is
+handles2_type<T> is
 
-  # install default instance of handles
+  # install default instance of handles2
   #
   installDefault unit is
-    handles<T,unit> unit (array<T> 0 x->do) onewayMonadMode.default
+    handles2<T,unit> unit nil onewayMonadMode.default
     unit
 
 
-# create a new handle using the handles instance from the current environment
+# create a new handle2 using the handles2 instance from the current environment
 #
-handle<T>(v T) => handles<T>.create v
+handle2<T>(v T) => handles2<T>.create v

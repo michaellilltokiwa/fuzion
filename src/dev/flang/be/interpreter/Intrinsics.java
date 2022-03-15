@@ -39,7 +39,10 @@ import dev.flang.util.Errors;
 import dev.flang.util.List;
 
 import java.lang.reflect.Array;
+
 import java.nio.charset.StandardCharsets;
+
+import java.util.TreeMap;
 
 
 /**
@@ -60,6 +63,17 @@ public class Intrinsics extends ANY
 
 
   /*----------------------------  variables  ----------------------------*/
+
+
+  /*------------------------  static variables  -------------------------*/
+
+
+  /**
+   * Currently installed one-way monads.
+   *
+   * NYI: This should be thread-local eventually.
+   */
+  static TreeMap<Clazz, Value> _onewayMonads_ = new TreeMap<>();
 
 
   /*-------------------------  static methods  --------------------------*/
@@ -612,6 +626,10 @@ public class Intrinsics extends ANY
     else if (n.equals("Object.asString" )) { result = (args) -> Interpreter.value(args.get(0).toString());
       // NYI: This could be more useful by giving the object's class, an id, public fields, etc.
     }
+    else if (n.equals("onewayMonad.install" ) ||
+             n.equals("onewayMonad.remove"  ) ||
+             n.equals("onewayMonad.replace" ) ||
+             n.equals("onewayMonad.default" )    ) { result = onewayMonad(n, innerClazz); }
     else
       {
         Errors.fatal(f.pos(),
@@ -620,6 +638,34 @@ public class Intrinsics extends ANY
         result = (args) -> Value.NO_VALUE;
       }
     return result;
+  }
+
+
+  /**
+   * Create code for one-way monad intrinsics.
+   *
+   * @param n qualified name of the intrinsic to be called.
+   *
+   * @param innerClazz the frame clazz of the called feature
+   *
+   * @return a Callable instance to execute the intrinsic call.
+   */
+  static Callable onewayMonad(String n, Clazz innerClazz)
+  {
+    return (args) ->
+      {
+        var m = args.get(0);
+        var cl = innerClazz._outer;
+        switch (n)
+          {
+          case "onewayMonad.install": _onewayMonads_.put(cl, m); break;
+          case "onewayMonad.remove" : check(_onewayMonads_.get(cl) != null); _onewayMonads_.put(cl, null); break; // NYI: restore original value!
+          case "onewayMonad.replace": check(_onewayMonads_.get(cl) != null); _onewayMonads_.put(cl, m   ); break;
+          case "onewayMonad.default": if (_onewayMonads_.get(cl) == null) {  _onewayMonads_.put(cl, m   ); } break;
+          default: throw new Error("unexected onewayMonad intrinsic '"+n+"'");
+          }
+        return Value.EMPTY_VALUE;
+      };
   }
 
 

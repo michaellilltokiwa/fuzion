@@ -111,6 +111,12 @@ public class C extends ANY
   final CTypes _types;
 
 
+  /**
+   * C intrinsics
+   */
+  final Intrinsics _intrinsics;
+
+
   /*---------------------------  consructors  ---------------------------*/
 
 
@@ -128,6 +134,7 @@ public class C extends ANY
     _fuir = fuir;
     _names = new CNames(fuir);
     _types = new CTypes(_fuir, _names);
+    _intrinsics = new Intrinsics();
     Errors.showAndExit();
   }
 
@@ -211,6 +218,15 @@ public class C extends ANY
                                                  CExpr.call("memcpy", new List<>(r, o, s)),
                                                  r.ret()))));
     var ordered = _types.inOrder();
+
+    // thread local onewayMonad environments
+    ordered.stream().filter(cl -> _fuir.clazzNeedsCode(cl) &&
+                                  _fuir.clazzKind(cl) == FUIR.FeatureKind.Intrinsic  &&
+                                  _intrinsics.isOnewayMonad(this, cl))
+                    .mapToInt(cl -> _intrinsics.onewayMonadType(this, cl))
+                    .distinct()
+                    .forEach(cl -> cf.print(CStmnt.decl("__thread", "void *", _names.env(cl), CNames.NULL)));
+
     Stream.of(CompilePhase.values()).forEachOrdered
       ((p) ->
        {
@@ -673,6 +689,13 @@ public class C extends ANY
           push(stack, newcl, res);
           break;
         }
+      case Env:
+        {
+          var ecl = _fuir.envClazz(cl, c, i);
+          var res = _names.env(ecl);
+          push(stack, ecl, res);
+          break;
+        }
       case Dup:
         {
           var v = stack.pop();
@@ -972,7 +995,7 @@ public class C extends ANY
             {
               l.add(CStmnt.lineComment("code for clazz#"+_names.clazzId(cl).code()+" "+_fuir.clazzAsString(cl)+":"));
               var o = ck == FUIR.FeatureKind.Routine ? codeForRoutine(cl, false)
-                                                     : new Intrinsics().code(this, cl);
+                                                     : _intrinsics.code(this, cl);
               l.add(cFunctionDecl(cl, false, o));
             }
           }

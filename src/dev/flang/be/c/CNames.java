@@ -115,6 +115,12 @@ public class CNames extends ANY
 
 
   /**
+   * Prefix for thread local env variable that stores the current oneway monad.
+   */
+  private static final String ENV_PREFIX = "fzEnv_";
+
+
+  /**
    * C identifier of argument variable that refers to a clazz' outer instance.
    */
   static final CExpr OUTER = new CIdent("fzouter");
@@ -156,6 +162,11 @@ public class CNames extends ANY
    */
   static final CIdent HEAP_CLONE = new CIdent(HELPER_PREFIX + "heapClone");
 
+
+  /**
+   * C symbol "NULL"
+   */
+  static final CExpr NULL = new CIdent("NULL");
 
 
   /*----------------------------  variables  ----------------------------*/
@@ -448,6 +459,17 @@ public class CNames extends ANY
   {
     var index = _fuir.fieldIndex(field);
     return new CIdent(FIELD_PREFIX + index + "_" + mangle(_fuir.clazzBaseName(field)));
+
+  }
+
+  /**
+   * The name of the thread local env variable for the given onewayMonad type.
+   *
+   * @param cl clazz id for a onewayMonad type.
+   */
+  CIdent env(int cl)
+  {
+    return new CIdent(ENV_PREFIX + clazzId2num(cl));
   }
 
 }

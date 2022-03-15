@@ -23,6 +23,6 @@
 #
 # -----------------------------------------------------------------------
 
-# fuzion -- unit feature to group fuzion-infrustructure related features
+# io -- unit feature to group io related features
 #
-fuzion is
+io is

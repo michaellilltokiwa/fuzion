@@ -90,7 +90,8 @@ class Intrinsics extends ANY
       c._fuir.clazzIsRef(c._fuir.clazzResultClazz(or)) ? CNames.OUTER.deref().field(CNames.FIELDS_IN_REF_CLAZZ)
                                                        : CNames.OUTER;
 
-    switch (c._fuir.clazzIntrinsicName(cl))
+    var in = c._fuir.clazzIntrinsicName(cl);
+    switch (in)
       {
       case "safety"              : return (c._options.fuzionSafety() ? c._names.FZ_TRUE : c._names.FZ_FALSE).ret();
       case "debug"               : return (c._options.fuzionDebug()  ? c._names.FZ_TRUE : c._names.FZ_FALSE).ret();
@@ -307,6 +308,25 @@ class Intrinsics extends ANY
             : CStmnt.EMPTY;
         }
 
+      case "onewayMonad.install":
+      case "onewayMonad.remove" :
+      case "onewayMonad.replace":
+      case "onewayMonad.default":
+        {
+          var ev = c._names.env(onewayMonadType(c, cl));
+          var n  = c._names.NULL;
+          var e  = c._names.OUTER;
+          return
+            switch (c._fuir.clazzIntrinsicName(cl))
+              {
+              case "onewayMonad.install" -> ev.assign(e);
+              case "onewayMonad.remove"  -> ev.assign(n);
+              case "onewayMonad.replace" -> ev.assign(e);
+              case "onewayMonad.default" -> CStmnt.iff(CExpr.eq(ev, n), ev.assign(e));
+              default -> throw new Error("unexpected intrinsic '" + in + "'.");
+              };
+        }
+
       default:
         var msg = "code for intrinsic " + c._fuir.clazzIntrinsicName(cl) + " is missing";
         Errors.warning(msg);
@@ -318,6 +338,54 @@ class Intrinsics extends ANY
 
       }
   }
+
+
+  /**
+   * Is cl one of the instrinsics in onewayMonad that changes the onewayMonad in
+   * the current environment?
+   *
+   * @param c the C backend
+   *
+   * @param cl the id of the intrinsic clazz
+   *
+   * @return true for onewayMonad.install and similar features.
+   */
+  boolean isOnewayMonad(C c, int cl)
+  {
+    if (PRECONDITIONS) require
+      (c._fuir.clazzKind(cl) == FUIR.FeatureKind.Intrinsic);
+
+    return switch(c._fuir.clazzIntrinsicName(cl))
+      {
+      case "onewayMonad.install",
+           "onewayMonad.remove" ,
+           "onewayMonad.replace",
+           "onewayMonad.default" -> true;
+      default -> false;
+      };
+  }
+
+
+  /**
+   * For an intrinstic in onewayMonad that changes the onewayMonad in the
+   * current environment, return the type of the environment.  This type is used
+   * to distinguish different environments.
+   *
+   * @param c the C backend
+   *
+   * @param cl the id of the intrinsic clazz
+   *
+   * @return the type of the outer feature of cl
+   */
+  int onewayMonadType(C c, int cl)
+  {
+    if (PRECONDITIONS) require
+      (isOnewayMonad(c, cl));
+
+    var or = c._fuir.clazzOuterRef(cl);
+    return c._fuir.clazzResultClazz(or);
+  }
+
 
 
   /**
