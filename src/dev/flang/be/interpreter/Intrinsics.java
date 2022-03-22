@@ -27,6 +27,7 @@ Fuzion language implementation.  If not, see <https://www.gnu.org/licenses/>.
 package dev.flang.be.interpreter;
 
 import dev.flang.ast.AbstractType; // NYI: remove dependency! Use dev.flang.fuir instead.
+import dev.flang.ast.Call; // NYI: remove dependency! Use dev.flang.fuir instead.
 import dev.flang.ast.Consts; // NYI: remove dependency! Use dev.flang.fuir instead.
 import dev.flang.ast.Impl; // NYI: remove dependency! Use dev.flang.fuir instead.
 import dev.flang.ast.Types; // NYI: remove dependency! Use dev.flang.fuir instead.
@@ -42,6 +43,7 @@ import java.lang.reflect.Array;
 
 import java.nio.charset.StandardCharsets;
 
+import java.util.ArrayList;
 import java.util.TreeMap;
 
 
@@ -73,7 +75,7 @@ public class Intrinsics extends ANY
    *
    * NYI: This should be thread-local eventually.
    */
-  static TreeMap<Clazz, Value> _onewayMonads_ = new TreeMap<>();
+  static TreeMap<Clazz, Value> _effects_ = new TreeMap<>();
 
 
   /*-------------------------  static methods  --------------------------*/
@@ -86,7 +88,7 @@ public class Intrinsics extends ANY
    *
    * @return a Callable instance to execute the intrinsic call.
    */
-  public static Callable call(Clazz innerClazz)
+  public static Callable call(Interpreter interpreter, Clazz innerClazz)
   {
     if (PRECONDITIONS) require
       (innerClazz.feature().isIntrinsic());
@@ -552,7 +554,7 @@ public class Intrinsics extends ANY
     else if (n.equals("u32.low8bits"    )) { result = (args) -> new u8Value  (       0xff & (                           args.get(0).u32Value())); }
     else if (n.equals("u32.low16bits"   )) { result = (args) -> new u16Value (     0xffff & (                           args.get(0).u32Value())); }
     else if (n.equals("u32.castTo_i32"  )) { result = (args) -> new i32Value (              (                           args.get(0).u32Value())); }
-    else if (n.equals("u32.as_f64"      )) { result = (args) -> new f64Value ((double)      (                           args.get(0).u32Value())); }
+    else if (n.equals("u32.as_f64"      )) { result = (args) -> new f64Value ((double)      Integer.toUnsignedLong(     args.get(0).u32Value())); }
     else if (n.equals("u32.prefix -°"   )) { result = (args) -> new u32Value (              (                       -   args.get(0).u32Value())); }
     else if (n.equals("u32.infix +°"    )) { result = (args) -> new u32Value (              (args.get(0).u32Value() +   args.get(1).u32Value())); }
     else if (n.equals("u32.infix -°"    )) { result = (args) -> new u32Value (              (args.get(0).u32Value() -   args.get(1).u32Value())); }
@@ -574,7 +576,7 @@ public class Intrinsics extends ANY
     else if (n.equals("u64.low16bits"   )) { result = (args) -> new u16Value (     0xffff & ((int)                      args.get(0).u64Value())); }
     else if (n.equals("u64.low32bits"   )) { result = (args) -> new u32Value ((int)         (                           args.get(0).u64Value())); }
     else if (n.equals("u64.castTo_i64"  )) { result = (args) -> new i64Value (              (                           args.get(0).u64Value())); }
-    else if (n.equals("u64.as_f64"      )) { result = (args) -> new f64Value (2.0 *        ((args.get(0).u64Value()>>>1) & 0x7fffffffffffffffL)); }
+    else if (n.equals("u64.as_f64"      )) { result = (args) -> new f64Value (Double.parseDouble(Long.toUnsignedString(args.get(0).u64Value()))); }
     else if (n.equals("u64.prefix -°"   )) { result = (args) -> new u64Value (              (                       -   args.get(0).u64Value())); }
     else if (n.equals("u64.infix +°"    )) { result = (args) -> new u64Value (              (args.get(0).u64Value() +   args.get(1).u64Value())); }
     else if (n.equals("u64.infix -°"    )) { result = (args) -> new u64Value (              (args.get(0).u64Value() -   args.get(1).u64Value())); }
@@ -613,7 +615,7 @@ public class Intrinsics extends ANY
     else if (n.equals("f64.infix *"     )) { result = (args) -> new f64Value (                (args.get(0).f64Value() *  args.get(1).f64Value())); }
     else if (n.equals("f64.infix /"     )) { result = (args) -> new f64Value (                (args.get(0).f64Value() /  args.get(1).f64Value())); }
     else if (n.equals("f64.infix %"     )) { result = (args) -> new f64Value (                (args.get(0).f64Value() %  args.get(1).f64Value())); }
-    else if (n.equals("f64.infix **"    )) { result = (args) -> new f64Value ((float) Math.pow(args.get(0).f64Value(),   args.get(1).f64Value())); }
+    else if (n.equals("f64.infix **"    )) { result = (args) -> new f64Value (        Math.pow(args.get(0).f64Value(),   args.get(1).f64Value())); }
     else if (n.equals("f64.infix =="    )) { result = (args) -> new boolValue(                (args.get(0).f64Value() == args.get(1).f64Value())); }
     else if (n.equals("f64.infix !="    )) { result = (args) -> new boolValue(                (args.get(0).f64Value() != args.get(1).f64Value())); }
     else if (n.equals("f64.infix <"     )) { result = (args) -> new boolValue(                (args.get(0).f64Value() <  args.get(1).f64Value())); }
@@ -626,10 +628,19 @@ public class Intrinsics extends ANY
     else if (n.equals("Object.asString" )) { result = (args) -> Interpreter.value(args.get(0).toString());
       // NYI: This could be more useful by giving the object's class, an id, public fields, etc.
     }
-    else if (n.equals("onewayMonad.install" ) ||
-             n.equals("onewayMonad.remove"  ) ||
-             n.equals("onewayMonad.replace" ) ||
-             n.equals("onewayMonad.default" )    ) { result = onewayMonad(n, innerClazz); }
+    else if (n.equals("fuzion.std.nano_time"  )) { result = (args) -> new u64Value (System.nanoTime()); }
+    else if (n.equals("effect.replace" ) ||
+             n.equals("effect.default" ) ||
+             n.equals("effect.abortable")||
+             n.equals("effect.abort"   )    ) {  result = effect(interpreter, n, innerClazz);  }
+    else if (n.equals("effects.exists"))
+      {
+        result = (args) ->
+          {
+            var cl = innerClazz.actualGenerics()[0];
+            return new boolValue(_effects_.containsKey(cl));
+          };
+      }
     else
       {
         Errors.fatal(f.pos(),
@@ -638,6 +649,16 @@ public class Intrinsics extends ANY
         result = (args) -> Value.NO_VALUE;
       }
     return result;
+  }
+
+  static class Abort extends Error
+  {
+    Clazz _effect;
+    Abort(Clazz effect)
+    {
+      super();
+      this._effect = effect;
+    }
   }
 
 
@@ -650,7 +671,7 @@ public class Intrinsics extends ANY
    *
    * @return a Callable instance to execute the intrinsic call.
    */
-  static Callable onewayMonad(String n, Clazz innerClazz)
+  static Callable effect(Interpreter interpreter, String n, Clazz innerClazz)
   {
     return (args) ->
       {
@@ -658,11 +679,38 @@ public class Intrinsics extends ANY
         var cl = innerClazz._outer;
         switch (n)
           {
-          case "onewayMonad.install": _onewayMonads_.put(cl, m); break;
-          case "onewayMonad.remove" : check(_onewayMonads_.get(cl) != null); _onewayMonads_.put(cl, null); break; // NYI: restore original value!
-          case "onewayMonad.replace": check(_onewayMonads_.get(cl) != null); _onewayMonads_.put(cl, m   ); break;
-          case "onewayMonad.default": if (_onewayMonads_.get(cl) == null) {  _onewayMonads_.put(cl, m   ); } break;
-          default: throw new Error("unexected onewayMonad intrinsic '"+n+"'");
+          case "effect.replace": check(_effects_.get(cl) != null); _effects_.put(cl, m   );   break;
+          case "effect.default": if (_effects_.get(cl) == null) {  _effects_.put(cl, m   ); } break;
+          case "effect.abortable" :
+            {
+              var prev = _effects_.get(cl);
+              _effects_.put(cl, m);
+              var call = Types.resolved.f_function_call;
+              var oc = innerClazz.actualGenerics()[0]; //innerClazz.argumentFields()[0].resultClazz();
+              var ic = oc.lookup(call, Call.NO_GENERICS, Clazzes.isUsedAt(call));
+              var al = new ArrayList<Value>();
+              al.add(args.get(1));
+              try {
+                var ignore = interpreter.callOnInstance(ic.feature(), ic, new Instance(ic), al);
+                return new boolValue(true);
+              } catch (Abort a) {
+                if (a._effect == cl)
+                  {
+                    return new boolValue(false);
+                  }
+                else
+                  {
+                    throw a;
+                  }
+              } finally {
+                if (prev != null)
+                  {
+                    _effects_.put(cl, prev);
+                  }
+              }
+            }
+          case "effect.abort": throw new Abort(cl);
+          default: throw new Error("unexected effect intrinsic '"+n+"'");
           }
         return Value.EMPTY_VALUE;
       };

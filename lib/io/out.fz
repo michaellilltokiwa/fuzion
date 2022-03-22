@@ -25,16 +25,14 @@
 
 # out -- oneway monad providing an output stream
 #
-private out<X>(
-
-  # the inner value of this monad
-  v X,
-
+private out (
   p canPrint,
 
   # action to be taken: plain nomad, install or replace?
-  redef r onewayMonadModes
-  ) ref : onewayMonad<X, out<X>> r
+  redef r effectModes,
+
+  _ unit
+  ) : effect r
 is
 
   # print the given string followed be new line
@@ -56,28 +54,24 @@ is
     replace
 
 
-  infix >>= (f X -> out<X>) => bind<X> f
-
-  bind <B> (f X -> out<B>) out<B> is
-    out<B> (f v).v p onewayMonadMode.plain
-
-  return<B> (w B) => out<B> w p onewayMonadMode.plain
-
 # short-hand for creating and installing out monad
 #
 out(rr ()->unit) => out defaultPrint rr
 
+
 # short-hand for creating and installing out monad
 #
 out(p canPrint, rr ()->unit) =>
-  out<unit> unit p (onewayMonadMode.inst rr)
+  out p (effectMode.inst rr) unit
   unit
+
 
 # short-hand for accessing out monad in current environment
 #
 out =>
   outs.installDefault
-  io.out<unit>.env
+  io.out.env
+
 
 canPrint ref is
 
@@ -101,7 +95,7 @@ defaultPrint : canPrint is
 #
 outs is
 
-  # install default onewayMonad out using defaultPrint
+  # install default effect out using defaultPrint
   installDefault unit is
-    out unit defaultPrint onewayMonadMode.default
-    unit
+    if !(effects.exists<io.out>)
+      _ := out defaultPrint effectMode.default unit

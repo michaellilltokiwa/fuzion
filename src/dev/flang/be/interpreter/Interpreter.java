@@ -612,11 +612,11 @@ public class Interpreter extends ANY
     else if (s instanceof Env v)
       {
         Clazz vClazz = staticClazz.getRuntimeClazz(v._clazzId);
-        result = Intrinsics._onewayMonads_.get(vClazz);
+        result = Intrinsics._effects_.get(vClazz);
         if (result == null)
           {
             Errors.fatal("*** oneway monad for " + vClazz + " not present in current environment\n" +
-                         "    available are " + Intrinsics._onewayMonads_.keySet() + "\n" +
+                         "    available are " + Intrinsics._effects_.keySet() + "\n" +
                          callStack());
           }
       }
@@ -792,7 +792,7 @@ public class Interpreter extends ANY
               break;
             }
           case Intrinsic:
-            result = Intrinsics.call(innerClazz);
+            result = Intrinsics.call(this, innerClazz);
             break;
           case Choice: // NYI: why choice here?
           case Routine:
