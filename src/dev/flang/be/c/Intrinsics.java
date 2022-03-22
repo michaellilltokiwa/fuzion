@@ -330,24 +330,18 @@ class Intrinsics extends ANY
       case "f64s.cos"            : return CExpr.call("cos",    new List<>(A0)).ret();
       case "f32s.tan"            : return CExpr.call("tanf",   new List<>(A0)).ret();
       case "f64s.tan"            : return CExpr.call("tan",    new List<>(A0)).ret();
-      case "f32s.asin"           : return CExpr.call("asinhf", new List<>(A0)).ret();
-      case "f64s.asin"           : return CExpr.call("asinh",  new List<>(A0)).ret();
-      case "f32s.acos"           : return CExpr.call("acoshf", new List<>(A0)).ret();
-      case "f64s.acos"           : return CExpr.call("acosh",  new List<>(A0)).ret();
-      case "f32s.atan"           : return CExpr.call("atanhf", new List<>(A0)).ret();
-      case "f64s.atan"           : return CExpr.call("atanh",  new List<>(A0)).ret();
+      case "f32s.asin"           : return CExpr.call("asinf", new List<>(A0)).ret();
+      case "f64s.asin"           : return CExpr.call("asin",  new List<>(A0)).ret();
+      case "f32s.acos"           : return CExpr.call("acosf", new List<>(A0)).ret();
+      case "f64s.acos"           : return CExpr.call("acos",  new List<>(A0)).ret();
+      case "f32s.atan"           : return CExpr.call("atanf", new List<>(A0)).ret();
+      case "f64s.atan"           : return CExpr.call("atan",  new List<>(A0)).ret();
       case "f32s.sinh"           : return CExpr.call("sinhf",  new List<>(A0)).ret();
       case "f64s.sinh"           : return CExpr.call("sinh",   new List<>(A0)).ret();
       case "f32s.cosh"           : return CExpr.call("coshf",  new List<>(A0)).ret();
       case "f64s.cosh"           : return CExpr.call("cosh",   new List<>(A0)).ret();
       case "f32s.tanh"           : return CExpr.call("tanhf",  new List<>(A0)).ret();
       case "f64s.tanh"           : return CExpr.call("tanh",   new List<>(A0)).ret();
-      case "f32s.asinh"          : return CExpr.call("asinhf", new List<>(A0)).ret();
-      case "f64s.asinh"          : return CExpr.call("asinh",  new List<>(A0)).ret();
-      case "f32s.acosh"          : return CExpr.call("acoshf", new List<>(A0)).ret();
-      case "f64s.acosh"          : return CExpr.call("acosh",  new List<>(A0)).ret();
-      case "f32s.atanh"          : return CExpr.call("atanhf", new List<>(A0)).ret();
-      case "f64s.atanh"          : return CExpr.call("atanh",  new List<>(A0)).ret();
 
       case "Object.hashCode"     :
         {

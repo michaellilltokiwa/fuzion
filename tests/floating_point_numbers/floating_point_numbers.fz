@@ -100,10 +100,9 @@ floating_point_numbers is
     chck (a.sinh(a.zero)  == a.zero)                               "{a.name}: sinh"
     chck (a.cosh(a.zero)  == a.one)                                "{a.name}: cosh"
     chck (a.tanh(a.zero)  == a.zero)                               "{a.name}: tanh"
-    # NYI arcos hyperbolicus
-    # chck (a.asinh(a.zero) == a.zero)                               "{a.name}: asinh"
-    # chck (a.acosh(a.one)  == a.zero)                               "{a.name}: acosh"
-    # chck (a.atanh(a.zero) == a.zero)                               "{a.name}: atanh"
+    chck (a.asinh(a.zero) == a.zero)                               "{a.name}: asinh"
+    chck (a.acosh(a.one)  == a.zero)                               "{a.name}: acosh"
+    chck (a.atanh(a.zero) == a.zero)                               "{a.name}: atanh"
 
   generic_tests f32s.zero
   generic_tests f64s.zero

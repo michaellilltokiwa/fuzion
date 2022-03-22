@@ -70,7 +70,3 @@ f32s : floats<f32> is
   redef sinh(val f32) f32 is intrinsic
   redef cosh(val f32) f32 is intrinsic
   redef tanh(val f32) f32 is intrinsic
-  redef asinh(val f32) f32 is intrinsic
-  redef acosh(val f32) f32 is intrinsic
-  redef atanh(val f32) f32 is intrinsic
-

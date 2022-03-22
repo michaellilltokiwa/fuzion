@@ -107,6 +107,17 @@ floats<T: float<T>> : numerics<T> is
   sinh (val T) T is abstract
   cosh (val T) T is abstract
   tanh (val T) T is abstract
-  asinh(val T) T is abstract
-  acosh(val T) T is abstract
-  atanh(val T) T is abstract
+
+  # arcus hyperbolicus
+
+  two => one + one
+  asinh(val T) T is
+    # ln(x+sqrt(x^2+1))
+    log (val + sqrt (val ** two + one))
+  acosh(val T) T is
+    # ln(x+sqrt(x^2-1))
+    log (val + sqrt (val ** two - one))
+  atanh(val T) T is
+    # 1/2*ln((1+x)/(1-x))
+    log ((one + val)/(one - val)) / two
+
