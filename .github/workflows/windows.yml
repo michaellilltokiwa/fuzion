@@ -23,6 +23,9 @@ jobs:
         shell: powershell
         run: choco install openjdk
         
+      - name: java version
+        run: javac --version
+        
       - uses: actions/checkout@v2
       
       - name: run tests
