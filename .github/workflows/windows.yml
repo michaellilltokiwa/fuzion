@@ -7,17 +7,16 @@ jobs:
   run_tests:
     name: run_tests windows
     runs-on: windows-latest
+    defaults:
+      run:
+        shell: msys2 {0}
     steps:
+      - uses: msys2/setup-msys2@v2
+        with:
+          update: true
+          install: >-
+            make
       - uses: actions/checkout@v2
-
-      - name: install choco
-        shell: powershell
-        run: Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
-
-      - name: install choco packages
-        shell: powershell
-        run: choco install openjdk make llvm msys2
-        
+      
       - name: run tests
-        shell: powershell
-        run: C:\tools\msys64\msys2_shell.cmd -msys2 -here -use-full-path -c "make"
+        run: make run_tests
