@@ -15,6 +15,7 @@ jobs:
         with:
           update: true
           path-type: inherit
+          msystem: MSYS
           install: >-
             make
             git
