@@ -27,4 +27,4 @@ jobs:
       - uses: actions/checkout@v2
       
       - name: run tests
-        run: export PATH="/c/Program Files/OpenJDK/jdk-18/bin:$PATH"; && make run_tests
+        run: export PATH="/c/Program Files/OpenJDK/jdk-18/bin:$PATH" && make run_tests
