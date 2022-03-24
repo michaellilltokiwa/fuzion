@@ -28,15 +28,18 @@ jobs:
         run: choco install openjdk --version 18.0.0
 
       - uses: actions/checkout@v2
+      
+      - name: echo PATH
+        run: export PATH="/mingw64/bin/:/c/Program Files/OpenJDK/jdk-18/bin:$PATH" && echo "$PATH"
+        
+      - name: echo versions
+        run: clang --version && javac --version
 
       - name: build
-        run: export PATH="/c/Program Files/OpenJDK/jdk-18/bin:$PATH" && make
-        
-      - name: clang version
-        run: clang --version
+        run: export PATH="/mingw64/bin/:/c/Program Files/OpenJDK/jdk-18/bin:$PATH" && make
 
       - name: run tests c
-        run: export PATH="/c/Program Files/OpenJDK/jdk-18/bin:$PATH" && ./bin/run_tests.sh build c
+        run: export PATH="/mingw64/bin/:/c/Program Files/OpenJDK/jdk-18/bin:$PATH" && ./bin/run_tests.sh build c
 
       - name: run tests int
-        run: export PATH="/c/Program Files/OpenJDK/jdk-18/bin:$PATH" && ./bin/run_tests.sh build int
+        run: export PATH="/mingw64/bin/:/c/Program Files/OpenJDK/jdk-18/bin:$PATH" && ./bin/run_tests.sh build int
