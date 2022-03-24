@@ -15,16 +15,25 @@ jobs:
         with:
           update: true
           path-type: minimal
+# NYI maybe use mingw64 here?
           msystem: MSYS
           install: >-
             make
+# git is used in Makefile: JAVA_FILE_TOOLS_VERSION
             git
-            
+            mingw-w64-x86_64-clang
+
       - name: install choco packages
         shell: powershell
         run: choco install openjdk --version 18.0.0
-        
+
       - uses: actions/checkout@v2
-      
-      - name: run tests
-        run: export PATH="/c/Program Files/OpenJDK/jdk-18/bin:$PATH" && make run_tests
+
+      - name: build
+        run: export PATH="/c/Program Files/OpenJDK/jdk-18/bin:$PATH" && make
+
+      - name: run tests int
+        run: export PATH="/c/Program Files/OpenJDK/jdk-18/bin:$PATH" && ./bin/run_tests.sh build int
+
+      - name: run tests c
+        run: export PATH="/c/Program Files/OpenJDK/jdk-18/bin:$PATH" && ./bin/run_tests.sh build c
