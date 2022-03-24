@@ -17,6 +17,10 @@ jobs:
       - name: install choco packages
         shell: powershell
         run: choco install openjdk make llvm msys2
+        
+      - name: refresh env
+        shell: powershell
+        run: refreshenv
 
       - name: run tests
         shell: powershell
