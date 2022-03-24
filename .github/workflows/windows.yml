@@ -33,7 +33,7 @@ jobs:
         run: export PATH="/mingw64/bin/:/c/Program Files/OpenJDK/jdk-18/bin:$PATH" && echo "$PATH"
         
       - name: echo versions
-        run: clang --version && javac --version
+        run: export PATH="/mingw64/bin/:/c/Program Files/OpenJDK/jdk-18/bin:$PATH" && clang --version && javac --version
 
       - name: build
         run: export PATH="/mingw64/bin/:/c/Program Files/OpenJDK/jdk-18/bin:$PATH" && make
