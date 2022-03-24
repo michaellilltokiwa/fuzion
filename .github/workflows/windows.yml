@@ -17,7 +17,15 @@ jobs:
           install: >-
             make
             git
-            jdk-openjdk
+            
+      - name: install choco packages
+        shell: powershell
+        run: choco install openjdk
+        
+      - name: list c
+        shell: powershell
+        run: ls /c/
+      
       - uses: actions/checkout@v2
       
       - name: run tests
