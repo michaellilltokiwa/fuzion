@@ -17,7 +17,8 @@ jobs:
           install: >-
             make
             git
+            jdk-openjdk
       - uses: actions/checkout@v2
       
       - name: run tests
-        run: export PATH="$PATH:$JAVA_HOME_17_X64/bin/" && make run_tests
+        run: make run_tests
