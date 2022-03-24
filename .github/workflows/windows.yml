@@ -22,7 +22,7 @@ jobs:
             
       - name: install choco packages
         shell: powershell
-        run: choco install openjdk
+        run: choco install openjdk --version 18.0.0
         
       - uses: actions/checkout@v2
       
