@@ -18,10 +18,6 @@ jobs:
         shell: powershell
         run: choco install openjdk make llvm msys2
         
-      - name: refresh env
-        shell: powershell
-        run: refreshenv
-
       - name: run tests
         shell: powershell
-        run: msys2_shell.cmd -msys2 -here -use-full-path -c "make"
+        run: C:\tools\msys64\msys2_shell.cmd -msys2 -here -use-full-path -c "make"
