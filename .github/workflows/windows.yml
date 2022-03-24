@@ -31,6 +31,9 @@ jobs:
 
       - name: build
         run: export PATH="/c/Program Files/OpenJDK/jdk-18/bin:$PATH" && make
+        
+      - name: clang version
+        run: clang --version
 
       - name: run tests c
         run: export PATH="/c/Program Files/OpenJDK/jdk-18/bin:$PATH" && ./bin/run_tests.sh build c
