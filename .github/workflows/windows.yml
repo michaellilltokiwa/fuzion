@@ -16,6 +16,7 @@ jobs:
           update: true
           install: >-
             make
+            git
       - uses: actions/checkout@v2
       
       - name: run tests
