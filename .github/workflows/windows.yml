@@ -17,9 +17,9 @@ jobs:
           path-type: minimal
 # NYI maybe use mingw64 here?
           msystem: MSYS
+# git is used in Makefile: JAVA_FILE_TOOLS_VERSION
           install: >-
             make
-# git is used in Makefile: JAVA_FILE_TOOLS_VERSION
             git
             mingw-w64-x86_64-clang
 
