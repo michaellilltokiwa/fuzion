@@ -14,7 +14,7 @@ jobs:
       - uses: msys2/setup-msys2@v2
         with:
           update: true
-          path-type: inherit
+          path-type: minimal
           msystem: MSYS
           install: >-
             make
@@ -24,10 +24,7 @@ jobs:
         shell: powershell
         run: choco install openjdk
         
-      - name: java version
-        run: javac
-        
       - uses: actions/checkout@v2
       
       - name: run tests
-        run: make run_tests
+        run: export PATH="/c/Program Files/OpenJDK/jdk-18/bin:$PATH"; && make run_tests
