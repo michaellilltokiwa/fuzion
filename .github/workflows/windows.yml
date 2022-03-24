@@ -32,8 +32,8 @@ jobs:
       - name: build
         run: export PATH="/c/Program Files/OpenJDK/jdk-18/bin:$PATH" && make
 
-      - name: run tests int
-        run: export PATH="/c/Program Files/OpenJDK/jdk-18/bin:$PATH" && ./bin/run_tests.sh build int
-
       - name: run tests c
         run: export PATH="/c/Program Files/OpenJDK/jdk-18/bin:$PATH" && ./bin/run_tests.sh build c
+
+      - name: run tests int
+        run: export PATH="/c/Program Files/OpenJDK/jdk-18/bin:$PATH" && ./bin/run_tests.sh build int
