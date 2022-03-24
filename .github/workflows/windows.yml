@@ -25,7 +25,7 @@ jobs:
         run: choco install openjdk
         
       - name: java version
-        run: javac -h
+        run: javac
         
       - uses: actions/checkout@v2
       
