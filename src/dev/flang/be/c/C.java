@@ -27,18 +27,15 @@ Fuzion language implementation.  If not, see <https://www.gnu.org/licenses/>.
 package dev.flang.be.c;
 
 import java.io.IOException;
-import java.io.PrintWriter;
-import java.io.StringWriter;
-
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
-
 import java.util.Stack;
-
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 import dev.flang.fuir.FUIR;
-
+import dev.flang.ir.IR.FeatureKind;
 import dev.flang.util.ANY;
 import dev.flang.util.Errors;
 import dev.flang.util.List;
@@ -151,12 +148,17 @@ public class C extends ANY
     var name = _options._binaryName != null ? _options._binaryName : _fuir.clazzBaseName(cl);
     var cname = name + ".c";
     _options.verbosePrintln(" + " + cname);
+
+    var additionalHeaders = additionalHeaderNames()
+      .map(str -> "#include <" + str + ".h>")
+      .collect(Collectors.joining("\n"));
+
     try
       {
         var cf = new CFile(cname);
         try
           {
-            createCode(cf);
+            createCode(cf, additionalHeaders);
           }
         finally
           {
@@ -171,7 +173,9 @@ public class C extends ANY
     Errors.showAndExit();
 
     // NYI link libmath only when needed
-    var command = new List<String>("clang", "-O3", "-lm", "-o", name, cname);
+    var command = new List<String>("clang", "-I.", "-L.");
+    command.addAll(additionalHeaderNames().map(str -> "-l" + str).iterator());
+    command.addAll("-O3", "-lm", "-o", name, cname);
     _options.verbosePrintln(" * " + command.toString("", " ", ""));;
     try
       {
@@ -192,11 +196,25 @@ public class C extends ANY
   }
 
 
+  private Stream<String> additionalHeaderNames()
+  {
+    return _types.inOrder()
+    .stream()
+    .filter(cl -> _fuir.clazzKind(cl) == FeatureKind.Intrinsic)
+    .filter(cl -> _fuir.clazzIntrinsicName(cl).startsWith("c."))
+    .map(cl -> {
+      var name = _fuir.clazzIntrinsicName(cl);
+      var headerName = name.split("\\.")[1];
+      return headerName.substring(0, headerName.length() - 2);
+    });
+  }
+
+
   /**
    * After the CFile has been opened and stored in _c, this methods generates
    * the code into this file.
    */
-  private void createCode(CFile cf)
+  private void createCode(CFile cf, String additionalHeaders)
   {
     cf.print
       ("#include <stdlib.h>\n"+
@@ -210,6 +228,7 @@ public class C extends ANY
        "#include <assert.h>\n"+
        "#include <time.h>\n"+
        "#include <setjmp.h>\n"+
+       additionalHeaders + "\n" +
        "\n");
     var o = CExpr.ident("of");
     var s = CExpr.ident("sz");
@@ -1051,9 +1070,20 @@ public class C extends ANY
           case Intrinsic:
             {
               l.add(CStmnt.lineComment("code for clazz#"+_names.clazzId(cl).code()+" "+_fuir.clazzAsString(cl)+":"));
-              var o = ck == FUIR.FeatureKind.Routine ? codeForRoutine(cl, false)
-                                                     : _intrinsics.code(this, cl);
-              l.add(cFunctionDecl(cl, false, o));
+              if(!(ck == FUIR.FeatureKind.Intrinsic && _fuir.clazzIntrinsicName(cl).startsWith("c.")))
+                {
+                  var o = ck == FUIR.FeatureKind.Routine ? codeForRoutine(cl, false)
+                                                      : _intrinsics.code(this, cl);
+                  l.add(cFunctionDecl(cl, false, o));
+                }
+              else
+                {
+                  List<CExpr> args = new List<CExpr>();
+                  IntStream.range(0, _fuir.clazzArgCount(cl))
+                    .forEach(i -> args.add(new CIdent("arg" + i)));
+                  var o = CExpr.call(_fuir.clazzIntrinsicName(cl).split("\\.")[2], args).ret();
+                  l.add(cFunctionDecl(cl, false, o));
+                }
             }
           }
         if (_fuir.clazzContract(cl, FUIR.ContractKind.Pre, 0) != -1)
