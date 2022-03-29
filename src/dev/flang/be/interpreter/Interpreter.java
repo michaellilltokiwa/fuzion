@@ -181,7 +181,7 @@ public class Interpreter extends ANY
   /**
    * The intermediate representation of the code we are interpreting.
    */
-  final FUIR _fuir;
+  public final FUIR _fuir;
 
 
   /*---------------------------  consructors  ---------------------------*/
@@ -615,7 +615,7 @@ public class Interpreter extends ANY
         result = Intrinsics._effects_.get(vClazz);
         if (result == null)
           {
-            Errors.fatal("*** oneway monad for " + vClazz + " not present in current environment\n" +
+            Errors.fatal("*** effect for " + vClazz + " not present in current environment\n" +
                          "    available are " + Intrinsics._effects_.keySet() + "\n" +
                          callStack());
           }

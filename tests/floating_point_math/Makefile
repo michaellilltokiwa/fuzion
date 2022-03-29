@@ -17,55 +17,11 @@
 #
 #  Tokiwa Software GmbH, Germany
 #
-#  Source code of Fuzion standard library feature out
+#  Source code of Fuzion test Makefile
 #
 #  Author: Fridtjof Siebert (siebert@tokiwa.software)
 #
 # -----------------------------------------------------------------------
 
-# out -- effect providing an output stream
-#
-private out (
-  redef p canPrint,
-
-  # action to be taken: install or default?
-  redef r effectModes,
-
-  _ unit
-  ) : printEffect p r
-is
-
-
-# short-hand for creating and installing out effect
-#
-out(rr ()->unit) => out defaultPrintToOut rr
-
-
-# short-hand for creating and installing out effect
-#
-out(p canPrint, rr ()->unit) =>
-  out p (effectMode.inst rr) unit
-  unit
-
-
-# short-hand for accessing out effect in current environment
-#
-out =>
-  outs.installDefault
-  io.out.env
-
-
-defaultPrintToOut : canPrint is
-
-  print(s Object) => stdout.print s
-
-
-# unit type feature defining features related to out but not requiring an
-# instance.
-#
-outs is
-
-  # install default effect out using defaultPrint
-  installDefault unit is
-    if !(effects.exists<io.out>)
-      _ := out defaultPrintToOut effectMode.default unit
+NAME = floating_point_math
+include ../positive.mk
