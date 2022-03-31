@@ -300,6 +300,10 @@ class Intrinsics extends ANY
       case "u32.low16bits"       : return outer.and(CExpr.uint32const(0xFFFF)).castTo("fzT_1u16").ret();
       case "u64.low16bits"       : return outer.and(CExpr.uint64const(0xFFFFL)).castTo("fzT_1u16").ret();
       case "u64.low32bits"       : return outer.and(CExpr.uint64const(0xffffFFFFL)).castTo("fzT_1u32").ret();
+      case "i32.as_f64"          :
+      case "i64.as_f64"          :
+      case "u32.as_f64"          :
+      case "u64.as_f64"          : return outer.castTo("fzT_1f64").ret();
 
       case "f32.prefix -"        :
       case "f64.prefix -"        : return outer.neg().ret();
@@ -437,7 +441,7 @@ class Intrinsics extends ANY
               case "effect.default" -> CStmnt.iff(evi.not(), CStmnt.seq(ev.assign(e), evi.assign(CIdent.TRUE )));
               case "effect.abortable" ->
                 {
-                  var oc = c._fuir.clazzActualGeneric(cl, 0); // c._fuir.clazzOuterClazz(cl);
+                  var oc = c._fuir.clazzActualGeneric(cl, 0);
                   var call = c._fuir.lookupCall(oc);
                   if (c._fuir.clazzNeedsCode(call))
                     {
@@ -487,14 +491,6 @@ class Intrinsics extends ANY
           var ecl = c._fuir.clazzActualGeneric(cl, 0);
           var evi = c._names.envInstalled(ecl);
           return CStmnt.seq(CStmnt.iff(evi, c._names.FZ_TRUE.ret()), c._names.FZ_FALSE.ret());
-        }
-      case "effect.effectHelper.abortable":
-        {
-          var oc = c._fuir.clazzOuterClazz(cl);
-          var call = c._fuir.lookupCall(oc);
-          check
-            (c._fuir.clazzNeedsCode(call));
-          return CExpr.call(c._names.function(call, false), new List<>(c._names.OUTER));
         }
 
       default:
