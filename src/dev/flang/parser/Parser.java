@@ -3783,12 +3783,18 @@ dot         : "."      // either preceded by white space or not followed by whit
   }
 
 
+  // NYI
+  private static final boolean expectIncompleteSourceCode = true;
   /**
    * Check if current is "." followed by white space.
    */
   boolean isFullStop()
   {
-    return isOperator('.') && !ignoredTokenBefore() && ignoredTokenAfter();
+    return isOperator('.')
+      && !ignoredTokenBefore()
+      && ignoredTokenAfter()
+      // NYI
+      && !expectIncompleteSourceCode;
   }
 
 
