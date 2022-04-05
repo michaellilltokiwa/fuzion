@@ -395,20 +395,20 @@ class Intrinsics extends ANY
 
         }
 
-      case "sys.array.alloc"     :
+      case "fuzion.sys.array.alloc"     :
         {
           var gc = c._fuir.clazzActualGeneric(cl, 0);
           return CExpr.call("malloc",
                             new List<>(CExpr.sizeOfType(c._types.clazz(gc)).mul(A0))).ret();
         }
-      case "sys.array.setel"     :
+      case "fuzion.sys.array.setel"     :
         {
           var gc = c._fuir.clazzActualGeneric(cl, 0);
           return c._types.hasData(gc)
             ? A0.castTo(c._types.clazz(gc) + "*").index(A1).assign(A2)
             : CStmnt.EMPTY;
         }
-      case "sys.array.get"       :
+      case "fuzion.sys.array.get"       :
         {
           var gc = c._fuir.clazzActualGeneric(cl, 0);
           return c._types.hasData(gc)
@@ -417,11 +417,35 @@ class Intrinsics extends ANY
         }
       case "fuzion.std.nano_time":
         {
-          return CExpr.call("clock", new List<>())
-            .sub(c._names.GLOBAL_CLOCK_OFFSET)
-            .mul(CExpr.uint64const(1_000_000_000))
-            .div(CExpr.ident("CLOCKS_PER_SEC"))
-            .ret();
+          var result = new CIdent("result");
+          var onFailure = CStmnt.seq(
+            CExpr.fprintfstderr("*** clock_gettime failed\n"),
+            CExpr.call("exit", new List<>(new CIdent("1")){})
+          );
+          return CStmnt.seq(
+              CStmnt.decl("struct timespec", result),
+              CExpr.iff(
+                  CExpr.call(
+                    "clock_gettime",
+                    new List<>(new CIdent("CLOCK_MONOTONIC"), result.adrOf()){}
+                  ).ne(new CIdent("0")),
+                  onFailure
+                ),
+              result.field(new CIdent("tv_sec"))
+                .mul(CExpr.uint64const(1_000_000_000))
+                .add(result.field(new CIdent("tv_nsec")))
+                .ret()
+            );
+        }
+      case "fuzion.std.nano_sleep":
+        {
+          var req = new CIdent("req");
+          var sec = A0.div(CExpr.int64const(1_000_000_000));
+          var nsec = A0.sub(sec.mul(CExpr.int64const(1_000_000_000)));
+          return CStmnt.seq(CStmnt.decl("struct timespec",req,CExpr.compoundLiteral("struct timespec",
+                                                                                    sec.code() + "," +
+                                                                                    nsec.code())),
+                            /* NYI: while: */ CExpr.call("nanosleep",new List<>(req.adrOf(),req.adrOf())));
         }
 
       case "effect.replace":

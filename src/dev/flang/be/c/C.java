@@ -215,9 +215,6 @@ public class C extends ANY
       (CStmnt.decl("int", _names.GLOBAL_ARGC));
     cf.print
       (CStmnt.decl("char **", _names.GLOBAL_ARGV));
-      // NYI include only when nano_time is used
-    cf.print
-      (CStmnt.decl("clock_t", _names.GLOBAL_CLOCK_OFFSET));
     var o = CExpr.ident("of");
     var s = CExpr.ident("sz");
     var r = new CIdent("r");
@@ -259,8 +256,6 @@ public class C extends ANY
     cf.println("int main(int argc, char **argv) { ");
     cf.print(CStmnt.seq(_names.GLOBAL_ARGC.assign(new CIdent("argc")),
                         _names.GLOBAL_ARGV.assign(new CIdent("argv")),
-                        // NYI include only when nano_time is used
-                        _names.GLOBAL_CLOCK_OFFSET.assign(CExpr.call("clock", new List<>())),
                         CExpr.call(_names.function(_fuir.mainClazzId(), false), new List<>())));
     cf.println("}");
   }
@@ -791,8 +786,8 @@ public class C extends ANY
   {
     var cs            = _fuir.clazz_conststring();
     var internalArray = _names.fieldName(_fuir.clazz_conststring_internalArray());
-    var data          = _names.fieldName(_fuir.clazz_sysArray_u8_data());
-    var length        = _names.fieldName(_fuir.clazz_sysArray_u8_length());
+    var data          = _names.fieldName(_fuir.clazz_fuzionSysArray_u8_data());
+    var length        = _names.fieldName(_fuir.clazz_fuzionSysArray_u8_length());
     var sysArray = fields(tmp, cs).field(internalArray);
     return CStmnt.seq(CStmnt.decl(_types.clazz(cs), tmp),
                       tmp.assign(CExpr.call("malloc", new List<>(tmp.deref().sizeOfExpr()))),

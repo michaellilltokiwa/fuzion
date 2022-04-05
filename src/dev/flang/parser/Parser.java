@@ -60,9 +60,10 @@ public class Parser extends Lexer
   /**
    * Different kinds of opening / closing brackets
    */
-  static Token[] PARENS   = new Token[] { Token.t_lparen  , Token.t_rparen   };
-  static Token[] BRACES   = new Token[] { Token.t_lbrace  , Token.t_rbrace   };
-  static Token[] CROCHETS = new Token[] { Token.t_lcrochet, Token.t_rcrochet };
+  static Parens PARENS   = new Parens( Token.t_lparen  , Token.t_rparen   );
+  static Parens BRACES   = new Parens( Token.t_lbrace  , Token.t_rbrace   );
+  static Parens CROCHETS = new Parens( Token.t_lcrochet, Token.t_rcrochet );
+  static Parens ANGLES   = new Parens( "<"             , ">"              );
 
 
   /*----------------------------  variables  ----------------------------*/
@@ -413,7 +414,7 @@ visi        : COLON qual
       {
         // NYI: record ':', i.e., export to all heirs
       }
-    List<String> result = qual();
+    List<String> result = qual(false);
     return result;
   }
 
@@ -426,9 +427,9 @@ qual        : name ( dot qual
                    )
             ;
    */
-  List<String> qual()
+  List<String> qual(boolean mayBeAtMinIndent)
   {
-    List<String> result = new List<>(name());
+    List<String> result = new List<>(name(mayBeAtMinIndent));
     while (skipDot())
       {
         result.add(name());
@@ -455,14 +456,18 @@ name        : IDENT                            // all parts of name must be in s
    */
   String name()
   {
+    return name(false);
+  }
+  String name(boolean mayBeAtMinIndent)
+  {
     String result = Errors.ERROR_STRING;
     int pos = pos();
-    if (isNamePrefix())
+    if (isNamePrefix(mayBeAtMinIndent))
       {
         var oldLine = sameLine(line());
-        switch (current())
+        switch (current(mayBeAtMinIndent))
           {
-          case t_ident  : result = identifier(); next(); break;
+          case t_ident  : result = identifier(mayBeAtMinIndent); next(); break;
           case t_infix  :
           case t_prefix :
           case t_postfix: result = opName();  break;
@@ -540,7 +545,11 @@ name        : IDENT                            // all parts of name must be in s
    */
   boolean isNamePrefix()
   {
-    switch (current())
+    return isNamePrefix(false);
+  }
+  boolean isNamePrefix(boolean mayBeAtMinIndent)
+  {
+    switch (current(mayBeAtMinIndent))
       {
       case t_ident  :
       case t_infix  :
@@ -552,6 +561,7 @@ name        : IDENT                            // all parts of name must be in s
       default       : return false;
       }
   }
+
 
 
   /**
@@ -669,10 +679,10 @@ featNames   : qual (COMMA featNames
    */
   List<List<String>> featNames()
   {
-    List<List<String>> result = new List<>(qual());
+    List<List<String>> result = new List<>(qual(true));
     while (skipComma())
       {
-        result.add(qual());
+        result.add(qual(true));
       }
     return result;
   }
@@ -1254,16 +1264,20 @@ actualGens  : "<" typeList ">"
   List<AbstractType> actualGens()
   {
     var result = Call.NO_GENERICS;
-    if (splitSkip("<"))
+    splitOperator("<");
+    if (isOperator('<'))
       {
-        result = Type.NONE;
-        splitOperator(">");
-        if (!isOperator('>'))
-          {
-            result = typeList();
-          }
-        splitOperator(">");
-        matchOperator(">", "formGens");
+        result = bracketTermWithNLs(ANGLES, "actualGens", () ->
+                                    {
+                                      var res = Type.NONE;
+                                      splitOperator(">");
+                                      if (!isOperator('>'))
+                                        {
+                                          res = typeList();
+                                        }
+                                      splitOperator(">");
+                                      return res;
+                                    });
       }
     return result;
   }
@@ -1402,6 +1416,7 @@ actualArgs  : actualsList               // must be in same line as name of calle
            t_lbrace          ,
            t_rbrace          ,
            t_is              ,
+           t_of              ,
            t_pre             ,
            t_post            ,
            t_inv             ,
@@ -2189,7 +2204,7 @@ match       : "match" exprInLine BRACEL cases BRACER
         var c = cases(true);
         if (gotLBrace)
           {
-            match(true, Token.t_rbrace, "block");
+            match(true, Token.t_rbrace, "match");
           }
         return new Match(pos, e, c);
       });
@@ -3108,7 +3123,14 @@ qualThis    : name ( dot name )* dot "this"
         q.add(name());
         if (!skipDot())
           {
-            syntaxError("'.'", "qualThis");
+            if (isFullStop())
+              {
+                syntaxError("'.' (not followed by white space)", "qualThis");
+              }
+            else
+              {
+                syntaxError("'.'", "qualThis");
+              }
           }
         pos = posObject();
       }
@@ -3317,6 +3339,8 @@ implRout    : block
             | "is" "intrinsic_constructor"
             | "is" block
             | ARROW e=block
+            | "of" block
+            | fullStop
             ;
    */
   Impl implRout()
@@ -3324,11 +3348,13 @@ implRout    : block
     SourcePosition pos = posObject();
     Impl result;
     var startRoutine = (currentAtMinIndent() == Token.t_lbrace || skip(true, Token.t_is));
-    if (startRoutine)    { result = skip(Token.t_abstract             ) ? Impl.ABSTRACT              :
-                                    skip(Token.t_intrinsic            ) ? Impl.INTRINSIC             :
-                                    skip(Token.t_intrinsic_constructor) ? Impl.INTRINSIC_CONSTRUCTOR :
-                                    new Impl(pos, block(true)      , Impl.Kind.Routine   ); }
-    else if (skip("=>")) { result = new Impl(pos, block(true)      , Impl.Kind.RoutineDef); }
+    if      (startRoutine    ) { result = skip(Token.t_abstract             ) ? Impl.ABSTRACT              :
+                                          skip(Token.t_intrinsic            ) ? Impl.INTRINSIC             :
+                                          skip(Token.t_intrinsic_constructor) ? Impl.INTRINSIC_CONSTRUCTOR :
+                                          new Impl(pos, block(true)      , Impl.Kind.Routine   ); }
+    else if (skip("=>")      ) { result = new Impl(pos, block(true)      , Impl.Kind.RoutineDef); }
+    else if (skip(Token.t_of)) { result = new Impl(pos, block(true)      , Impl.Kind.Of        ); }
+    else if (skipFullStop()  ) { result = new Impl(pos, new Block(pos, pos, new List<>()), Impl.Kind.Routine); }
     else
       {
         syntaxError(pos(), "'is', '{' or '=>' in routine declaration", "implRout");
@@ -3351,7 +3377,9 @@ implFldOrRout   : implRout
   {
     if (currentAtMinIndent() == Token.t_lbrace ||
         currentAtMinIndent() == Token.t_is     ||
-        isOperator("=>")                          )
+        currentAtMinIndent() == Token.t_of     ||
+        isOperator("=>")                       ||
+        isFullStop()                              )
       {
         return implRout();
       }
@@ -3407,8 +3435,10 @@ implFldUndef: ":=" "?"
     return
       currentAtMinIndent() == Token.t_lbrace ||
       currentAtMinIndent() == Token.t_is ||
+      currentAtMinIndent() == Token.t_of ||
       isOperator(":=") ||
-      isOperator("=>");
+      isOperator("=>") ||
+      isFullStop();
   }
 
 
@@ -3729,24 +3759,50 @@ colon       : ":"
 
 
   /**
-   * Parse "." if it is found
+   * Parse "." if it is found.
    *
-dot         : "."
+dot         : "."      // either preceded by white space or not followed by white space
             ;
    *
    * @return true iff a "." was found and skipped.
    */
   boolean skipDot()
   {
-    boolean result = skip('.');
-    if (!result)
-      { // allow dot to appear in new line
-        var oldLine = sameLine(-1);
+    var result = !isFullStop();
+    if (result)
+      {
         result = skip('.');
-        sameLine(result ? line() : oldLine);
+        if (!result)
+          { // allow dot to appear in new line
+            var oldLine = sameLine(-1);
+            result = skip('.');
+            sameLine(result ? line() : oldLine);
+          }
       }
-
     return result;
+  }
+
+
+  /**
+   * Check if current is "." followed by white space.
+   */
+  boolean isFullStop()
+  {
+    return isOperator('.') && !ignoredTokenBefore() && ignoredTokenAfter();
+  }
+
+
+  /**
+   * Parse "." followed by white space if it is found
+   *
+fullStop    : "."        // not following white space but followed by white space
+            ;
+   *
+   * @return true iff a "." follwed by white space was found and skipped.
+   */
+  boolean skipFullStop()
+  {
+    return isFullStop() && skip('.');
   }
 
 }
