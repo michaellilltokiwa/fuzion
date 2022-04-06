@@ -29,3 +29,12 @@ sys is
   out is
     print  (s Object) => stdout.print   s
     println(s Object) => stdout.println s
+
+
+  # Create a 0-terminated internal array of bytes from
+  # a given string.
+  #
+  # This is used to pass strings down to instrinsics
+  #
+  private c_string (s string) =>
+    (s + codepoint 0).utf8.asArray.internalArray.data

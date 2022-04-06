@@ -17,38 +17,43 @@
 #
 #  Tokiwa Software GmbH, Germany
 #
-#  Source code of Fuzion standard library feature sys.array
+#  Source code of Fuzion standard library feature fuzion.sys.envVars
 #
 #  Author: Fridtjof Siebert (siebert@tokiwa.software)
 #
 # -----------------------------------------------------------------------
 
-# fuzion.sys.array -- one-dimensional low-level array
+# fuzion.sys.env_vars -- low-level feature to access environment variables
 #
-array<T>(length i32) is
+private env_vars is
 
-# private:
 
-  data := alloc<T> length
+  # intrinsic to check if env var with given name exists
+  #
+  # NOTE: parameter s must be 0-terminated char *
+  #
+  private has0(s Object) bool is intrinsic
 
-  alloc<X>(l i32) Object is intrinsic
-  get  <X>(d Object, i i32) X is intrinsic
-  setel<X>(d Object, i i32, o X) unit is intrinsic
 
-# public:
+  # intrinsic to get env var with given name
+  #
+  # NOTE: parameter s must be 0-terminated char *
+  #
+  private get0(s Object) string
+  is intrinsic
 
-  indices => 0..length-1
 
-  index [ ] (i i32) T
-    pre
-      safety: 0 <= i < length
-  is
-    get<T> data i
+  # check if env var with given name exists
+  #
+  has(s string) bool is
+    has0 (c_string s)
 
-  set [ ] (i i32, o T) unit
-    pre
-      safety: 0 <= i < length
-  # post   NYI
-    #array.this[i] == o
-  is
-    setel<T> data i o
+
+  # intrinsic to get env var with given name
+  #
+  get(s string) option<string> is
+    a := c_string s
+    if has0 a then
+      get0 a
+    else
+      nil
