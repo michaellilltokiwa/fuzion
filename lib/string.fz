@@ -577,3 +577,16 @@ strings is
   zChar     => "z".utf8.asStream.next
   capAChar  => "A".utf8.asStream.next
   capZChar  => "Z".utf8.asStream.next
+
+
+  # escapes &, <, >, " and ' for use in UTF8-encoded documents
+  # Note: Make sure document encoding is set to UTF-8.
+  #       Otherwise this is not safe to use!
+  escapeXml(s string) =>
+                                                                    # NYI: remove when Fuzion supports char literals
+    htmlEscapings := (psMap (["&",     "<",    ">",    "\"",     "'"].mapSequence<u8> (x -> x.utf8.asStream.next))
+                            (["&amp;", "&lt;", "&gt;", "&quot;", "&#39;"].mapSequence<Sequence<u8>> (x -> x.utf8)))
+    s0 := s.utf8
+      .flatMapSequence<u8>(x -> htmlEscapings[x] ? nil            => [x]
+                                                 | y Sequence<u8> =>  y )
+    fromBytes s0
