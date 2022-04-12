@@ -59,6 +59,8 @@ Qtest is
     else
       x2
 
+
+  # NYI this implementation is wrong
   signum<T: float<T>>(f T) =>
     if f <= f.zero || f == -f.zero
       "-"
