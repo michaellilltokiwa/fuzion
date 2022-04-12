@@ -35,7 +35,6 @@ import dev.flang.ast.Call;
 import dev.flang.ast.Contract;
 import dev.flang.ast.Feature;
 import dev.flang.ast.FeatureVisitor;
-import dev.flang.ast.FormalGenerics;
 import dev.flang.ast.Impl;
 import dev.flang.ast.ReturnType;
 import dev.flang.ast.Stmnt;
@@ -101,7 +100,6 @@ public class FList extends ANY implements Stmnt
                int m,
                ReturnType r,
                List<List<String>> qnames,
-               FormalGenerics g,
                List<Feature> a,
                List<AbstractCall> i,
                Contract c,
@@ -130,7 +128,7 @@ public class FList extends ANY implements Stmnt
               }
             p = new Impl(p.pos, new Block(p.pos, new List<>()), Impl.Kind.Routine);
           }
-        _list.add(new Feature(pos,nextPos, v,m,r,n,g,a,i,c,p));
+        _list.add(new Feature(pos,nextPos,v,m,r,n,a,i,c,p));
       }
   }
 

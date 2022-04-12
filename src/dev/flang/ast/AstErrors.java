@@ -128,9 +128,19 @@ public class AstErrors extends ANY
   {
     return expr(s);
   }
-  static String s(AbstractFeature f, FormalGenerics fg)
+  public static String sfn(List<AbstractFeature> fs)
   {
-    return code(f.qualifiedName() + fg);
+    int c = 0;
+    StringBuilder sb = new StringBuilder();
+    for (var f : fs)
+      {
+        c++;
+        sb.append(c == 1         ? "" :
+                  c == fs.size() ? " and "
+                                 : ", ");
+        sb.append(s(f));
+      }
+    return sb.toString();
   }
   static String s(List<AbstractType> l)
   {
@@ -392,7 +402,7 @@ public class AstErrors extends ANY
                                              AbstractType frmlT,
                                              Expr value)
   {
-    var frmls = calledFeature.arguments().iterator();
+    var frmls = calledFeature.valueArguments().iterator();
     AbstractFeature frml = null;
     int c;
     for (c = 0; c <= count && frmls.hasNext(); c++)
@@ -478,7 +488,7 @@ public class AstErrors extends ANY
     int fsz = call.resolvedFormalArgumentTypes.length;
     boolean ferror = false;
     StringBuilder fstr = new StringBuilder();
-    var fargs = call.calledFeature().arguments().iterator();
+    var fargs = call.calledFeature().valueArguments().iterator();
     AbstractFeature farg = null;
     for (var t : call.resolvedFormalArgumentTypes)
       {
@@ -526,7 +536,7 @@ public class AstErrors extends ANY
           "Wrong number of generic arguments",
           "Wrong number of actual generic arguments in " + detail1 + ":\n" +
           detail2 +
-          "expected " + fg.sizeText() + (fg == FormalGenerics.NONE ? "" : " for " + s(fg.feature(), fg) + "") + "\n" +
+          "expected " + fg.sizeText() + (fg == FormalGenerics.NONE ? "" : " for " + s(fg) + "") + "\n" +
           "found " + (actualGenerics.size() == 0 ? "none" : "" + actualGenerics.size() + ": " + s(actualGenerics) + "" ) + ".\n");
   }
 
@@ -645,7 +655,7 @@ public class AstErrors extends ANY
     error(pos,
           "" + skw("match") + " subject type must not be a type parameter",
           "Matched type: " + s(t) + "\n" +
-          "which is a type parameter declared at " + t.genericArgument()._pos.show());
+          "which is a type parameter declared at " + t.genericArgument().typeParameter().pos().show());
 
   }
 
@@ -988,12 +998,13 @@ public class AstErrors extends ANY
       }
   }
 
-  static void constraintMustNotBeGenericArgument(Generic g)
+  public static void constraintMustNotBeGenericArgument(AbstractFeature tp)
   {
-    error(g._pos,
-          "Constraint for generic argument must not be generic type parameter",
-          "Affected generic argument: " + st(g._name) + "\n" +
-          "_constraint: " + s(g.constraint()) + " declared at " + g.constraint().genericArgument()._pos);
+    error(tp.pos(),
+          "Constraint for type parameter must not be a type parameter",
+          "Affected type parameter: " + s(tp) + "\n" +
+          "_constraint: " + s(tp.resultType()) + "\n" +
+          "To solve this, change the type provided, e.g. to the unconstraint " + st("type") + ".\n");
   }
 
   static void loopElseBlockRequiresWhileOrIterator(SourcePosition pos, Expr elseBlock)
@@ -1013,7 +1024,7 @@ public class AstErrors extends ANY
           "In a type >>a.b<<, the outer type >>a<< must not be a formal generic argument.\n" +
           "Type used: " + s(t) + "\n" +
           "Formal generic used " + s(t.outer()) + "\n" +
-          "Formal generic declared in " + t.outer().genericArgument()._pos.show() + "\n");
+          "Formal generic declared in " + t.outer().genericArgument().typeParameter().pos().show() + "\n");
   }
 
   static void formalGenericWithGenericArgs(SourcePosition pos, Type t, Generic generic)
@@ -1023,7 +1034,7 @@ public class AstErrors extends ANY
           "In a type with generic arguments >>A<B><<, the base type >>A<< must not be a formal generic argument.\n" +
           "Type used: " + s(t) + "\n" +
           "Formal generic used " + s(generic) + "\n" +
-          "Formal generic declared in " + generic._pos.show() + "\n");
+          "Formal generic declared in " + generic.typeParameter().pos().show() + "\n");
   }
 
   static void refToChoice(SourcePosition pos)

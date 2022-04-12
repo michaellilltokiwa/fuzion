@@ -309,7 +309,6 @@ public class Function extends ExprWithPos
                            Consts.MODIFIER_FINAL,
                            RefType.INSTANCE,
                            new List<String>(wrapperName),
-                           FormalGenerics.NONE,
                            NO_FEATURES,
                            new List<>(inheritsCall_),
                            new Contract(null,null,null),
@@ -433,7 +432,6 @@ public class Function extends ExprWithPos
         for (var n : _names)
           {
             var arg = new Feature(pos() /* better n.pos() */,
-                                  SourcePosition.notAvailable,
                                   Consts.VISIBILITY_LOCAL,
                                   0,
                                   i < gs.size() ? gs.get(i) : Types.t_ERROR,
@@ -463,7 +461,6 @@ public class Function extends ExprWithPos
                                    Consts.MODIFIER_FINAL,
                                    RefType.INSTANCE,
                                    new List<String>(wrapperName),
-                                   FormalGenerics.NONE,
                                    NO_FEATURES,
                                    new List<>(inheritsCall_),
                                    new Contract(null,null,null),
@@ -689,7 +686,7 @@ public class Function extends ExprWithPos
               {
                 String name = "a"+argnum;
                 actual_args.add(new Call(pos(), null, name));
-                formal_args.add(new Feature(pos(), SourcePosition.notAvailable,  Consts.VISIBILITY_LOCAL, 0, f.resultType(), name, new Contract(null,null,null)));
+                formal_args.add(new Feature(pos(), Consts.VISIBILITY_LOCAL, 0, f.resultType(), name, new Contract(null,null,null)));
                 argnum++;
               }
             Call callWithArgs = new Call(pos(), null, call.name, actual_args);
@@ -699,7 +696,6 @@ public class Function extends ExprWithPos
                                         Consts.MODIFIER_REDEFINE,
                                         NoType.INSTANCE, // calledFeature.returnType,
                                         new List<String>("call"),
-                                        FormalGenerics.NONE,
                                         formal_args,
                                         NO_CALLS,
                                         new Contract(null,null,null),
@@ -718,7 +714,6 @@ public class Function extends ExprWithPos
                                            Consts.MODIFIER_FINAL,
                                            RefType.INSTANCE,
                                            new List<String>(wrapperName),
-                                           FormalGenerics.NONE,
                                            NO_FEATURES,
                                            inherits,
                                            new Contract(null,null,null),

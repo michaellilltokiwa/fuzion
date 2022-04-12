@@ -60,6 +60,8 @@ public abstract class AbstractFeature extends ANY implements Comparable<Abstract
   {
     Routine,
     Field,
+    TypeParameter,
+    OpenTypeParameter,
     Intrinsic,
     Abstract,
     Choice;
@@ -117,6 +119,24 @@ public abstract class AbstractFeature extends ANY implements Comparable<Abstract
   public Object _frontEndData;
 
 
+  /**
+   * cached result of valueArguments();
+   */
+  private List<AbstractFeature> _valueArguments = null;
+
+
+  /**
+   * cached result of typeArguments();
+   */
+  private List<AbstractFeature> _typeArguments = null;
+
+
+  /**
+   * The formal generic arguments of this feature, cached result of generics()
+   */
+  private FormalGenerics _generics;
+
+
   /*-----------------------------  methods  -----------------------------*/
 
   /**
@@ -134,6 +154,8 @@ public abstract class AbstractFeature extends ANY implements Comparable<Abstract
   public boolean isAbstract() { return kind() == Kind.Abstract; }
   public boolean isIntrinsic() { return kind() == Kind.Intrinsic; }
   public boolean isChoice() { return kind() == Kind.Choice; }
+  public boolean isTypeParameter() { return switch (kind()) { case TypeParameter, OpenTypeParameter -> true; default -> false; }; }
+  public boolean isOpenTypeParameter() { return kind() == Kind.OpenTypeParameter; }
 
 
   /**
@@ -349,7 +371,7 @@ public abstract class AbstractFeature extends ANY implements Comparable<Abstract
     Generic result = generics().get(name);
 
     if (POSTCONDITIONS) ensure
-      ((result == null) || (result._name.equals(name) && (result.feature() == this)));
+      ((result == null) || (result.name().equals(name) && (result.feature() == this)));
     // result == null ==> for all g in generics: !g.name.equals(name)
 
     return result;
@@ -972,7 +994,6 @@ public abstract class AbstractFeature extends ANY implements Comparable<Abstract
 
 
   public abstract FeatureName featureName();
-  public abstract FormalGenerics generics();
   public abstract List<AbstractCall> inherits();
   public abstract AbstractFeature outer();
   public abstract List<AbstractFeature> arguments();
@@ -1048,6 +1069,83 @@ public abstract class AbstractFeature extends ANY implements Comparable<Abstract
 
   // in FUIR or later
   public abstract Contract contract();
+
+
+  /**
+   * List of arguments that are values, i.e., not type parameters or effects.
+   */
+  public List<AbstractFeature> valueArguments()
+  {
+    if (_valueArguments == null)
+      {
+        var args = arguments();
+        if (args.stream().anyMatch(a -> a.isTypeParameter()))
+          {
+            _valueArguments = new List<>();
+            _valueArguments.addAll(args.stream().filter(a -> !a.isTypeParameter()).toList());
+          }
+        else
+          {
+            _valueArguments = args;
+          }
+      }
+    return _valueArguments;
+  }
+
+
+  /**
+   * List of arguments that are types, i.e., not type parameters or effects.
+   */
+  public List<AbstractFeature> typeArguments()
+  {
+    if (_typeArguments == null)
+      {
+        var args = arguments();
+        if (args.stream().anyMatch(a -> a.isTypeParameter()))
+          {
+            _typeArguments = new List<>();
+            _typeArguments.addAll(args.stream().filter(a -> a.isTypeParameter()).toList());
+          }
+        else if (args.stream().anyMatch(a -> !a.isTypeParameter()))
+          {
+            _typeArguments = new List<>();
+          }
+        else
+          {
+            _typeArguments = args;
+          }
+      }
+    return _typeArguments;
+  }
+
+
+  /**
+   * The formal generic arguments of this feature
+   */
+  public FormalGenerics generics()
+  {
+    if (_generics == null)
+      {
+        // Recreate FormalGenerics from typeParameters
+        // NYI: Remove, FormalGenerics should use AbstractFeature.typeArguments() instead of its own list of Generics.
+        if (typeArguments().isEmpty())
+          {
+            _generics = FormalGenerics.NONE;
+          }
+        else
+          {
+            var l = new List<Generic>();
+            var open = false;
+            for (var a0 : typeArguments())
+              {
+                l.add(new Generic(a0));
+                open = open || a0.isOpenTypeParameter();
+              }
+            _generics = new FormalGenerics(l);
+          }
+      }
+    return _generics;
+  }
 
 }
 

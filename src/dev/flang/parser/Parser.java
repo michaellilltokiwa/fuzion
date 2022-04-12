@@ -28,10 +28,11 @@ package dev.flang.parser;
 
 import java.nio.file.Path;
 
+import dev.flang.ast.*;
+
 import dev.flang.util.Errors;
 import dev.flang.util.List;
 import dev.flang.util.SourcePosition;
-import dev.flang.ast.*;
 
 
 /**
@@ -249,19 +250,24 @@ field       : visibility
     Visi v = visibility();
     int m = modifiers();
     List<List<String>> n = featNames();
-    FormalGenerics g = formGens();
+    var g = formGens();
     var a = (current() == Token.t_lparen) && fork().skipType() ? new List<Feature>() : formArgsOpt();
     ReturnType r = returnType();
     var hasType = r != NoType.INSTANCE;
     var i = inherits();
     Contract c = contract(true);
+    if (!g.isEmpty())
+      {
+        g.addAll(a);
+        a = g;
+        g = new List<>();
+      }
     Impl p =
-      g == FormalGenerics.NONE &&
       a.isEmpty()              &&
       i.isEmpty()                 ? implFldOrRout(hasType)
                                   : implRout();
     var nextPos = posObject();
-    return new FList(pos, nextPos, v,m,r,n,g,a,i,c,p);
+    return new FList(pos,nextPos,v,m,r,n,a,i,c,p);
   }
 
 
@@ -705,19 +711,22 @@ genericList : e=generic  ( COMMA genericList
                          )
             ;
    */
-  FormalGenerics formGens()
+  List<Feature> formGens()
   {
-    FormalGenerics result = FormalGenerics.NONE;
+    List<Feature> result = new List<>();
     if (splitSkip("<"))
       {
         if (!isOperator('>'))
           {
-            List<Generic> lg = new List<>(generic(0));
-            while (skipComma())
+            do
               {
-                lg.add(generic(lg.size()));
+                result.add(generic());
               }
-            result = new FormalGenerics(lg, splitSkip("..."));
+            while (skipComma());
+            if (splitSkip("..."))
+              {
+                Errors.error(posObject(), "did not expect ...","");
+              }
           }
         matchOperator(">", "formGens");
       }
@@ -779,21 +788,13 @@ generic     : IDENT
               )
             ;
    */
-  Generic generic(int index)
+  Feature generic()
   {
-    Generic g;
     SourcePosition pos = posObject();
     String i = identifierOrError();
     match(Token.t_ident, "generic");
-    if (skipColon())
-      {
-        g = new Generic(pos, index, i, type());
-      }
-    else
-      {
-        g = new Generic(pos, index, i);
-      }
-    return g;
+    var t = skipColon() ? type() : new Type("Object");
+    return new Feature(pos, SourcePosition.notAvailable, Consts.VISIBILITY_LOCAL, 0, t, i, Contract.EMPTY_CONTRACT, Impl.TYPE_PARAMETER);
   }
 
 
@@ -828,8 +829,12 @@ argList     : argument ( COMMA argList
 argument    : visibility
               modifiers
               argNames
-              type
+              argType
               contract
+            ;
+argType     : typeType
+            | type
+            | type dot typeType
             ;
    */
   List<Feature> formArgs()
@@ -843,11 +848,23 @@ argument    : visibility
                                     Visi v = visibility();
                                     int m = modifiers();
                                     List<String> n = argNames();
-                                    Type t = type();
+                                    Type t;
+                                    Impl i;
+                                    if (current() == Token.t_type)
+                                      {
+                                        t = new Type("Object");
+                                        i =  typeType();
+                                      }
+                                    else
+                                      {
+                                        t = type();
+                                        i = skipDot() ? typeType()
+                                                      : Impl.FIELD;
+                                      }
                                     Contract c = contract();
                                     for (String s : n)
                                       {
-                                        result.add(new Feature(pos, SourcePosition.notAvailable, v, m, t, s, c));
+                                        result.add(new Feature(pos, SourcePosition.notAvailable ,v, m, t, s, c, i));
                                       }
                                   }
                                 while (skipComma());
@@ -855,6 +872,21 @@ argument    : visibility
                               },
                               () -> new List<Feature>()
                               );
+  }
+
+
+  /**
+   * Parse type parameter type suffix
+   *
+typeType    : "type"
+            | "type" "..."
+            ;
+   */
+  Impl typeType()
+  {
+    match(Token.t_type, "argType");
+    return splitSkip("...") ? Impl.TYPE_PARAMETER_OPEN
+                            : Impl.TYPE_PARAMETER;
   }
 
 
@@ -875,7 +907,22 @@ argument    : visibility
               {
                 visibility();
                 modifiers();
-                result = skipArgNames() && skipType();
+                result = skipArgNames();
+                if (result)
+                  {
+                    if (skip(Token.t_type))
+                      {
+                        splitSkip("...");
+                      }
+                    else
+                      {
+                        result = skipType();
+                        if (result && skipDot() && skip(Token.t_type))
+                          {
+                            splitSkip("...");
+                          }
+                      }
+                  }
                 if (result)
                   {
                     contract();
@@ -923,10 +970,26 @@ argument    : visibility
                     skipName();
                   }
                 while (skipComma());
-                if (!skipType())
+                if (skip(Token.t_type))
+                  {
+                    splitSkip("...");
+                  }
+                else if (!skipType())
                   {
                     result[0] = FormalOrActual.actual;
                     return false;
+                  }
+                else if (skipDot())
+                  {
+                    if (!skip(Token.t_type))
+                      {
+                        result[0] = FormalOrActual.actual;
+                        return false;
+                      }
+                    else
+                      {
+                        splitSkip("...");
+                      }
                   }
               }
             while (skipComma());
@@ -2736,13 +2799,11 @@ nextValue   : COMMA exprAtMinIndent
             p2 = new Impl(pos, exprAtMinIndent(), p2.kind_);
           }
       }
-    Feature f1 = new Feature(pos,SourcePosition.notAvailable,v1,m1,r1,new List<>(n1),
-                             FormalGenerics.NONE,
+    Feature f1 = new Feature(pos,SourcePosition.notAvailable, v1,m1,r1,new List<>(n1),
                              new List<Feature>(),
                              new List<>(),
                              c1,p1);
-    Feature f2 = new Feature(pos,SourcePosition.notAvailable,v2,m2,r2,new List<>(n2),
-                             FormalGenerics.NONE,
+    Feature f2 = new Feature(pos,SourcePosition.notAvailable ,v2,m2,r2,new List<>(n2),
                              new List<Feature>(),
                              new List<>(),
                              c2,p2);
@@ -3160,7 +3221,8 @@ env         : simpletype dot "env"
    */
   Env env()
   {
-    var t = simpletype(true);
+    var t = simpletype(null);
+    skipDot();
     var e = new Env(posObject(), t);
     match(Token.t_env, "env");
     return e;
@@ -3187,7 +3249,7 @@ env         : simpletype dot "env"
    */
   boolean skipEnvPrefix()
   {
-    return skipSimpletype(true) && skip(Token.t_env);
+    return skipSimpletype() && skipDot() && skip(Token.t_env);
   }
 
 
@@ -3526,7 +3588,7 @@ typeOpt     : type
     SourcePosition pos = posObject();
     if (skip(Token.t_ref))
       {
-        result = simpletype(false);
+        result = simpletype(null);
         result.setRef();
       }
     else if (skip(Token.t_fun))
@@ -3557,7 +3619,7 @@ typeOpt     : type
       }
     else
       {
-        result = simpletype(false);
+        result = simpletype(null);
         if (skip("->"))
           {
             result = Type.funType(pos, type(), new List<>(result));
@@ -3578,7 +3640,7 @@ typeOpt     : type
     boolean result;
     if (skip(Token.t_ref))
       {
-        result = skipSimpletype(false);
+        result = skipSimpletype();
       }
     else if (skip(Token.t_fun))
       {
@@ -3602,7 +3664,7 @@ typeOpt     : type
       }
     else
       {
-        result = skipSimpletype(false) && (!skip("->") || skipSimpletype(false));
+        result = skipSimpletype() && (!skip("->") || skipSimpletype());
       }
     return result;
   }
@@ -3611,27 +3673,41 @@ typeOpt     : type
   /**
    * Parse simpletype
    *
-simpletype  : name actualGens
-              ( dot simpletype
-              |
-              )
+   * @param lhs the left hand side for this type that was already parsed, null
+   * if none.
+   *
+simpletype  : name actualGens typeTail
+            ;
+typeTail    : dot simpletype
+            |
             ;
    */
-  Type simpletype(boolean expectEnv)
+  Type simpletype(Type lhs)
   {
-    Type result = null;
     do
       {
-        if (result == null || !expectEnv || current() != Token.t_env)
-          {
-            result = new Type(posObject(),
-                              name(),
-                              actualGens(),
-                              result);
-          }
+        lhs = new Type(posObject(), name(), actualGens(), lhs);
       }
-    while (skipDot());
-    return result;
+    while (!isDotEnvOrType() && skipDot());
+    return lhs;
+  }
+
+
+  /**
+   * Check if the current position is a dot followed by "env" or "type".  Does
+   * not change the position of the parser.
+   *
+   * @return true iff the next token(s) is a dot followed by "env"
+   */
+  boolean isDotEnvOrType()
+  {
+    if (isDot())
+      {
+        var f = fork();
+        return f.skipDot() && (f.skip(Token.t_env ) ||
+                               f.skip(Token.t_type)    );
+      }
+    return false;
   }
 
 
@@ -3641,18 +3717,10 @@ simpletype  : name actualGens
    * @return true iff the next token(s) is a simpletype, otherwise no simpletype
    * was found and the parser/lexer is at an undefined position.
    */
-  boolean skipSimpletype(boolean expectEnv)
+  boolean skipSimpletype()
   {
     boolean result = false;
-    do
-      {
-        if (!result || !expectEnv || current() != Token.t_env)
-          {
-            result = skipName() && skipActualGens();
-          }
-      }
-    while (result && skipDot());
-    return result;
+    return skipName() && skipActualGens() && (isDotEnvOrType() || !skipDot() || skipSimpletype());
   }
 
 
@@ -3770,6 +3838,15 @@ dot         : "."      // either preceded by white space or not followed by whit
 
   // NYI
   private static final boolean expectIncompleteSourceCode = true;
+  /**
+   * Check if current is "." but not a fullStop.
+   */
+  boolean isDot()
+  {
+    return !isFullStop() && isOperator('.');
+  }
+
+
   /**
    * Check if current is "." followed by white space.
    */
