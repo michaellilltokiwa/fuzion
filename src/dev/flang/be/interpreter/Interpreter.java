@@ -1383,12 +1383,6 @@ public class Interpreter extends ANY
       }
   }
 
-  public static void clear()
-  {
-    _callStack.clear();
-    _callStackFrames.clear();
-  }
-
 }
 
 /* end of file */
