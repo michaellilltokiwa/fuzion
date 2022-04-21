@@ -331,6 +331,18 @@ class Intrinsics extends ANY
       case "f64.infix >"         : return outer.gt(A0).cond(c._names.FZ_TRUE, c._names.FZ_FALSE).ret();
       case "f32.infix >="        :
       case "f64.infix >="        : return outer.ge(A0).cond(c._names.FZ_TRUE, c._names.FZ_FALSE).ret();
+      case "f32.as_f64"          : return outer.castTo("fzT_1f64").ret();
+      case "f64.as_f32"          : return outer.castTo("fzT_1f32").ret();
+      case "f64.as_i64_lax"      :
+                                    // workaround for clang warning: "integer literal is too large to be represented in a signed integer type"
+                                    var i64Min = (new CIdent("9223372036854775807")).neg().sub(new CIdent("1"));
+                                    var i64Max =  new CIdent("9223372036854775807");
+                                    return CStmnt.seq(
+                                              CExpr.iff(CExpr.call("isnan", new List<>(outer)).ne(new CIdent("0")), new CIdent("0").ret()),
+                                              CExpr.iff(outer.ge(i64Max.castTo("fzT_1f64")), i64Max.castTo("fzT_1i64").ret()),
+                                              CExpr.iff(outer.le(i64Min.castTo("fzT_1f64")), i64Min.castTo("fzT_1i64").ret()),
+                                              outer.castTo("fzT_1i64").ret()
+                                            );
       case "f32.castTo_u32"      : return outer.adrOf().castTo("fzT_1u32*").deref().ret();
       case "f64.castTo_u64"      : return outer.adrOf().castTo("fzT_1u64*").deref().ret();
       case "f32.asString"        :
@@ -442,6 +454,30 @@ class Intrinsics extends ANY
                             str.assign(CExpr.call("getenv",new List<>(A0.castTo("char*")))),
                             c.constString(str, CExpr.call("strlen",new List<>(str)), tmp),
                             tmp.castTo(c._types.clazz(rc)).ret());
+        }
+      case "fuzion.sys.thread.spawn0":
+        {
+          var oc = c._fuir.clazzActualGeneric(cl, 0);
+          var call = c._fuir.lookupCall(oc);
+          if (c._fuir.clazzNeedsCode(call))
+            {
+              var pt = new CIdent("pt");
+              var res = new CIdent("res");
+              return CStmnt.seq(CExpr.decl("pthread_t *", pt),
+                                CExpr.decl("int", res),
+                                pt.assign(CExpr.call("malloc", new List<>(CExpr.sizeOfType("pthread_t")))),
+                                CExpr.iff(pt.eq(CNames.NULL),
+                                          CStmnt.seq(CExpr.fprintfstderr("*** malloc(%lu) failed\n", CExpr.sizeOfType("pthread_t")),
+                                                     CExpr.call("exit", new List<>(CExpr.int32const(1))))),
+                                res.assign(CExpr.call("pthread_create", new List<>(pt,
+                                                                                   CNames.NULL,
+                                                                                   CExpr.ident(c._names.function(call, false)).adrOf().castTo("void *(*)(void *)"),
+                                                                                   A0.castTo("void *")))),
+                                CExpr.iff(res.ne(CExpr.int32const(0)),
+                                          CStmnt.seq(CExpr.fprintfstderr("*** pthread_create failed with return code %d\n",res),
+                                                     CExpr.call("exit", new List<>(CExpr.int32const(1))))));
+              // NYI: free(pt)!
+            }
         }
       case "fuzion.std.nano_time":
         {

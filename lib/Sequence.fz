@@ -80,6 +80,13 @@ Sequence<T> ref is
     => asList.forceHead
 
 
+  # get the head of this list or default if sequence is empty
+  #
+  first(default T)
+    =>
+      if isEmpty then default else first
+
+
   # get the last element of this list, panic if list is empty
   #
   # This may take time in O(count), in particular, it may not terminate
@@ -89,6 +96,13 @@ Sequence<T> ref is
     pre
       debug: !isEmpty
    => asList.last
+
+
+  # get the last element of this list or default if sequence is empty
+  #
+  last(default T)
+    =>
+    if isEmpty then default else last
 
 
   # collect the contents of this Sequence into an array
@@ -126,7 +140,7 @@ Sequence<T> ref is
 
   # create a new stream and filter its elements using predicate f
   #
-  filter   (f T -> bool) stream<T> is asStream.filter f
+  filter   (f T -> bool) Sequence<T> is asList.filter f
 
 
   # create a new stream and filter its elements using predicate f, infix operator
@@ -283,6 +297,15 @@ Sequence<T> ref is
   # elements of this list and 'b' in order.
   #
   zip<U,V>(b Sequence<U>, f (T,U)->V) => asList.zip0 b.asList f
+
+
+  # the nth element in the sequence,
+  nth(n i32) option<T>
+    pre n >= 0
+  is
+    match drop n
+      nil => nil
+      c Cons => c.head
 
 
 # Sequences -- unit type defining features related to Sequence but not requiring
