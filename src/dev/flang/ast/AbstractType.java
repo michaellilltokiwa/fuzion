@@ -971,12 +971,12 @@ public abstract class AbstractType extends ANY implements Comparable<AbstractTyp
           {
             var p = f.pos();
             // redef name => "<type name>"
-            var n = new Feature(p, Consts.VISIBILITY_PUBLIC, Consts.MODIFIER_REDEFINE, NoType.INSTANCE, new List<>("name"), new List<Feature>(),
+            var n = new Feature(p, SourcePosition.notAvailable, Consts.VISIBILITY_PUBLIC, Consts.MODIFIER_REDEFINE, NoType.INSTANCE, new List<>("name"), new List<Feature>(),
                                 new List<>(), new Contract(null, null, null),
                                 new Impl(p, new StrConst(p, asString(), false), Impl.Kind.RoutineDef));
             // type.#type : Type is
             //   redef name => "<type name>"
-            var tf = new Feature(p, f.visibility(), 0, NoType.INSTANCE, new List<>(f.qualifiedName()+"."+FuzionConstants.TYPE_NAME), new List<Feature>(),
+            var tf = new Feature(p, SourcePosition.notAvailable, f.visibility(), 0, NoType.INSTANCE, new List<>(f.qualifiedName()+"."+FuzionConstants.TYPE_NAME), new List<Feature>(),
                                  new List<>(new Call(p, "Type")),
                                  new Contract(null,null,null),
                                  new Impl(p, new Block(p, new List<>(n)), Impl.Kind.Routine));
