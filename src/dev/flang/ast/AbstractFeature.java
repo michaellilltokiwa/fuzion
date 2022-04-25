@@ -33,7 +33,6 @@ import java.util.TreeSet;
 
 import dev.flang.util.ANY;
 import dev.flang.util.Errors;
-import dev.flang.util.FuzionConstants;
 import dev.flang.util.HasSourcePosition;
 import dev.flang.util.List;
 import dev.flang.util.SourcePosition;
@@ -182,7 +181,7 @@ public abstract class AbstractFeature extends ANY implements Comparable<Abstract
       (state().atLeast(Feature.State.LOADED));
 
     AbstractFeature r = this;
-    while (!r.isUniverse())
+    while (!r.isUniverse() && r != Types.f_ERROR)
       {
         r = r.outer();
       }
@@ -520,7 +519,7 @@ public abstract class AbstractFeature extends ANY implements Comparable<Abstract
     var result = resultTypeRaw(generics);
     if (result != null && result instanceof Type rt)
       {
-        rt.findGenerics(outer());
+        result = rt.visit(Feature.findGenerics,outer());
       }
     return result;
   }
@@ -992,6 +991,11 @@ public abstract class AbstractFeature extends ANY implements Comparable<Abstract
     return result;
   }
 
+
+  /**
+   * Visibility of this feature
+   */
+  public abstract Visi visibility();
 
   public abstract FeatureName featureName();
   public abstract List<AbstractCall> inherits();

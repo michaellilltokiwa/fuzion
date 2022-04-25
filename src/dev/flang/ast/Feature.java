@@ -141,9 +141,10 @@ public class Feature extends AbstractFeature implements Stmnt
 
 
   /**
-   * the visibility of this feature
+   * The visibility of this feature
    */
   private Visi _visibility;
+  public Visi visibility() { return _visibility; }
 
 
   /**

@@ -31,6 +31,7 @@ import java.nio.file.Path;
 import dev.flang.ast.*;
 
 import dev.flang.util.Errors;
+import dev.flang.util.FuzionConstants;
 import dev.flang.util.List;
 import dev.flang.util.SourcePosition;
 
@@ -360,9 +361,9 @@ visiFlag    : "export" visiList
             | "protected"
             | "public"
             ;
-visiList    : e=visi ( COMMA visiList
-                     |
-                     )
+visiList    : visi ( COMMA visiList
+                   |
+                   )
             ;
   */
   Visi visibility()
@@ -435,7 +436,7 @@ qual        : name ( dot qual
    */
   List<String> qual(boolean mayBeAtMinIndent)
   {
-    List<String> result = new List<>(name(mayBeAtMinIndent));
+    List<String> result = new List<>(name(mayBeAtMinIndent, false));
     while (skipDot())
       {
         result.add(name());
@@ -462,9 +463,9 @@ name        : IDENT                            // all parts of name must be in s
    */
   String name()
   {
-    return name(false);
+    return name(false, false);
   }
-  String name(boolean mayBeAtMinIndent)
+  String name(boolean mayBeAtMinIndent, boolean ignoreError)
   {
     String result = Errors.ERROR_STRING;
     int pos = pos();
@@ -482,32 +483,34 @@ name        : IDENT                            // all parts of name must be in s
               next();
               if (skip('?'))
                 {
-                  if (!skipColon())
+                  if (skipColon())
+                    {
+                      result = "ternary ? :";
+                    }
+                  else if (!ignoreError)
                     {
                       syntaxError(pos, "':' after 'ternary ?'", "name");
                     }
                 }
-              else
+              else if (!ignoreError)
                 {
                   syntaxError(pos, "'? :' after 'ternary'", "name");
                 }
-              result = "ternary ? :";
               break;
             }
           case t_index  :
             {
               next();
-              match(Token.t_lcrochet, "name: index");
-              if (isOperator(".."))
+              if (!ignoreError || current() == Token.t_lcrochet)
                 {
-                  next();
-                  result = "index [..]";
+                  match(Token.t_lcrochet, "name: index");
+                  var dotdot = skip("..");
+                  if (!ignoreError || current() == Token.t_rcrochet)
+                    {
+                      match(Token.t_rcrochet, "name: index");
+                      result = dotdot ? "index [..]" : "index [ ]";
+                    }
                 }
-              else
-                {
-                  result = "index [ ]";
-                }
-              match(Token.t_rcrochet, "name: index");
               break;
             }
           case t_set    :
@@ -516,18 +519,20 @@ name        : IDENT                            // all parts of name must be in s
               if (current() == Token.t_lcrochet)
                 {
                   match(Token.t_lcrochet, "name: set");
-                  match(Token.t_rcrochet, "name: set");
-                  result = "index [ ] =";
+                  if (!ignoreError || current() == Token.t_rcrochet)
+                    {
+                      match(Token.t_rcrochet, "name: set");
+                      result = "index [ ] =";
+                    }
                 }
               else if (current() == Token.t_ident)
                 {
                   result = identifier() + " =";
                   match(Token.t_ident, "name: set");
                 }
-              else
+              else if (!ignoreError)
                 {
                   syntaxError(pos, "'[ ]' or identifier after 'set'", "name");
-                  result = Errors.ERROR_STRING;
                 }
               break;
             }
@@ -535,7 +540,7 @@ name        : IDENT                            // all parts of name must be in s
           }
         sameLine(oldLine);
       }
-    else
+    else if (!ignoreError)
       {
         syntaxError(pos, "identifier name, infix/prefix/postfix operator, 'ternary ? :', 'index' or 'set' name", "name");
       }
@@ -569,7 +574,6 @@ name        : IDENT                            // all parts of name must be in s
   }
 
 
-
   /**
    * Check if the current position has a name and skip it.
    *
@@ -580,7 +584,7 @@ name        : IDENT                            // all parts of name must be in s
     boolean result = isNamePrefix();
     if (result)
       {
-        name();
+        return name(false, true) != Errors.ERROR_STRING;
       }
     return result;
   }
@@ -701,14 +705,14 @@ formGens    : "<" formGensBody ">"
             | "<" ">"
             |
             ;
-formGensBody: l=genericList ( "..."
-                            |
-                            )
+formGensBody: genericList ( "..."
+                          |
+                          )
             |
             ;
-genericList : e=generic  ( COMMA genericList
-                         |
-                         )
+genericList : generic  ( COMMA genericList
+                       |
+                       )
             ;
    */
   List<Feature> formGens()
@@ -950,7 +954,8 @@ typeType    : "type"
   FormalOrActual skipFormArgsNotActualArgs()
   {
     var result = new FormalOrActual[] { FormalOrActual.both };
-    skipBracketTermWithNLs(PARENS, () -> {
+    var sr = current() != Token.t_lparen ||
+      skipBracketTermWithNLs(PARENS, () -> {
         if (current() != Token.t_rparen)
           {
             do
@@ -994,12 +999,15 @@ typeType    : "type"
               }
             while (skipComma());
           }
-        if (!skip(Token.t_rparen))
+        if (current() != Token.t_rparen)
           {
             result[0] = FormalOrActual.actual;
+            return false;
           }
-        return false;
+        return true;
       });
+    if (CHECKS) check
+      (sr || result[0] != FormalOrActual.both); // in case skipBracketTerm failed, we better have a decision.
     return result[0];
   }
 
@@ -1217,31 +1225,32 @@ callList    : call ( COMMA callList
   /**
    * Parse call
    *
-call        : name ( actualGens actualArgs callTail
-                   | dot ( NUM_LITERAL callTail
-                         | call
-                         )
-                   )
+call        : nameOrType actuals callTail
+            ;
+nameOrType  : name
+            | "type"
+            ;
+actuals     : actualGens actualArgs
+            | dot NUM_LITERAL
             ;
    */
   Call call(Expr target)
   {
     SourcePosition pos = posObject();
     var line = line();
-    String n = name();
+    String n = skip(Token.t_type) ? FuzionConstants.TYPE_NAME : name();
     Call result;
+    var skippedDot = false;
     if (skipDot())
       {
         if (current() == Token.t_numliteral)
           {
-            var select = skipNumLiteral();
-            result = new Call(pos, target, n, select == null ? "0" : select.plainInteger());
-            result = callTail(result);
+            result = new Call(pos, target, n, skipNumLiteral().plainInteger());
           }
         else
           {
             result = new Call(pos, target, n);
-            result = call(result);
+            skippedDot = true;
           }
       }
     else
@@ -1251,8 +1260,8 @@ call        : name ( actualGens actualArgs callTail
         var g = (!isActualGens()) ? Call.NO_GENERICS : actualGens();
         var l = actualArgs(line);
         result = new Call(pos, target, n, g, l);
-        result = callTail(result);
       }
+    result = callTail(skippedDot, result);
     return result;
   }
 
@@ -1293,22 +1302,27 @@ indexCall   : ( LBRACKET exprList RBRACKET
   /**
    * Parse callTail
    *
-callTail    : ( indexCall
-              |
-              )
-              ( dot call
-              |
-              )
+   * @param skippedDot true if a dot was already skipDot()ed.
+   *
+   * @param target the target of the call
+   *
+callTail    : indexCallOpt dotCallOpt
+            ;
+indexCallOpt: indexCall
+            |
+            ;
+dotCallOpt  : dot call
+            |
             ;
    */
-  Call callTail(Call target)
+  Call callTail(boolean skippedDot, Call target)
   {
-    Call result = target;
-    if (!ignoredTokenBefore() && current() == Token.t_lcrochet)
+    var result = target;
+    if (!skippedDot && !ignoredTokenBefore() && current() == Token.t_lcrochet)
       {
         result = indexCall(result);
       }
-    if (skipDot())
+    if (skippedDot || skipDot())
       {
         result = call(result);
       }
@@ -2145,7 +2159,7 @@ op          : OPERATOR
    * Parse fun
    *
 fun         : "fun" function
-            | "fun" c=call
+            | "fun" call
             ;
    */
   Expr fun()
@@ -2175,7 +2189,7 @@ function    : formArgsOpt
               contract
               ( block
               | "is" block
-              | ARROW e=block
+              | ARROW block
               )
             ;
    */
@@ -2525,7 +2539,7 @@ brblock     : BRACEL stmnts BRACER
    * Parse stmnts
    *
 stmnts      :
-            | s=stmnt semiOrFlatLF l=stmnts (semiOrFlatLF | )
+            | stmnt semiOrFlatLF stmnts (semiOrFlatLF | )
             ;
    */
   List<Stmnt> stmnts()
@@ -3213,6 +3227,7 @@ qualThis    : name ( dot name )* dot "this"
     return result;
   }
 
+
   /**
    * Parse env
    *
@@ -3385,7 +3400,7 @@ implRout    : block
             | "is" "intrinsic"
             | "is" "intrinsic_constructor"
             | "is" block
-            | ARROW e=block
+            | ARROW block
             | "of" block
             | fullStop
             ;
@@ -3571,9 +3586,9 @@ onetype     : "ref" simpletype
             | "fun" funArgsOpt typeOpt
             | simpletype "->" simpletype
             | funArgs "->" simpletype
-            | t=simpletype
+            | simpletype
             ;
-funArgs     : LPAREN a=typeList RPAREN
+funArgs     : LPAREN typeList RPAREN
             ;
 funArgsOpt  : funArgs
             |
@@ -3606,14 +3621,9 @@ typeOpt     : type
           ? Type.funType(pos, type(), a)
           : Type.funType(pos, new Type("unit"), a);
       }
-    else if (skip(Token.t_lparen))
+    else if (current() == Token.t_lparen)
       {
-        var a = Type.NONE;
-        if (current() != Token.t_rparen)
-          {
-            a = typeList();
-          }
-        match(Token.t_rparen, "funTypeArgs");
+        var a = bracketTermWithNLs(PARENS, "funArgs", () -> current() != Token.t_rparen ? typeList() : Type.NONE);
         matchOperator("->", "onetype");
         result = Type.funType(pos, type(), a);
       }
@@ -3655,16 +3665,18 @@ typeOpt     : type
           }
         result = result && !isTypePrefix() || skipType();
       }
-    else if (skip(Token.t_lparen))
-      {
-        result = ((current() == Token.t_rparen) || skipTypeList()) &&
-          skip(Token.t_rparen) &&
-          skip("->") &&
-          skipType();
-      }
     else
       {
-        result = skipSimpletype() && (!skip("->") || skipSimpletype());
+        var f = fork();
+        if (f.skipBracketTermWithNLs(PARENS, () -> f.current() == Token.t_rparen || f.skipTypeList()))
+          {
+            skipBracketTermWithNLs(PARENS, () -> current() == Token.t_rparen || skipTypeList());
+            result = skip("->") && skipType();
+          }
+        else
+          {
+            result = skipSimpletype() && (!skip("->") || skipSimpletype());
+          }
       }
     return result;
   }
@@ -3677,6 +3689,7 @@ typeOpt     : type
    * if none.
    *
 simpletype  : name actualGens typeTail
+            | name typePars typeTail
             ;
 typeTail    : dot simpletype
             |
@@ -3686,7 +3699,14 @@ typeTail    : dot simpletype
   {
     do
       {
-        lhs = new Type(posObject(), name(), actualGens(), lhs);
+        var p = posObject();
+        var n = name();
+        var a = actualGens();
+        if (a.isEmpty())
+          {
+            a = typePars();
+          }
+        lhs = new Type(p, n, a, lhs);
       }
     while (!isDotEnvOrType() && skipDot());
     return lhs;
@@ -3720,7 +3740,135 @@ typeTail    : dot simpletype
   boolean skipSimpletype()
   {
     boolean result = false;
-    return skipName() && skipActualGens() && (isDotEnvOrType() || !skipDot() || skipSimpletype());
+    return skipName() && skipActualGens() && skipTypePars() && (isDotEnvOrType() || !skipDot() || skipSimpletype());
+  }
+
+
+  /**
+   * Parse typePars
+   *
+typePars    : typeInParens typePars
+            | "(" typeList ")"
+            |
+            ;
+   */
+  List<AbstractType> typePars()
+  {
+    if (ignoredTokenBefore() || current() != Token.t_lparen)
+      {
+        var res = new List<AbstractType>();
+        while (isTypePrefix())
+          {
+            res.add(typeInParens());
+          }
+        return res;
+      }
+    else
+      {
+        return bracketTermWithNLs(PARENS, "typePars",
+                                  () -> typeList(),
+                                  () -> new List<>());
+      }
+  }
+
+
+  /**
+   * Parse typeInParens
+   *
+   * This is a little tricky since a lambda '()->i32' or '(u8,bool)->f64' is a type,
+   * while '(u8)', '((()->i32))' or '((((u8,bool)->f64)))' are types in parentheses.
+   *
+typeInParens: "(" typeInParens ")"
+            | type         // no white space except enclosed in { }, [ ], or ( ).
+            ;
+   */
+  AbstractType typeInParens()
+  {
+    AbstractType result;
+    if (current() == Token.t_lparen)
+      {
+        var pos = pos();
+        var l = bracketTermWithNLs(PARENS, "typeInParens",
+                                   () -> typeList(),
+                                   () -> new List<AbstractType>());
+        if (isOperator("->"))
+          {
+            matchOperator("->", "onetype");
+            result = Type.funType(posObject(pos), type(), l);
+          }
+        else if (l.size() == 1)
+          {
+            result = l.get(0);
+          }
+        else
+          {
+            syntaxError(pos, "exaclty one type", "typeInParens");
+            result = Types.t_ERROR;
+          }
+      }
+    else
+      {
+        var eas = endAtSpace(pos());
+        result = type();
+        endAtSpace(eas);
+      }
+    return result;
+  }
+
+
+  /**
+   * Check if the current position has typePars and skip them.
+   *
+   * @return true iff the next token(s) form typePars, otherwise no typePars
+   * was found and the parser/lexer is at an undefined position.
+   */
+  boolean skipTypePars()
+  {
+    if (ignoredTokenBefore() || current() != Token.t_lparen)
+      {
+        while (skipTypeInParens())
+          {
+          }
+        return true;
+      }
+    else
+      {
+        var f = fork();
+        if (f.skipBracketTermWithNLs(PARENS, ()->f.skipTypeList()))
+          {
+            skipBracketTermWithNLs(PARENS, ()->skipTypeList());
+            return true;
+          }
+      }
+    return false;
+  }
+
+
+  /**
+   * Check if the current position has typeInParens and skip them.
+   *
+   * @return true if a typeInPaens was skipped
+   */
+  boolean skipTypeInParens()
+  {
+    if (isTypePrefix())
+      {
+        var f = fork();
+        f.endAtSpace(pos());
+        if (f.skipType())
+          {
+            var eas = endAtSpace(pos());
+            skipType();
+            endAtSpace(eas);
+            return true;
+          }
+      }
+    var f = fork();
+    if (f.skipBracketTermWithNLs(PARENS, ()->f.skipTypeList()))
+      {
+        return skipBracketTermWithNLs(PARENS, ()->skipTypeList());
+      }
+    return false;
   }
 
 

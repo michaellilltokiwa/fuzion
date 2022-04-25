@@ -700,8 +700,25 @@ public class Call extends AbstractCall
        ? thiz.outer().state().atLeast(Feature.State.RESOLVED_DECLARATIONS)
        : thiz        .state().atLeast(Feature.State.RESOLVED_DECLARATIONS));
 
-    if (calledFeature_ == null &&
-        name != Errors.ERROR_STRING)    // If call parsing failed, don't even try
+    if (calledFeature_ == null && name == FuzionConstants.TYPE_NAME)
+      {
+        if (CHECKS) check
+          (target != null,
+           _actuals.size() == 0,
+           generics.size() == 0);
+
+        AbstractType t = target.asType(thiz, null).resolve(res, thiz);
+        if (t.isGenericArgument())
+          {
+            Errors.fatal(pos(), "NYI: 'A.type' for generic argument type not supported yet.", null);
+          }
+        else
+          {
+            calledFeature_ = t.typeFeature(res);
+          }
+        target = new Universe();
+      }
+    else if (calledFeature_ == null && name != Errors.ERROR_STRING)    // If call parsing failed, don't even try
       {
         var targetFeature = targetFeature(res, thiz);
         if (CHECKS) check
@@ -776,12 +793,11 @@ public class Call extends AbstractCall
    *
    * @return the Type corresponding to this, Type.t_ERROR in case of an error.
    */
-  Type asType(AbstractFeature outer, AbstractFeature tp)
+  AbstractType asType(AbstractFeature outer, AbstractFeature tp)
   {
-    var result = new Type(pos(), name, generics,
-                          target == null ? null : target.asType(outer, tp));
-    result.findGenerics(tp.outer());
-    return result;
+    AbstractType result = new Type(pos(), name, generics,
+                                   target == null || target instanceof Universe ? null : target.asType(outer, tp));
+    return result.visit(Feature.findGenerics, outer);
   }
 
 
@@ -799,7 +815,7 @@ public class Call extends AbstractCall
   {
     return ff.hasOpenGenericsArgList()               /* actual generics might come from type inference */
       || forFun                                      /* a fun-declaration "fun a.b.f" */
-      || ff.featureName().argCount() == 0 && hasParentheses(); /* maybe an implicit call to a Function / Routine, see resolveImmediateFunctionCall() */
+      || ff.arguments().size()==0 && hasParentheses(); /* maybe an implicit call to a Function / Routine, see resolveImmediateFunctionCall() */
   }
 
 
@@ -946,7 +962,9 @@ public class Call extends AbstractCall
            }
        },
        outer);
-    if (target != null)
+    if (target != null &&
+        // for 'xyz.type' target is 'xyz', which is never called, so do not visit it:
+        name != FuzionConstants.TYPE_NAME)
       {
         target = target.visit(v, outer);
       }
