@@ -1,0 +1,2 @@
+example is
+  say (1.4).as_i64_lax
