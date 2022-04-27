@@ -4000,11 +4000,7 @@ dot         : "."      // either preceded by white space or not followed by whit
    */
   boolean isFullStop()
   {
-    return isOperator('.')
-      && !ignoredTokenBefore()
-      && ignoredTokenAfter()
-      // NYI
-      && !expectIncompleteSourceCode;
+    return isOperator('.') && !ignoredTokenBefore() && ignoredTokenAfter();
   }
 
 
