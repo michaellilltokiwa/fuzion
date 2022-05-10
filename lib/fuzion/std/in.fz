@@ -17,31 +17,15 @@
 #
 #  Tokiwa Software GmbH, Germany
 #
-#  Source code of Fuzion standard library feature error
+#  Source code of Fuzion standard library feature fuzion.std.in
 #
-#  Author: Fridtjof Siebert (siebert@tokiwa.software)
+#  Author: Michael Lill (michael.lill@tokiwa.software)
 #
 # -----------------------------------------------------------------------
 
-# error represents an error condition described by a message string
-#
-# NYI: Future versions of error might be equipped with a stack trace if
-# debugging is enabled
-#
-error (
+# fuzion.std.in
+# NYI name std.in does not work right now since in is reserved keyword
+public fuzion.stdin is
 
-  # the message describing the error. Should usually be a single line not
-  # followed by a linefeed.
-  #
-  msg string
-
-  )
-
-is
-
-  # converts error to a string
-  #
-  # returns "error: $msg"
-  #
-  redef asString string is
-    "error: $msg"
+  # returns 0 if EOF, next byte of stdin otherwhise
+  private nextByte u8 is intrinsic

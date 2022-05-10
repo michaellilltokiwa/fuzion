@@ -17,31 +17,34 @@
 #
 #  Tokiwa Software GmbH, Germany
 #
-#  Source code of Fuzion standard library feature error
+#  Source code of Fuzion test Makefile to be included for simple tests which require stdin
 #
 #  Author: Fridtjof Siebert (siebert@tokiwa.software)
 #
 # -----------------------------------------------------------------------
 
-# error represents an error condition described by a message string
+# A simple tests compares the actual output with the expected output
 #
-# NYI: Future versions of error might be equipped with a stack trace if
-# debugging is enabled
+# expected variables
 #
-error (
+#  NAME -- the name of the main feature to be tested
+#  FUZION -- the fz command
+#  FUZION_OPTIONS -- options to be passed to $(FUZION)
 
-  # the message describing the error. Should usually be a single line not
-  # followed by a linefeed.
-  #
-  msg string
+FUZION_OPTIONS ?=
+FUZION ?= ../../bin/fz
+FILE = $(NAME).fz
+STDIN = $(NAME).fz.stdin
+FUZION_RUN = $(FUZION) $(FUZION_OPTIONS)
 
-  )
+int:
+	cat $(STDIN) | ../check_simple_example.sh "$(FUZION_RUN)" $(FILE) || exit 1
 
-is
+c:
+	cat $(STDIN) | ../check_simple_example_c.sh "$(FUZION_RUN)" $(FILE) || exit 1
 
-  # converts error to a string
-  #
-  # returns "error: $msg"
-  #
-  redef asString string is
-    "error: $msg"
+record:
+	cat $(STDIN) | ../record_simple_example.sh "$(FUZION_RUN)" $(FILE)
+
+record_c:
+	cat $(STDIN) | ../record_simple_example_c.sh "$(FUZION_RUN)" $(FILE)

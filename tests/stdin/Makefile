@@ -17,31 +17,12 @@
 #
 #  Tokiwa Software GmbH, Germany
 #
-#  Source code of Fuzion standard library feature error
+#  Source code of Fuzion test Makefile
 #
-#  Author: Fridtjof Siebert (siebert@tokiwa.software)
+#  Author: Michael Lill (michael.lill@tokiwa.software)
 #
 # -----------------------------------------------------------------------
 
-# error represents an error condition described by a message string
-#
-# NYI: Future versions of error might be equipped with a stack trace if
-# debugging is enabled
-#
-error (
+NAME = stdintest
 
-  # the message describing the error. Should usually be a single line not
-  # followed by a linefeed.
-  #
-  msg string
-
-  )
-
-is
-
-  # converts error to a string
-  #
-  # returns "error: $msg"
-  #
-  redef asString string is
-    "error: $msg"
+include ../simple_inp.mk
