@@ -115,6 +115,10 @@ private CNode<CTK,CTV>(bmp u32, array array<Branch<CTK,CTV>>) is
   asList => array.flatMapSequence<tuple<CTK,CTV>>(b -> b.asList).asList
 
 
+# previous node is either a failed node, a main node or empty=nil
+PNode<CTK, CTV>(data choice<FNode<CTK,CTV>, MainNode<CTK,CTV>, nil>) ref is
+
+
 # a container, T or linked list node
 # NYI should probably inhert from choice but nesting of choices leads to bugs currently, see: https://github.com/tokiwa-software/fuzion/issues/213
 private MainNode<CTK,CTV>(data choice<CNode<CTK,CTV>,TNode<CTK,CTV>,LNode<CTK,CTV>>, gen i32) ref : hasEquals<MainNode<CTK,CTV>> is
@@ -129,7 +133,7 @@ private MainNode<CTK,CTV>(data choice<CNode<CTK,CTV>,TNode<CTK,CTV>,LNode<CTK,CT
     MainNode.this.hashCode = o.hashCode
 
   asList
-  pre match prev
+  pre match atom.read.data
     nil => true
     * => false
    =>
@@ -140,65 +144,54 @@ private MainNode<CTK,CTV>(data choice<CNode<CTK,CTV>,TNode<CTK,CTV>,LNode<CTK,CT
 
 
   # a previous node that gets set during a generational aware compare and set
-  prev choice<FNode<CTK,CTV>, MainNode<CTK,CTV>, nil> := nil
-  set_prev(m MainNode<CTK,CTV>) unit
-  pre match prev
-        nil => true
-        * => false
+  atom := concur.atomic (PNode<CTK,CTV> nil)
+  set_prev(m MainNode<CTK,CTV>) bool
+  # NYI pre atom.read.data = nil
   is
-    set prev := m
+    atom.compare_exchange_weak atom.read (PNode m)
 
   # compare and set `prev`
-  CAS_PREV(o,n choice<FNode<CTK,CTV>, MainNode<CTK,CTV>, nil>) =>
-    # NYI
-    match n
-      f FNode =>
-        set prev := f
-      * =>
-        set prev := nil
-    true
-
+  CAS_PREV(o,n ref PNode<CTK,CTV>) =>
+    atom.compare_exchange_weak o n
 
 # a failed node where the previous indirection node contains a main node
-private FNode<CTK,CTV>(prev MainNode<CTK,CTV>) is
+private FNode<CTK,CTV>(prev MainNode<CTK,CTV>) ref is
 
 # an indirection node
 private INode<CTK,CTV>(data MainNode<CTK,CTV>) ref : hasEquals<INode<CTK,CTV>> is
 
+  in_atom := concur.atomic data
+
   # compare and set
-  private CAS(old_n, new_n MainNode<CTK,CTV>) bool is
-    # NYI this must be atomic
-    # if(main.hash != old_n.hash)
-    #   false
-    # else
-    set data := new_n
-    true
+  private CAS(old_n, new_n ref MainNode<CTK,CTV>) bool is
+    in_atom.compare_exchange_weak old_n new_n
 
   # completes the generation sensitive compare and set
   private GCAS_Commit(m MainNode<CTK,CTV>, ct ref CTrie<CTK,CTV>) MainNode<CTK,CTV>is
     # abortably read root and get the current gen
-    gen := (ct.RDCSS_READ_ROOT true).data.gen
-    match m.prev
+    gen := (ct.RDCSS_READ_ROOT_INODE true).in_atom.read.gen
+    prev := m.atom.read
+    match prev.data
       nil => m
       fn FNode =>
         if CAS m fn.prev
           fn.prev
         else
-          GCAS_Commit data ct
+          GCAS_Commit in_atom.read ct
       n MainNode =>
         if gen = m.gen && !ct.read_only
-          if m.CAS_PREV n nil
+          if m.CAS_PREV prev (PNode<CTK,CTV> nil)
             m
           else
             GCAS_Commit m ct
         else
-          m.CAS_PREV n (FNode n)
-          GCAS_Commit data ct
+          m.CAS_PREV prev (PNode (FNode n))
+          GCAS_Commit in_atom.read ct
 
   # read `data`, if prev is set commit first
   private GCAS_READ(ct ref CTrie<CTK,CTV>) MainNode<CTK,CTV> is
-    m := data
-    match m.prev
+    m := in_atom.read
+    match m.atom.read.data
       nil => m
       * => (GCAS_Commit m ct)
 
@@ -207,7 +200,7 @@ private INode<CTK,CTV>(data MainNode<CTK,CTV>) ref : hasEquals<INode<CTK,CTV>> i
     n.set_prev o
     if(CAS o n)
       GCAS_Commit n ct
-      match n.prev
+      match n.atom.read.data
         nil => OK
         * => RESTART
     else
@@ -224,13 +217,13 @@ private INode<CTK,CTV>(data MainNode<CTK,CTV>) ref : hasEquals<INode<CTK,CTV>> i
   infix = (o INode<CTK,CTV>) bool is
     INode.this.hashCode = o.hashCode
 
-  redef asString => "INode($data)"
+  redef asString => "INode({in_atom.read.asString})"
 
   asList list<tuple<CTK, CTV>>
-  pre match data.prev
+  pre match in_atom.read.atom.read.data
     nil => true
     * => false
-  is data.asList
+  is in_atom.read.asList
 
 
 # a linked list node
@@ -246,48 +239,69 @@ private OK is
 private CTrie<CTK: hasHash<CTK>, CTV>(root choice<INode<CTK,CTV>, RDCSS_Descriptor>, read_only bool) ref : map<CTK, CTV>
 is
 
-  private CAS_ROOT(ov, nv choice<INode<CTK,CTV>, RDCSS_Descriptor>) =>
-    # NYI CAS
-    set root := nv
-    true
+  # root node is either an inode or a descriptor
+  RNode<CTK,CTV>(data choice<INode<CTK,CTV>, RDCSS_Descriptor>) ref is
+    force_i_node =>
+      match data
+        n INode => n
+        d RDCSS_Descriptor => panic "expected inode got descriptor"
 
-  private RDCSS_Complete(abort bool) INode<CTK,CTV>
+  atom_root := concur.atomic (RNode root)
+
+  private CAS_ROOT(ov RNode<CTK,CTV>, nv RNode<CTK,CTV>) =>
+    atom_root.compare_exchange_weak ov nv
+
+  private RDCSS_Complete(abort bool) RNode<CTK,CTV>
   is
-    match root
-      n INode => n
+    r := atom_root.read
+    match r.data
+      n INode => r
       desc RDCSS_Descriptor =>
         if abort
-          if CAS_ROOT desc desc.ov
-            desc.ov
+          res := (RNode desc.ov)
+          if CAS_ROOT r res
+            res
           else
             RDCSS_Complete abort
         else
           old_main := desc.ov.GCAS_READ CTrie.this
           if old_main = desc.exp
-            if CAS_ROOT desc desc.nv
-              desc.nv
+            res := (RNode desc.nv)
+            if CAS_ROOT r res
+              res
             else
               RDCSS_Complete abort
           else
-            if CAS_ROOT desc desc.ov
-              desc.ov
+            res := (RNode desc.ov)
+            if CAS_ROOT r res
+              res
             else
               RDCSS_Complete abort
 
   # read root
   # if root is currently a descriptor commit the descriptor first
-  private RDCSS_READ_ROOT(abort bool) INode<CTK,CTV>
+  private RDCSS_READ_ROOT_INODE(abort bool) =>
+    (RDCSS_READ_ROOT abort).force_i_node
+
+
+  # read root
+  # if root is currently a descriptor, commit the descriptor first
+  private RDCSS_READ_ROOT(abort bool) RNode<CTK,CTV>
   is
-    match root
-      n INode => n
+    r := atom_root.read
+    match r.data
+      n INode => r
       d RDCSS_Descriptor => RDCSS_Complete abort
 
+  private RDCSS_READ_ROOT_INODE() => RDCSS_READ_ROOT_INODE false
   private RDCSS_READ_ROOT() => RDCSS_READ_ROOT false
 
-  private RDCSS_Descriptor(ov INode<CTK,CTV>, exp MainNode<CTK,CTV>, nv INode<CTK,CTV>) is
+  #
+  private RDCSS_Descriptor(ovr RNode<CTK,CTV>, exp MainNode<CTK,CTV>, nv INode<CTK,CTV>) is
+    ov => ovr.force_i_node
 
   private RDCSS_ROOT(desc RDCSS_Descriptor) =>
-    if CAS_ROOT desc.ov desc
+    if CAS_ROOT desc.ovr (RNode<CTK,CTV> desc)
       RDCSS_Complete false
       true
     else
@@ -401,7 +415,7 @@ is
 
   # lookup key k
   lookup(k CTK) option<CTV> is
-    r := RDCSS_READ_ROOT
+    r := RDCSS_READ_ROOT_INODE
     res := ilookup r k 0 nil r.data.gen
     match res
       r RESTART =>
@@ -449,7 +463,7 @@ is
   # add key value
   # if key is already present value is updated
   add(k CTK, v CTV) unit is
-    r := RDCSS_READ_ROOT
+    r := RDCSS_READ_ROOT_INODE
     match iinsert r k v 0 nil r.data.gen
       r RESTART =>
         add k v
@@ -492,7 +506,7 @@ is
   # remove key from ctrie
   # calls iremove which does the actual removal
   remove(k CTK) choice<NOTFOUND, CTV> is
-    r := RDCSS_READ_ROOT
+    r := RDCSS_READ_ROOT_INODE
     match iremove r k 0 nil r.data.gen
       r RESTART => remove k
       n NOTFOUND => n
@@ -553,10 +567,11 @@ is
   # take a snapshot of the ctrie
   snapshot(read_only bool) CTrie<CTK, CTV> is
     r := RDCSS_READ_ROOT
-    expmain := r.GCAS_READ CTrie.this
-    if(RDCSS_ROOT (RDCSS_Descriptor r expmain (r.copy_to_gen (r.data.gen +° 1) CTrie.this)))
+    ri := r.force_i_node
+    expmain := ri.GCAS_READ CTrie.this
+    if(RDCSS_ROOT (RDCSS_Descriptor r expmain (ri.copy_to_gen (ri.data.gen +° 1) CTrie.this)))
       # new ctrie by increasing gen of root by one
-      CTrie<CTK,CTV> (r.copy_to_gen (r.data.gen +° 1) CTrie.this) read_only
+      CTrie<CTK,CTV> (ri.copy_to_gen (ri.data.gen +° 1) CTrie.this) read_only
     else
       snapshot read_only
 
@@ -564,7 +579,7 @@ is
   # a snapshot of the ctrie as sequence auf key-value tuples
   redef items Sequence<tuple<CTK,CTV>> is
     (snapshot true)
-      .RDCSS_READ_ROOT
+      .RDCSS_READ_ROOT_INODE
       .asList
 
 # initialize a new ctrie

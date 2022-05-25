@@ -1,0 +1,26 @@
+atomics =>
+
+  exitCode := 0
+
+  chck(b bool, msg string) =>
+    s := if b
+      "PASSED: "
+    else
+      set exitCode := 1
+      "FAILED: "
+    say (s + msg)
+
+  a := "hello"
+  b := "stranger"
+
+  atomic_a := concur.atomic a
+
+  chck (atomic_a.read = "hello") "cas read is 'hello'"
+
+  chck ((atomic_a.compare_exchange_weak b "world") = false) "cas fails because wrong expected passed"
+  chck (atomic_a.read = "hello") "cas read is 'hello'"
+
+  chck ((atomic_a.compare_exchange_weak a "world") = true) "cas succeeds"
+  chck (atomic_a.read = "world") "cas read is 'world'"
+
+  fuzion.std.exit exitCode

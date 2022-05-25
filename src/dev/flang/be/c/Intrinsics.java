@@ -576,6 +576,36 @@ public class Intrinsics extends ANY
     put("fuzion.java.javaStringToString" , noJava);
     put("fuzion.java.stringToJavaObject0", noJava);
     put("fuzion.java.u16ToJavaObject"    , noJava);
+
+    put("concur.atomic.initialize",(c,cl,outer,in) -> {
+      var ecl = c._fuir.clazzActualGeneric(cl, 0);
+      var res = new CIdent("res");
+      return CStmnt.seq(
+        CExpr.decl("_Atomic", "(" + c._names.struct(ecl) + "*)", res, A0),
+        res.castTo("void *").ret()
+      );
+    });
+
+    put("concur.atomic.read",(c,cl,outer,in) -> {
+      var ecl = c._fuir.clazzActualGeneric(cl, 0);
+      return
+      CStmnt.seq(
+        CExpr.typedef("_Atomic (" + c._names.struct(ecl) + "*)", "tmp_type"),
+        CExpr.call("atomic_load", new List<>(A0.adrOf().castTo("tmp_type*"))).ret()
+      );
+    });
+
+    put("concur.atomic.compare_exchange_weak",(c,cl,outer,in) -> {
+      var ecl = c._fuir.clazzActualGeneric(cl, 0);
+      return  CStmnt.seq(
+        CExpr.typedef("_Atomic (" + c._names.struct(ecl) + "*)", "tmp_type"),
+        CStmnt.iff(
+          CExpr.call("atomic_compare_exchange_weak", new List<>(A0.adrOf().castTo("tmp_type*"), A1.adrOf(), A2)),
+          c._names.FZ_TRUE.ret()),
+          c._names.FZ_FALSE.ret()
+      );
+    });
+
   }
 
 

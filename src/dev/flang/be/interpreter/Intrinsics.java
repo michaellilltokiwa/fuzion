@@ -50,6 +50,7 @@ import java.util.ArrayList;
 import java.util.TreeMap;
 
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 
 
 /**
@@ -780,6 +781,23 @@ public class Intrinsics extends ANY
             return new boolValue(FuzionThread.current()._effects.get(cl) != null /* NOTE not containsKey since cl may map to null! */ );
           };
       }
+    else if (n.equals("concur.atomic.initialize")){
+      result = (args) -> {
+        return new JavaRef(new AtomicReference<Object>(args.get(1)));
+      };
+    }
+    else if (n.equals("concur.atomic.read")){
+      result = (args) -> {
+        var r = ((JavaRef)args.get(1));
+        return (Value)((AtomicReference<Object>)r._javaRef).get();
+      };
+    }
+    else if (n.equals("concur.atomic.compare_exchange_weak")){
+      result = (args) -> {
+        var r = ((JavaRef)args.get(1));
+        return new boolValue(((AtomicReference<Object>)r._javaRef).weakCompareAndSetPlain(args.get(2), args.get(3)));
+      };
+    }
     else
       {
         Errors.fatal(f.pos(),
