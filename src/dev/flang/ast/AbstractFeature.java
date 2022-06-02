@@ -96,21 +96,6 @@ public abstract class AbstractFeature extends ANY implements Comparable<Abstract
   /*----------------------------  variables  ----------------------------*/
 
 
-
-  /**
-   * NYI: to be removed: Temporary mapping from Feature to corresponding
-   * libraryFeature (if it exists) and back to the ast.Feature.
-   *
-   * As long as the duality of ast.Feature/fe.LibraryFeature exists, a check for
-   * feature equality should be done using sameAs.
-   */
-  public AbstractFeature _libraryFeature = null; // NYI: remove when USE_FUM is default
-  public AbstractFeature libraryFeature() // NYI: remove
-  {
-    return _libraryFeature == null ? this : _libraryFeature;
-  }
-
-
   /**
    * For a Feature that can be called and hasThisType() is true, this will be
    * set to the frame type during resolution.  This type uses the formal
@@ -176,6 +161,18 @@ public abstract class AbstractFeature extends ANY implements Comparable<Abstract
   public boolean isChoice() { return kind() == Kind.Choice; }
   public boolean isTypeParameter() { return switch (kind()) { case TypeParameter, OpenTypeParameter -> true; default -> false; }; }
   public boolean isOpenTypeParameter() { return kind() == Kind.OpenTypeParameter; }
+
+
+  /**
+   * Is this base-lib's choice-feature?
+   */
+  boolean isBaseChoice()
+  {
+    if (PRECONDITIONS) require
+      (state().atLeast(Feature.State.RESOLVED_DECLARATIONS));
+
+    return (featureName().baseName().equals("choice") && featureName().argCount() == 1 && outer().isUniverse());
+  }
 
 
   /**
@@ -1181,7 +1178,12 @@ public abstract class AbstractFeature extends ANY implements Comparable<Abstract
       }
     else if (set.isEmpty())
       {
-        AstErrors.internallyReferencedFeatureNotFound(pos(), name, this, name);
+        check
+          (this != Types.f_ERROR || Errors.count() > 0);
+        if (this != Types.f_ERROR)
+          {
+            AstErrors.internallyReferencedFeatureNotFound(pos(), name, this, name);
+          }
       }
     else
       { // NYI: This might happen if the user adds additional features
