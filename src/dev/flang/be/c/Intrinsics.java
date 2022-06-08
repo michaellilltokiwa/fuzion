@@ -590,20 +590,16 @@ public class Intrinsics extends ANY
     put("concur.atomic.read",(c,cl,outer,in) -> {
       var ecl = c._fuir.clazzActualGeneric(cl, 0);
       return
-      CStmnt.seq(
-        CExpr.typedef("_Atomic (" + c._names.struct(ecl) + "*)", "tmp_type"),
-        CExpr.call("atomic_load", new List<>(A0.adrOf().castTo("tmp_type*"))).ret()
-      );
+        CExpr.call("atomic_load", new List<>(A0.adrOf().castTo("_Atomic (" + c._names.struct(ecl) + "*)*"))).ret();
     });
 
     put("concur.atomic.compare_exchange_weak",(c,cl,outer,in) -> {
       var ecl = c._fuir.clazzActualGeneric(cl, 0);
       return  CStmnt.seq(
-        CExpr.typedef("_Atomic (" + c._names.struct(ecl) + "*)", "tmp_type"),
         CStmnt.iff(
-          CExpr.call("atomic_compare_exchange_weak", new List<>(A0.adrOf().castTo("tmp_type*"), A1.adrOf(), A2)),
+          CExpr.call("atomic_compare_exchange_weak", new List<>(A0.adrOf().castTo("_Atomic (" + c._names.struct(ecl) + "*)*"), A1.adrOf(), A2)),
           c._names.FZ_TRUE.ret()),
-          c._names.FZ_FALSE.ret()
+        c._names.FZ_FALSE.ret()
       );
     });
 
