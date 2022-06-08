@@ -1277,14 +1277,14 @@ public class Feature extends AbstractFeature implements Stmnt
         res = r;
       }
     public void         action(AbstractAssign a, AbstractFeature outer) {        a.resolveTypes(res, outer); }
-    public Call         action(Call         c, AbstractFeature outer) { return c.resolveTypes(res, outer); }
-    public Stmnt        action(Destructure  d, AbstractFeature outer) { return d.resolveTypes(res, outer); }
-    public Stmnt        action(Feature      f, AbstractFeature outer) { /* use f.outer() since qualified feature name may result in different outer! */
-                                                                        return f.resolveTypes(res, f.outer() ); }
-    public Function     action(Function     f, AbstractFeature outer) {        f.resolveTypes(res, outer); return f; }
-    public void         action(Match        m, AbstractFeature outer) {        m.resolveTypes(res, outer); }
-    public Expr         action(This         t, AbstractFeature outer) { return t.resolveTypes(res, outer); }
-    public AbstractType action(AbstractType t, AbstractFeature outer) { return t.resolve     (res, outer); }
+    public Call         action(Call           c, AbstractFeature outer) { return c.resolveTypes(res, outer); }
+    public Stmnt        action(Destructure    d, AbstractFeature outer) { return d.resolveTypes(res, outer); }
+    public Stmnt        action(Feature        f, AbstractFeature outer) { /* use f.outer() since qualified feature name may result in different outer! */
+                                                                          return f.resolveTypes(res, f.outer() ); }
+    public Function     action(Function       f, AbstractFeature outer) {        f.resolveTypes(res, outer); return f; }
+    public void         action(Match          m, AbstractFeature outer) {        m.resolveTypes(res, outer); }
+    public Expr         action(This           t, AbstractFeature outer) { return t.resolveTypes(res, outer); }
+    public AbstractType action(AbstractType   t, AbstractFeature outer) { return t.resolve     (res, outer); }
 
     public boolean doVisitActuals() { return false; }
   }
@@ -1303,6 +1303,8 @@ public class Feature extends AbstractFeature implements Stmnt
   {
     if (PRECONDITIONS) require
       (_state.atLeast(State.RESOLVED_DECLARATIONS));
+
+    var old_state = _state;
 
     if (_state == State.RESOLVED_DECLARATIONS)
       {
@@ -1333,7 +1335,8 @@ public class Feature extends AbstractFeature implements Stmnt
       }
 
     if (POSTCONDITIONS) ensure
-      (_state.atLeast(State.RESOLVED_TYPES));
+      (old_state == State.RESOLVING_TYPES && _state == old_state /* recursive attempt to resolve types */ ||
+       _state.atLeast(State.RESOLVING_TYPES));
   }
 
 
