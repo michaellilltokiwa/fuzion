@@ -46,6 +46,7 @@ private stdin(
 
 
   private line_feed u8 := 10
+  private carriage_return u8 := 13
 
 
   # stream of bytes read from stdin until and excluding EOF
@@ -55,7 +56,7 @@ private stdin(
 
     read =>
       if val.isNil
-        set val := stdin.nextByte
+        set val := nextByte
 
     reset =>
       set val := nil
@@ -91,11 +92,11 @@ private stdin(
 
   # read line from stdin
   read_line string is
-    # NYI next line should be this but does not work in c backend currently
-    # strings.fromBytes bytes.takeWhile(b -> b != line_feed).asArray
-                                                  # asArray, since we don't want this to be lazy
     arr := byte_stream
+      # NYI see issue #317
       .takeWhile(b -> b != 10)
+      .filter(b -> b != carriage_return)
+      # asArray, since we don't want this to be lazy
       .asArray
     strings.fromBytes arr
 
