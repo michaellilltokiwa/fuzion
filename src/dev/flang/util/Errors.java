@@ -101,19 +101,6 @@ public class Errors extends ANY
   public static int MAX_WARNING_MESSAGES = Integer.getInteger(MAX_WARNING_MESSAGES_PROPERTY, Integer.MAX_VALUE);
 
 
-  public static TreeSet<Error> errors(){
-    return new TreeSet<Error>(_errors_);
-  }
-
-  public static TreeSet<Error> warnings(){
-    return new TreeSet<Error>(_warnings_);
-  }
-
-  public static void clear(){
-    _errors_.clear();
-    _warnings_.clear();
-  }
-
   /*-----------------------------  classes  -----------------------------*/
 
 
