@@ -278,8 +278,14 @@ public class FeatureName extends ANY implements Comparable<FeatureName>
     return _baseName.equals(o._baseName) && _argCount == o._argCount;
   }
 
-  public static void clear(){
+
+  /**
+   * Reset static fields
+   */
+  public static void reset()
+  {
     _all_.clear();
+    _allBaseNames_.clear();
   }
 
 }

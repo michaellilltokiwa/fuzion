@@ -119,8 +119,8 @@ public class Errors extends ANY
 
   public static class Error implements Comparable<Error>
   {
-    public SourcePosition pos;
-    public String msg, detail;
+    public final SourcePosition pos;
+    public final String msg, detail;
 
     Error(SourcePosition pos, String msg, String detail)
     {
@@ -630,6 +630,34 @@ public class Errors extends ANY
     syntaxError(pos,
                 "Expected constant string continuation starting with closing bracket, e.g., '} done.\"'.",
                 "Found " + token + " instead.");
+  }
+
+
+  /*
+   * get copy of current errors
+   */
+  public static TreeSet<Error> errors()
+  {
+    return new TreeSet<>(_errors_);
+  }
+
+
+  /*
+   * get copy of current warnings
+   */
+  public static TreeSet<Error> warnings()
+  {
+    return new TreeSet<>(_warnings_);
+  }
+
+
+  /**
+   * Reset static fields
+   */
+  public static void reset()
+  {
+    _errors_.clear();
+    _warnings_.clear();
   }
 
 }
