@@ -978,7 +978,7 @@ public class Feature extends AbstractFeature implements Stmnt
               {
                 if (p instanceof Call cp)
                   {
-                    cp.generics = new List<AbstractType>(Types.t_ERROR);
+                    cp._generics = new List<AbstractType>(Types.t_ERROR);
                   }
               }
           }
@@ -1323,10 +1323,13 @@ public class Feature extends AbstractFeature implements Stmnt
    * of the expression. Were needed, perform type inference. Schedule f for
    * syntactic sugar resolution.
    *
+   * NOTE: This is called by Resoltion.java. To force a feature is in state
+   * RESOLVED_TYPES, use Resolution.resolveTypes(f).
+   *
    * @param res this is called during type resolution, res gives the resolution
    * instance.
    */
-  void resolveTypes(Resolution res)
+  void internalResolveTypes(Resolution res)
   {
     if (PRECONDITIONS) require
       (_state.atLeast(State.RESOLVED_DECLARATIONS));
