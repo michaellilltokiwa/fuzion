@@ -36,6 +36,7 @@ import dev.flang.air.Clazz;
 import dev.flang.air.Clazzes;
 
 import dev.flang.ast.AbstractAssign; // NYI: remove dependency
+import dev.flang.ast.AbstractBlock; // NYI: remove dependency
 import dev.flang.ast.AbstractCall; // NYI: remove dependency
 import dev.flang.ast.AbstractConstant; // NYI: remove dependency
 import dev.flang.ast.AbstractFeature; // NYI: remove dependency
@@ -43,6 +44,7 @@ import dev.flang.ast.AbstractMatch; // NYI: remove dependency
 import dev.flang.ast.BoolConst; // NYI: remove dependency
 import dev.flang.ast.Box; // NYI: remove dependency
 import dev.flang.ast.Call; // NYI: remove dependency
+import dev.flang.ast.Current; // NYI: remove dependency
 import dev.flang.ast.Env; // NYI: remove dependency
 import dev.flang.ast.Expr; // NYI: remove dependency
 import dev.flang.ast.If; // NYI: remove dependency
@@ -835,7 +837,6 @@ hw25 is
   }
 
 
-
   /**
    * Get access to the code of a clazz of kind Routine
    *
@@ -1015,6 +1016,13 @@ hw25 is
 
 
 
+  /**
+   * Get the expr at the given index in given code block
+   *
+   * @param c the code block id
+   *
+   * @param ix an index within the code block
+   */
   public ExprKind codeAt(int c, int ix)
   {
     if (PRECONDITIONS) require
@@ -1582,6 +1590,210 @@ hw25 is
     var call = Types.resolved.f_function_call;
     var ic = cc.lookup(call, Call.NO_GENERICS, Clazzes.isUsedAt(call));
     return _clazzIds.get(ic);
+  }
+
+
+  /**
+   * Get a string representation of the expr at the given index in given code
+   * block.  Useful for debugging.
+   *
+   * @param cl index of the clazz containing the code block.
+   *
+   * @param c the code block
+   *
+   * @param ix an index within the code block
+   */
+  public String codeAtAsString(int cl, int c, int ix)
+  {
+    return switch (codeAt(c,ix))
+      {
+      case AdrOf   -> "AdrOf";
+      case Assign  -> "Assign to " + clazzAsString(accessedClazz(cl, c, ix));
+      case Box     -> "Box";
+      case Unbox   -> "Unbox";
+      case Call    -> "Call to " + clazzAsString(accessedClazz(cl, c, ix));
+      case Current -> "Current";
+      case Comment -> "Comment";
+      case Const   -> "Const";
+      case Dup     -> "Dup";
+      case Match   -> "Match";
+      case Outer   -> "Outer";
+      case Tag     -> "Tag";
+      case Env     -> "Env";
+      case Pop     -> "Pop";
+      case Unit    -> "Unit";
+      };
+  }
+
+
+  /**
+   * Print the contents of the given code block to System.out, for debugging.
+   *
+   * @param cl index of the clazz containing the code block.
+   *
+   * @param c the code block
+   */
+  public void dumpCode(int cl, int c)
+  {
+    for (var ix = 0; withinCode(c, ix); ix = ix + codeSizeAt(c, ix))
+      {
+        System.out.printf("%d.%4d: %s", c, ix, codeAtAsString(cl, c, ix));
+      }
+  }
+
+
+  /**
+   * For a given index 'ix' into the code block 'c', go 'delta' expressions
+   * further or back (in case 'delta < 0').
+   *
+   * @param c the code block
+   *
+   * @param ix an index in c
+   *
+   * @param delta the number of instructions to go forward or back.
+   */
+  public int codeIndex(int c, int ix, int delta)
+  {
+    if (PRECONDITIONS) require
+      (ix >= 0,
+       withinCode(c, ix));
+
+    while (delta > 0)
+      {
+        ix = ix + codeSizeAt(c, ix);
+        delta--;
+      }
+    if (delta < 0)
+      {
+        ix = codeIndex2(c, 0, ix, delta);
+      }
+    return ix;
+  }
+
+
+  /**
+   * Helper routine for codeIndex to recursively find the index of expression
+   * 'n' before expression at 'ix' where 'n == -delta' and 'delta < 0'.
+   *
+   * NYI: Performance: This requires time 'O(codeSize(c))', so using this
+   * quickly results in quadratic performance!
+   *
+   * @param c the code block
+   *
+   * @param i current index in c, starting at 0.
+   *
+   * @param ix an index in c
+   *
+   * @param delta the negative number of instructions to go back.
+   *
+   * @return the index of the expression 'n' expressions before 'ix', or a
+   * negative value '-m' if that instruction can be found 'm' recursive calls up.
+   */
+  private int codeIndex2(int c, int i, int ix, int delta)
+  {
+    if (i == ix)
+      {
+        return delta;
+      }
+    else
+      {
+        var r = codeIndex2(c, i + codeSizeAt(c, i), ix, delta);
+        if (r < -1)
+          {
+            return r + 1;
+          }
+        else if (r == -1)
+          {
+            return i;
+          }
+        else
+          {
+            return r;
+          }
+      }
+  }
+
+
+  /**
+   * Helper routine to go back in the code jumping over the whole previous
+   * expression. Say you have the code
+   *
+   *   0: const 1
+   *   1: current
+   *   2: call field 'n'
+   *   3: current
+   *   4: call field 'm'
+   *   5: const 2
+   *   6: call add
+   *   7: sub
+   *   8: mul
+   *
+   * Then 'skip(cl, c, 6)' is 2 (popping 'add current.m 2'), while 'skip(cl, c,
+   * 2)' is 0 (popping 'curent.n').
+   *
+   * 'skip(cl, c, 7)' will result in 7, while 'skip(cl, c, 8)' will result in an
+   * error since there is no expression before 'mul 1 (sub curent.n (add
+   * current.m 2))'.
+   *
+   * @param cl index of the clazz containing the code block.
+   *
+   * @param c the code block
+   *
+   * @param ix an index in c
+   */
+  public int skipBack(int cl, int c, int ix)
+  {
+    return switch (codeAt(c, ix))
+      {
+      case AdrOf   -> skipBack(cl, c, codeIndex(c, ix, -1));
+      case Assign  ->
+        {
+          var tc = accessTargetClazz(cl, c, ix);
+          ix = skipBack(cl, c, codeIndex(c, ix, -1));
+          if (tc != clazzUniverse())
+            {
+              ix = skipBack(cl, c, ix);
+            }
+          yield ix;
+        }
+      case Box     -> skipBack(cl, c, codeIndex(c, ix, -1));
+      case Unbox   -> skipBack(cl, c, codeIndex(c, ix, -1));
+      case Call    ->
+        {
+          var tc = accessTargetClazz(cl, c, ix);
+          var cc = accessedClazz(cl, c, ix);
+          var ac = clazzArgCount(cc);
+          ix = codeIndex(c, ix, -1);
+          for (var i = 0; i < ac; i++)
+            {
+              var acl = clazzArgClazz(cc, ac-1-i);
+              if (clazzResultClazz(acl) != clazzUniverse())
+                {
+                  ix = skipBack(cl, c, ix);
+                }
+            }
+          if (tc != clazzUniverse())
+            {
+              ix = skipBack(cl, c, ix);
+            }
+          yield ix;
+        }
+      case Current -> codeIndex(c, ix, -1);
+      case Comment -> skipBack(cl, c, codeIndex(c, ix, -1));
+      case Const   -> codeIndex(c, ix, -1);
+      case Dup     -> codeIndex(c, ix, -1);
+      case Match   ->
+        {
+          ix = codeIndex(c, ix, -1);
+          ix = skipBack(cl, c, ix);
+          yield ix;
+        }
+      case Outer   -> codeIndex(c, ix, -1);
+      case Tag     -> skipBack(cl, c, codeIndex(c, ix, -1));
+      case Env     -> codeIndex(c, ix, -1);
+      case Pop     -> skipBack(cl, c, codeIndex(c, ix, -1));
+      case Unit    -> codeIndex(c, ix, -1);
+      };
   }
 
 }
