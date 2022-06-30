@@ -152,6 +152,22 @@ public class FUIR extends IR
   final Map2Int<Clazz> _clazzIds = new MapComparable2Int(CLAZZ_BASE);
 
 
+  /**
+   * Cached results for clazzCode(), required to ensure that code indices are
+   * unique, i.e., comparing the code index is equivalent to comparing the clazz
+   * ids.
+   */
+  private final TreeMap<Integer, Integer> _clazzCode = new TreeMap<>();
+
+
+  /**
+   * Cached results for clazzContract(), required to ensure that code indices are
+   * unique, i.e., comparing the code index is equivalent to comparing the clazz
+   * ids.
+   */
+  private final TreeMap<Long, Integer> _clazzContract = new TreeMap<>();
+
+
   /*--------------------------  constructors  ---------------------------*/
 
 
@@ -814,30 +830,6 @@ hw25 is
 
 
   /**
-   * Code for a routine or precondition prolog.
-   *
-   * This adds code to initialize outer reference, must be done at the
-   * beginning of every routine and precondition.
-   *
-   * @param cc the routine we are creating code for.
-   */
-  private List<Object> prolog(Clazz cc)
-  {
-    List<Object> code = new List<>();
-    var vcc = cc.asValue();
-    var or = vcc.outerRef();
-    var cco = cc._outer;
-    if (or != null && !cco.isUnitType())
-      {
-        code.add(ExprKind.Outer);
-        code.add(ExprKind.Current);
-        code.add(or);
-      }
-    return code;
-  }
-
-
-  /**
    * Get access to the code of a clazz of kind Routine
    *
    * @param cl a clazz id
@@ -849,11 +841,17 @@ hw25 is
     if (PRECONDITIONS) require
       (clazzKind(cl) == FeatureKind.Routine);
 
-    var cc = _clazzIds.get(cl);
-    var ff = cc.feature();
-    var code = prolog(cc);
-    addCode(cc, code, ff);
-    return _codeIds.add(code);
+    var res = _clazzCode.get(cl);
+    if (res == null)
+      {
+        var cc = _clazzIds.get(cl);
+        var ff = cc.feature();
+        var code = new List<Object>();
+        addCode(cc, code, ff);
+        res = _codeIds.add(code);
+        _clazzCode.put(cl, res);
+      }
+    return res;
   }
 
 
@@ -899,16 +897,33 @@ hw25 is
           }
         i++;
       }
+    var res = -1;
     if (cond != null && i < cond.size())
       {
-        var code = prolog(cc);
-        toStack(code, cond.get(i).cond);
-        return _codeIds.add(code);
+        // create 64-bit key from cl, ck and ix as follows:
+        //
+        //  key = cl (32 bits) : -ix    for ck == Pre
+        //  key = cl (32 bits) : +ix    for ck == Post
+        //
+        var key = ((long) cl << 32) | ((ck.ordinal()*2-1) * (i+1)) & 0xffffffffL;
+
+        // lets verify we did not lose any information, i.e, we can extract cl, ix and ck:
+        if (CHECKS) check
+          (cl == key >> 32,
+           ck == ((key << 32 < 0) ? ContractKind.Pre : ContractKind.Post),
+           i == (int) (key & 0xffffffff) * ((ck.ordinal()*2-1))-1);
+
+        var resBoxed = _clazzContract.get(key);
+        if (resBoxed == null)
+          {
+            var code = new List<Object>();
+            toStack(code, cond.get(i).cond);
+            resBoxed = _codeIds.add(code);
+            _clazzContract.put(key, resBoxed);
+          }
+        res = resBoxed;
       }
-    else
-      {
-        return -1;
-      }
+    return res;
   }
 
 
@@ -1617,7 +1632,6 @@ hw25 is
       case Const   -> "Const";
       case Dup     -> "Dup";
       case Match   -> "Match";
-      case Outer   -> "Outer";
       case Tag     -> "Tag";
       case Env     -> "Env";
       case Pop     -> "Pop";
@@ -1637,7 +1651,7 @@ hw25 is
   {
     for (var ix = 0; withinCode(c, ix); ix = ix + codeSizeAt(c, ix))
       {
-        System.out.printf("%d.%4d: %s", c, ix, codeAtAsString(cl, c, ix));
+        System.out.printf("%d.%4d: %s\n", c, ix, codeAtAsString(cl, c, ix));
       }
   }
 
@@ -1788,7 +1802,6 @@ hw25 is
           ix = skipBack(cl, c, ix);
           yield ix;
         }
-      case Outer   -> codeIndex(c, ix, -1);
       case Tag     -> skipBack(cl, c, codeIndex(c, ix, -1));
       case Env     -> codeIndex(c, ix, -1);
       case Pop     -> skipBack(cl, c, codeIndex(c, ix, -1));

@@ -233,15 +233,16 @@ public class C extends ANY
       (CStmnt.decl("int", _names.GLOBAL_ARGC));
     cf.print
       (CStmnt.decl("char **", _names.GLOBAL_ARGV));
-    var o = CExpr.ident("of");
-    var s = CExpr.ident("sz");
+    var o = new CIdent("of");
+    var s = new CIdent("sz");
     var r = new CIdent("r");
     cf.print
       (CStmnt.lineComment("helper to clone a (stack) instance to the heap"));
     cf.print
       (CStmnt.functionDecl("void *",
                            CNames.HEAP_CLONE,
-                           new List<>("void *", "of", "size_t", "sz"),
+                           new List<>("void *", "size_t"),
+                           new List<>(o, s),
                            CStmnt.seq(new List<>(CStmnt.decl(null, "void *", r, CExpr.call("malloc", new List<>(s))),
                                                  CExpr.call("memcpy", new List<>(r, o, s)),
                                                  r.ret()))));
@@ -599,11 +600,6 @@ public class C extends ANY
           push(stack, cl, current(cl));
           break;
         }
-      case Outer:
-        {
-          push(stack, cl, _names.OUTER);
-          break;
-        }
       case Const:
         {
           var constCl = _fuir.constClazz(c, i);
@@ -868,7 +864,7 @@ public class C extends ANY
    */
   CStmnt assignField(Stack<CExpr> stack, int tc, int tt, int f)
   {
-    var af = accessField(stack, tc, f);
+    var af = accessField(pop(stack, tc), tc, f);
     var rt = _fuir.clazzResultClazz(f);
     var value = pop(stack, rt);
     if (_fuir.clazzIsRef(rt))
@@ -882,7 +878,7 @@ public class C extends ANY
   /**
    * Create code to access a field
    *
-   * @param stack the stack containing the value and the target instance
+   * @param t the target instance containing the field
    *
    * @param tc the static target clazz
    *
@@ -891,10 +887,9 @@ public class C extends ANY
    * @return the code to access field f, null if type is 'void', CExpr.UNIT if
    * type is 'unit'.
    */
-  CExpr accessField(Stack<CExpr> stack, int tc, int f)
+  CExpr accessField(CExpr t, int tc, int f)
   {
     var rt = _fuir.clazzResultClazz(f);
-    var t = pop(stack, tc);
     if (CHECKS) check
       (t != null || !_types.hasData(rt) || tc == _fuir.clazzUniverse());
     var occ   = _fuir.clazzOuterClazz(f);
@@ -949,7 +944,7 @@ public class C extends ANY
                   !_escape.doesCurEscape(cl)             // and current instance did not escape
                   )
                 { // then we can do tail recursion optimization!
-                  result = tailRecursion(cl, tc, a);
+                  result = tailRecursion(cl, c, i, tc, a);
                   stack.push(null); // make stack contain void to stop any further code generation
                 }
               else
@@ -975,7 +970,7 @@ public class C extends ANY
         }
       case Field:
         {
-          push(stack, rt, accessField(stack, tc, cc));
+          push(stack, rt, accessField(pop(stack, tc), tc, cc));
           break;
         }
       default:       throw new Error("This should not happen: Unknown feature kind: " + _fuir.clazzKind(cc));
@@ -989,18 +984,32 @@ public class C extends ANY
    *
    * @param cl clazz id of clazz containing the call
    *
+   * @param c the code block to compile
+   *
+   * @param i the index of the call within c
+   *
    * @param tc the target clazz (type of outer) in this call
    *
    * @param a list of actual arguments to the tail recursive call.
    */
-  CStmnt tailRecursion(int cl, int tc, List<CExpr> a)
+  CStmnt tailRecursion(int cl, int c, int i, int tc, List<CExpr> a)
   {
     var cur = _fuir.clazzIsRef(cl) ? fields(_names.CURRENT, cl)
                                    : _names.CURRENT.deref();
+
+    var l = new List<CStmnt>();
+    if (_types.hasData(tc) && !_tailCall.firstArgIsOuter(cl, c, i))
+      {
+        l.add(CStmnt.lineComment("tail recursion with changed target"));
+        l.add(assign(CNames.OUTER, a.get(0), tc));
+      }
+    else
+      {
+        l.add(CStmnt.lineComment("tail recursion on same target"));
+      }
     var vcl = _fuir.clazzAsValue(cl);
     var ac = _fuir.clazzArgCount(vcl);
     var aii = _types.hasData(tc) ? 1 : 0;
-    var l = new List<CStmnt>();
     for (int ai = 0; ai < ac; ai++)
       {
         var at = _fuir.clazzArgClazz(vcl, ai);
@@ -1009,7 +1018,7 @@ public class C extends ANY
             var target = _types.isScalar(vcl)
               ? cur
               : cur.field(_names.fieldName(_fuir.clazzArg(vcl, ai)));
-            l.add(assign(new CIdent("arg" + ai), a.get(aii), at));
+            l.add(assign(CIdent.arg(ai), a.get(aii), at));
                           aii = aii + 1;
           }
       }
@@ -1084,12 +1093,13 @@ public class C extends ANY
     var resultType = pre || !_types.hasData(res)
       ? "void"
       : _types.clazz(res);
-    var args = new List<String>();
+    var argts = new List<String>();
+    var argns = new List<CIdent>();
     var or = _fuir.clazzOuterRef(cl);
     if (or != -1)
       {
-        args.add(_types.clazzField(or));
-        args.add("fzouter");
+        argts.add(_types.clazzField(or));
+        argns.add(CNames.OUTER);
       }
     var ac = _fuir.clazzArgCount(cl);
     for (int i = 0; i < ac; i++)
@@ -1097,11 +1107,11 @@ public class C extends ANY
         var at = _fuir.clazzArgClazz(cl, i);
         if (_types.hasData(at))
           {
-            args.add(_types.clazz(at));
-            args.add("arg" + i);
+            argts.add(_types.clazz(at));
+            argns.add(CIdent.arg(i));
           }
       }
-    return CStmnt.functionDecl(resultType, new CIdent(_names.function(cl, pre)), args, body);
+    return CStmnt.functionDecl(resultType, new CIdent(_names.function(cl, pre)), argts, argns, body);
   }
 
 
@@ -1193,9 +1203,19 @@ public class C extends ANY
             var target = _types.isScalar(vcl)
               ? cur
               : cur.field(_names.fieldName(af));
-            l.add(assign(target, new CIdent("arg" + i), at));
+            l.add(assign(target, CIdent.arg(i), at));
           }
       }
+
+    // copy outer ref argument to outer ref field:
+    var or = _fuir.clazzOuterRef(cl);
+    if (or != -1)
+      {
+        var rt = _fuir.clazzResultClazz(or);
+        var af = accessField(current(cl), cl, or);
+        l.add(assign(af, CNames.OUTER, rt));
+      }
+
     if (pre)
       {
         l.add(preOrPostCondition(cl, FUIR.ContractKind.Pre));
@@ -1235,11 +1255,11 @@ public class C extends ANY
   {
     var l = new List<CStmnt>();
     var stack = new Stack<CExpr>();
-    for (int p, i = 0;
-         !containsVoid(stack) && (p = _fuir.clazzContract(cl, ck, i)) != -1;
+    for (var i = 0;
+         !containsVoid(stack) && _fuir.clazzContract(cl, ck, i) != -1;
          i++)
       {
-        l.add(createCode(cl, stack, p));
+        l.add(createCode(cl, stack, _fuir.clazzContract(cl, ck, i)));
         if (!containsVoid(stack))
           {
             var cc = stack.pop();
