@@ -88,14 +88,20 @@ public class DFA extends ANY
      */
     final Instance _current;
 
+    /**
+     * The outer instance of the instance we are analysing.
+     */
+    final Value _outer;
+
 
     /**
      * Create processor for an abstract interpreter doing DFA analysis of the
      * given instance's cod.
      */
-    Analyze(Instance current)
+    Analyze(Instance current, Value outer)
     {
       _current = current;
+      _outer = outer;
     }
 
 
@@ -156,6 +162,28 @@ public class DFA extends ANY
     public Pair<Value, Unit> adrOf(Value v)
     {
       return new Pair<>(v.adrOf(), _unit_);
+    }
+
+
+    /**
+     * Perform an assignment val to field f in instance rt
+     *
+     * @param tc clazz id of the target instance
+     *
+     * @param f clazz id of the assigned field
+     *
+     * @param rt clazz is of the field type
+     *
+     * @param tvalue the target instance
+     *
+     * @param val the new value to be assigned to the field.
+     *
+     * @return resulting code of this assignment.
+     */
+    public Unit assignStatic(int tc, int f, int rt, Value tvalue, Value val)
+    {
+      tvalue.setField(f, val);
+      return _unit_;
     }
 
 
@@ -315,7 +343,7 @@ public class DFA extends ANY
     Pair<Value, Unit> call(int cl, Value tvalue, List<Value> args, int c, int i, int cc, boolean pre)
     {
       var result = _unit_;
-      var resultValue = Value.UNIT;
+      Value resultValue = null;
       var tc = _fuir.accessTargetClazz(cl, c, i);
       var rt = _fuir.clazzResultClazz(cc);
       switch (pre ? FUIR.FeatureKind.Routine : _fuir.clazzKind(cc))
@@ -335,7 +363,7 @@ public class DFA extends ANY
           }
         case Field:
           {
-            resultValue = tvalue.readField(tc, cc);
+            resultValue = tvalue.readField(DFA.this, tc, cc);
             break;
           }
         default:       throw new Error("This should not happen: Unknown feature kind: " + _fuir.clazzKind(cc));
@@ -350,7 +378,7 @@ public class DFA extends ANY
     public Pair<Value, Unit> box(Value val, int vc, int rc)
     {
       System.err.println("NYI: DFA.box");
-      return new Pair<>(Value.UNIT, _unit_);
+      return new Pair<>(null, _unit_);
     }
 
 
@@ -360,7 +388,7 @@ public class DFA extends ANY
     public Pair<Value, Unit> unbox(Value val, int orc)
     {
       System.err.println("NYI: DFA.unbox");
-      return new Pair<>(Value.UNIT, _unit_);
+      return new Pair<>(null, _unit_);
     }
 
 
@@ -370,6 +398,23 @@ public class DFA extends ANY
     public Pair<Value, Unit> current(int cl)
     {
       return new Pair<>(_current, _unit_);
+    }
+
+
+    /**
+     * Get the outer instance
+     */
+    public Pair<Value, Unit> outer(int cl)
+    {
+      return new Pair<>(_outer, _unit_);
+    }
+
+    /**
+     * Get the argument #i
+     */
+    public Value arg(int cl, int i)
+    {
+      return null; // NYI:
     }
 
 
@@ -397,7 +442,7 @@ public class DFA extends ANY
         {
           Errors.error("Unsupported constant in DFA analysis.",
                        "DFA cannot handle constant of clazz '" + _fuir.clazzAsString(constCl) + "' ");
-          yield Value.UNIT;
+          yield null;
         }
         };
       return new Pair(r, o);
@@ -407,26 +452,40 @@ public class DFA extends ANY
     /**
      * Perform a match on value subv.
      */
-    public Unit match(int cl, int c, int i, Value subv)
+    public Pair<Value, Unit> match(AbstractInterpreter ai, int cl, int c, int i, Value subv)
     {
-      System.err.println("NYI: DFA.match for "+_fuir.codeAtAsString(cl, c, i));
-      return _unit_;
-      /*
+      Value r = null;
+      var o = _unit_;
       var subjClazz = _fuir.matchStaticSubject(cl, c, i);
-      var sub       = fields(subv, subjClazz);
-      var uniyon    = sub.field(_names.CHOICE_UNION_NAME);
+
+      //var sub       = fields(subv, subjClazz);
+      //var uniyon    = sub.field(_names.CHOICE_UNION_NAME);
       var hasTag    = !_fuir.clazzIsChoiceOfOnlyRefs(subjClazz);
-      var refEntry  = uniyon.field(_names.CHOICE_REF_ENTRY_NAME);
-      var ref       = hasTag ? refEntry                   : _names.newTemp();
-      var getRef    = hasTag ? _unit_               : Unit.decl(_types.clazz(_fuir.clazzObject()), (CIdent) ref, refEntry);
-      var tag       = hasTag ? sub.field(_names.TAG_NAME) : ref.castTo("int64_t");
-      var tcases    = new List<Unit>(); // cases depending on tag value or ref cast to int64
-      var rcases    = new List<Unit>(); // cases depending on clazzId of ref type
-      Unit tdefault = null;
+      //var refEntry  = uniyon.field(_names.CHOICE_REF_ENTRY_NAME);
+      //var ref       = hasTag ? refEntry                   : _names.newTemp();
+      //var getRef    = hasTag ? _unit_               : Unit.decl(_types.clazz(_fuir.clazzObject()), (CIdent) ref, refEntry);
+      //var tag       = hasTag ? subv.field(_names.TAG_NAME) : ref.castTo("int64_t");
+      //var tcases    = new List<Unit>(); // cases depending on tag value or ref cast to int64
+      //var rcases    = new List<Unit>(); // cases depending on clazzId of ref type
+      //Unit tdefault = null;
       for (var mc = 0; mc < _fuir.matchCaseCount(c, i); mc++)
         {
-          var ctags = new List<Value>();
-          var rtags = new List<Value>();
+          boolean taken;
+          if (_fuir.getSpecialId(subjClazz) == FUIR.SpecialClazzes.c_bool)
+            {
+              taken =
+                subv == Value.BOOL ||
+                subv == Value.TRUE  && mc == 1 ||
+                subv == Value.FALSE && mc == 0;
+            }
+          else
+            {
+              taken = false;  /* NYI: match for non-bool subject  */
+            }
+
+          /*
+          //var ctags = new List<Value>();
+          //var rtags = new List<Value>();
           var tags = _fuir.matchCaseTags(cl, c, i, mc);
           for (var tagNum : tags)
             {
@@ -459,7 +518,16 @@ public class DFA extends ANY
                                                     : Value.UNIT;
               sl.add(C.this.assign(f, entry, fclazz));
             }
-          sl.add(_ai.process(cl, _fuir.matchCaseCode(c, i, mc)));
+          */
+          if (taken)
+            {
+              var resv = ai.process(cl, _fuir.matchCaseCode(c, i, mc));
+              if (resv._v0 != null)
+                {
+                  r = Value.UNIT;
+                }
+            }
+          /*
           sl.add(Unit.BREAK);
           var cazecode = Unit.seq(sl);
           tcases.add(Unit.caze(ctags, cazecode));  // tricky: this a NOP if ctags.isEmpty
@@ -468,15 +536,18 @@ public class DFA extends ANY
               rcases.add(Unit.caze(rtags, cazecode));
               tdefault = cazecode;
             }
+          */
         }
+      /*
       if (rcases.size() >= 2)
         { // more than two reference cases: we have to create separate switch of clazzIds for refs
           var id = refEntry.deref().field(_names.CLAZZ_ID);
           var notFound = reportErrorInCode("unexpected reference type %d found in match", id);
           tdefault = Unit.suitch(id, rcases, notFound);
-        }
+          }
       return Unit.seq(getRef, Unit.suitch(tag, tcases, tdefault));
       */
+      return new Pair(r, o);
     }
 
 
@@ -486,7 +557,7 @@ public class DFA extends ANY
     public Pair<Value, Unit> tag(int cl, int valuecl, Value value, int newcl, int tagNum)
     {
       System.err.println("NYI: DFA.tag");
-      return new Pair<>(Value.UNIT, _unit_);
+      return new Pair<>(null, _unit_);
       /*
       var res     = _names.newTemp();
       var tag     = res.field(_names.TAG_NAME);
@@ -528,7 +599,7 @@ public class DFA extends ANY
     public Pair<Value, Unit> env(int ecl)
     {
       System.err.println("NYI: DFA.env");
-      return new Pair<>(Value.UNIT, _unit_);
+      return new Pair<>(null, _unit_);
       /*
       var res = _names.env(ecl);
       var evi = _names.envInstalled(ecl);
@@ -761,8 +832,8 @@ public class DFA extends ANY
       }
     else
       {
-        var ai = new AbstractInterpreter(_fuir, new Analyze(i));
-        var r = ai.process(cl, _fuir.clazzCode(cl));
+        var ai = new AbstractInterpreter(_fuir, new Analyze(i, c._target));
+        var r = ai.process(cl, false);
         if (r._v0 != null)
           {
             c.returns();
@@ -1045,7 +1116,7 @@ public class DFA extends ANY
           return null;
         });
     put("effect.abort"                   , cl -> { System.out.println("NYI: DFA intrinsic "+cl); return null; } );
-    put("effects.exists"                 , cl -> { System.out.println("NYI: DFA intrinsic "+cl); return null; } );
+    put("effects.exists"                 , cl -> Value.BOOL /* NYI: check environment stack! */);
     put("fuzion.java.JavaObject.isNull"  , cl -> { System.out.println("NYI: DFA intrinsic "+cl); return null; } );
     put("fuzion.java.arrayGet"           , cl -> { System.out.println("NYI: DFA intrinsic "+cl); return null; } );
     put("fuzion.java.arrayLength"        , cl -> { System.out.println("NYI: DFA intrinsic "+cl); return null; } );

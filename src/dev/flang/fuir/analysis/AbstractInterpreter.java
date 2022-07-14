@@ -101,6 +101,23 @@ public class AbstractInterpreter<VALUE, RESULT> extends ANY
     public abstract Pair<VALUE, RESULT> adrOf(VALUE v);
 
     /**
+     * Perform an assignment val to field f in instance rt
+     *
+     * @param tc clazz id of the target instance
+     *
+     * @param f clazz id of the assigned field
+     *
+     * @param rt clazz is of the field type
+     *
+     * @param tvalue the target instance
+     *
+     * @param val the new value to be assigned to the field.
+     *
+     * @return resulting code of this assignment.
+     */
+    public abstract RESULT assignStatic(int tc, int f, int rt, VALUE tvalue, VALUE val);
+
+    /**
      * Perform an assignment of avalue to a field in tvalue. The type of tvalue
      * might be dynamic (a refernce). See FUIR.acess*().
      */
@@ -132,6 +149,16 @@ public class AbstractInterpreter<VALUE, RESULT> extends ANY
     public abstract Pair<VALUE, RESULT> current(int cl);
 
     /**
+     * Get the outer instance
+     */
+    public abstract Pair<VALUE, RESULT> outer(int cl);
+
+    /**
+     * Get the argument #i
+     */
+    public abstract VALUE arg(int cl, int i);
+
+    /**
      * Get a constant value of type constCl with given byte data d.
      */
     public abstract Pair<VALUE, RESULT> constData(int constCl, byte[] d);
@@ -139,7 +166,7 @@ public class AbstractInterpreter<VALUE, RESULT> extends ANY
     /**
      * Perform a match on value subv.
      */
-    public abstract RESULT match(int cl, int c, int i, VALUE subv);
+    public abstract Pair<VALUE, RESULT> match(AbstractInterpreter<VALUE, RESULT> ai, int cl, int c, int i, VALUE subv);
 
     /**
      * Create a tagged value of type newcl from an untagged value for type valuecl.
@@ -164,6 +191,14 @@ public class AbstractInterpreter<VALUE, RESULT> extends ANY
 
 
   /*----------------------------  constants  ----------------------------*/
+
+
+  /**
+   * property-controlled flag to enable debug output.
+   */
+  static final boolean DEBUG =
+    System.getProperty("dev.flang.fuir.analysis.AbstractInterpreter.DEBUG",
+                       "false").equals("true");
 
 
   /*-------------------------  static methods  --------------------------*/
@@ -294,6 +329,69 @@ public class AbstractInterpreter<VALUE, RESULT> extends ANY
 
 
   /**
+   * As part of the prolog of a clazz' code, perform the initialization of the
+   * calzz' outer ref and argument fields with the target and the actual
+   * arguments.
+   *
+   * @param l list that will receive the result
+   *
+   * @param cl the clazz we are interpreting.
+   */
+  void assignOuterAndArgFields(List<RESULT> l, int cl)
+  {
+    var or = _fuir.clazzOuterRef(cl);
+    if (or != -1)
+      {
+        var rt = _fuir.clazzResultClazz(or);
+        var cur = _processor.current(cl);
+        l.add(cur._v1);
+        var out = _processor.outer(cl);
+        l.add(out._v1);
+        l.add(_processor.assignStatic(cl, or, rt, cur._v0, out._v0));
+      }
+
+    var vcl = _fuir.clazzAsValue(cl);
+    var ac = _fuir.clazzArgCount(vcl);
+    for (int i = 0; i < ac; i++)
+      {
+        var cur = _processor.current(cl);
+        l.add(cur._v1);
+        var af = _fuir.clazzArg(vcl, i);
+        var at = _fuir.clazzArgClazz(vcl, i);
+        var ai = _processor.arg(cl, i);
+        if (ai != null)
+          {
+            l.add(_processor.assignStatic(cl, af, at, cur._v0, ai));
+          }
+      }
+  }
+
+
+  /**
+   * Perform abstract interpretation on given clazz
+   *
+   * @param cl clazz id
+   *
+   * @param pre true to process cl's precondition, false to process cl's code
+   * followed by its postcondition.
+   *
+   * @return A Pair consisting of a VALUE that is either
+   * _processor().unitValue() or null (in case cl diverges) and the result of
+   * the abstract interpretation, e.g., the generated code.
+   */
+  public Pair<VALUE,RESULT> process(int cl, boolean pre)
+  {
+    var l = new List<RESULT>();
+    assignOuterAndArgFields(l, cl);
+    var p = pre
+      ? processContract(cl, FUIR.ContractKind.Pre)
+      : process(cl, _fuir.clazzCode(cl));
+    l.add(p._v1);
+    return new Pair(p._v0, _processor.sequence(l));
+  }
+
+
+  /**
    * Perform abstract interpretation on given code
    *
    * @param cl clazz id
@@ -328,9 +426,13 @@ public class AbstractInterpreter<VALUE, RESULT> extends ANY
    * @return the result of the abstract interpretation, e.g., the generated
    * code.
    */
-  public RESULT processContract(int cl, FUIR.ContractKind ck)
+  Pair<VALUE,RESULT> processContract(int cl, FUIR.ContractKind ck)
   {
     var l = new List<RESULT>();
+    if (ck == FUIR.ContractKind.Pre)
+      {
+        assignOuterAndArgFields(l, cl);
+      }
     for (var ci = 0;
          _fuir.clazzContract(cl, ck, ci) != -1;
          ci++)
@@ -347,7 +449,7 @@ public class AbstractInterpreter<VALUE, RESULT> extends ANY
             l.add(_processor.contract(cl, ck, stack.pop()));
           }
       }
-    return _processor.sequence(l);
+    return new Pair<>(_processor.unitValue(), _processor.sequence(l));
   }
 
 
@@ -367,6 +469,10 @@ public class AbstractInterpreter<VALUE, RESULT> extends ANY
    */
   public RESULT process(int cl, Stack<VALUE> stack, int c, int i)
   {
+    if (DEBUG)
+      {
+        System.out.println("process "+_fuir.clazzAsString(cl)+"."+c+"."+i+":\t"+_fuir.codeAtAsString(cl, c, i)+" stack is "+stack);
+      }
     var s = _fuir.codeAt(c, i);
     switch (s)
       {
@@ -467,7 +573,12 @@ public class AbstractInterpreter<VALUE, RESULT> extends ANY
         {
           var subjClazz = _fuir.matchStaticSubject(cl, c, i);
           var subv      = pop(stack, subjClazz);
-          return _processor.match(cl, c, i, subv);
+          var r = _processor.match(this, cl, c, i, subv);
+          if (r._v0 == null)
+            {
+              stack.push(null);
+            }
+          return r._v1;
         }
       case Tag:
         {

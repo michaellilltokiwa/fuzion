@@ -65,6 +65,10 @@ public class Value extends ANY
       {
         return "true";
       }
+      boolean isBool()
+      {
+        return true;
+      }
     };
 
 
@@ -77,7 +81,28 @@ public class Value extends ANY
       {
         return "false";
       }
+      boolean isBool()
+      {
+        return true;
+      }
     };
+
+
+  /**
+   * Any value of type 'bool'
+   */
+  static Value BOOL = new Value()
+    {
+      public String toString()
+      {
+        return "bool";
+      }
+      boolean isBool()
+      {
+        return true;
+      }
+    };
+
 
 
   /**
@@ -132,6 +157,15 @@ public class Value extends ANY
 
 
   /**
+   * is this a boolean value, TRUE, FALSE, or BOOL?
+   */
+  boolean isBool()
+  {
+    return false;
+  }
+
+
+  /**
    * Get the address of a value.
    */
   public Value adrOf()
@@ -150,9 +184,22 @@ public class Value extends ANY
 
 
   /**
+   * Get set of values of given field within this value.  This works for unit
+   * type results even if this is not an instance (but a unit type itself).
+   */
+  public Value readField(DFA dfa, int target, int field)
+  {
+    var rt = dfa._fuir.clazzResultClazz(field);
+    return dfa._fuir.clazzIsUnitType(rt)
+      ? Value.UNIT
+      : readFieldFromInstance(dfa, target, field);
+  }
+
+
+  /**
    * Get set of values of given field within this instance.
    */
-  public Value readField(int target, int field)
+  Value readFieldFromInstance(DFA dfa, int target, int field)
   {
     System.out.println("*** error: Value.readField called on class " + this + " (" + getClass() + "), expected " + Instance.class);
     return UNIT;
@@ -175,6 +222,10 @@ public class Value extends ANY
     else if (v == UNDEFINED)
       {
         return this;
+      }
+    else if (this.isBool() && v.isBool())
+      { // booleans that are not equal:
+        return BOOL;
       }
     else
       {

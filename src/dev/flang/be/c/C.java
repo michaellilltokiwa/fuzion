@@ -125,6 +125,27 @@ public class C extends ANY
 
 
     /**
+     * Create code to assign value to a given field w/o dynamic binding.
+     *
+     * @param tc clazz id of the target instance
+     *
+     * @param f clazz id of the assigned field
+     *
+     * @param rt clazz is of the field type
+     *
+     * @param tvalue the target instance
+     *
+     * @param val the new value to be assigned to the field.
+     *
+     * @return statement to perform the given access
+     */
+    public CStmnt assignStatic(int tc, int f, int rt, CExpr tvalue, CExpr val)
+    {
+      return assignField(tvalue, tc, tc, f, val, rt);
+    }
+
+
+    /**
      * Perform an assignment of avalue to a field in tvalue. The type of tvalue
      * might be dynamic (a refernce). See FUIR.acess*().
      */
@@ -194,6 +215,21 @@ public class C extends ANY
 
 
     /**
+     * Get the outer instance the given clazz is called on.
+     */
+    public Pair<CExpr, CStmnt> outer(int cl)
+    {
+      return new Pair<>(CNames.OUTER, CStmnt.EMPTY);
+    }
+
+
+    /**
+     * Get the argument #i
+     */
+    public CExpr arg(int cl, int i) { return CIdent.arg(i); }
+
+
+    /**
      * Get a constant value of type constCl with given byte data d.
      */
     public Pair<CExpr, CStmnt> constData(int constCl, byte[] d)
@@ -232,7 +268,7 @@ public class C extends ANY
     /**
      * Perform a match on value subv.
      */
-    public CStmnt match(int cl, int c, int i, CExpr subv)
+    public Pair<CExpr, CStmnt> match(AbstractInterpreter<CExpr, CStmnt> ai, int cl, int c, int i, CExpr subv)
     {
       var subjClazz = _fuir.matchStaticSubject(cl, c, i);
       var sub       = fields(subv, subjClazz);
@@ -281,7 +317,7 @@ public class C extends ANY
                                                     : CExpr.UNIT;
               sl.add(C.this.assign(f, entry, fclazz));
             }
-          sl.add(_ai.process(cl, _fuir.matchCaseCode(c, i, mc))._v1);
+          sl.add(ai.process(cl, _fuir.matchCaseCode(c, i, mc))._v1);
           sl.add(CStmnt.BREAK);
           var cazecode = CStmnt.seq(sl);
           tcases.add(CStmnt.caze(ctags, cazecode));  // tricky: this a NOP if ctags.isEmpty
@@ -297,7 +333,7 @@ public class C extends ANY
           var notFound = reportErrorInCode("unexpected reference type %d found in match", id);
           tdefault = CStmnt.suitch(id, rcases, notFound);
         }
-      return CStmnt.seq(getRef, CStmnt.suitch(tag, tcases, tdefault));
+      return new Pair(CExpr.UNIT, CStmnt.seq(getRef, CStmnt.suitch(tag, tcases, tdefault)));
     }
 
 
@@ -1162,39 +1198,7 @@ public class C extends ANY
     var cur = _fuir.clazzIsRef(cl) ? fields(_names.CURRENT, cl)
                                    : _names.CURRENT.deref();
     var l = new List<CStmnt>();
-    var vcl = _fuir.clazzAsValue(cl);
-    var ac = _fuir.clazzArgCount(vcl);
-    for (int i = 0; i < ac; i++)
-      {
-        var af = _fuir.clazzArg(vcl, i);
-        var at = _fuir.clazzArgClazz(vcl, i);
-        if (_types.hasData(at))
-          {
-            var target = _types.isScalar(vcl)
-              ? cur
-              : cur.field(_names.fieldName(af));
-            l.add(assign(target, CIdent.arg(i), at));
-          }
-      }
-
-    // copy outer ref argument to outer ref field:
-    var or = _fuir.clazzOuterRef(cl);
-    if (or != -1)
-      {
-        var rt = _fuir.clazzResultClazz(or);
-        var af = accessField(current(cl), cl, or);
-        l.add(assign(af, CNames.OUTER, rt));
-      }
-
-    if (pre)
-      {
-        l.add(_ai.processContract(cl, FUIR.ContractKind.Pre));
-      }
-    else
-      {
-        l.add(_ai.process(cl, _fuir.clazzCode(cl))._v1);
-        l.add(_ai.processContract(cl, FUIR.ContractKind.Post));
-      }
+    l.add(_ai.process(cl, pre)._v1);
     var res = _fuir.clazzResultClazz(cl);
     if (!pre && _types.hasData(res))
       {
