@@ -69,7 +69,6 @@ public class Intrinsics extends ANY
   static
   {
     put("safety"               , (c,cl,outer,in) -> (c._options.fuzionSafety() ? c._names.FZ_TRUE : c._names.FZ_FALSE).ret());
-    put("safety"               , (c,cl,outer,in) -> (c._options.fuzionSafety() ? c._names.FZ_TRUE : c._names.FZ_FALSE).ret());
     put("debug"                , (c,cl,outer,in) -> (c._options.fuzionDebug()  ? c._names.FZ_TRUE : c._names.FZ_FALSE).ret());
     put("debugLevel"           , (c,cl,outer,in) -> (CExpr.int32const(c._options.fuzionDebugLevel())).ret());
     put("fuzion.std.args.count", (c,cl,outer,in) -> c._names.GLOBAL_ARGC.ret());
@@ -396,7 +395,7 @@ public class Intrinsics extends ANY
     put("fuzion.sys.array.alloc", (c,cl,outer,in) ->
         {
           var gc = c._fuir.clazzActualGeneric(cl, 0);
-          return CExpr.call("malloc",
+          return CExpr.call(c.malloc(),
                             new List<>(CExpr.sizeOfType(c._types.clazz(gc)).mul(A0))).ret();
         });
     put("fuzion.sys.array.setel", (c,cl,outer,in) ->
@@ -437,16 +436,28 @@ public class Intrinsics extends ANY
             {
               var pt = new CIdent("pt");
               var res = new CIdent("res");
+              var arg = new CIdent("arg");
               return CStmnt.seq(CExpr.decl("pthread_t *", pt),
                                 CExpr.decl("int", res),
-                                pt.assign(CExpr.call("malloc", new List<>(CExpr.sizeOfType("pthread_t")))),
+                                CExpr.decl("struct " + CNames.fzThreadStartRoutineArg.code() + "*", arg),
+
+                                pt.assign(CExpr.call(c.malloc(), new List<>(CExpr.sizeOfType("pthread_t")))),
                                 CExpr.iff(pt.eq(CNames.NULL),
-                                          CStmnt.seq(CExpr.fprintfstderr("*** malloc(%zu) failed\n", CExpr.sizeOfType("pthread_t")),
+                                          CStmnt.seq(CExpr.fprintfstderr("*** " + c.malloc() + "(%zu) failed\n", CExpr.sizeOfType("pthread_t")),
                                                      CExpr.call("exit", new List<>(CExpr.int32const(1))))),
+
+                                arg.assign(CExpr.call(c.malloc(), new List<>(CExpr.sizeOfType("struct " + CNames.fzThreadStartRoutineArg.code())))),
+                                CExpr.iff(arg.eq(CNames.NULL),
+                                          CStmnt.seq(CExpr.fprintfstderr("*** " + c.malloc() + "(%zu) failed\n", CExpr.sizeOfType("struct " + CNames.fzThreadStartRoutineArg.code())),
+                                                     CExpr.call("exit", new List<>(CExpr.int32const(1))))),
+
+                                arg.deref().field(CNames.fzThreadStartRoutineArgFun).assign(CExpr.ident(c._names.function(call, false)).adrOf().castTo("void *")),
+                                arg.deref().field(CNames.fzThreadStartRoutineArgArg).assign(A0.castTo("void *")),
+
                                 res.assign(CExpr.call("pthread_create", new List<>(pt,
                                                                                    CNames.NULL,
-                                                                                   CExpr.ident(c._names.function(call, false)).adrOf().castTo("void *(*)(void *)"),
-                                                                                   A0.castTo("void *")))),
+                                                                                   CNames.fzThreadStartRoutine.adrOf(),
+                                                                                   arg))),
                                 CExpr.iff(res.ne(CExpr.int32const(0)),
                                           CStmnt.seq(CExpr.fprintfstderr("*** pthread_create failed with return code %d\n",res),
                                                      CExpr.call("exit", new List<>(CExpr.int32const(1))))));
@@ -490,10 +501,10 @@ public class Intrinsics extends ANY
         "effect.abortable"     ,
         "effect.abort"         , (c,cl,outer,in) ->
         {
-          var ecl = effectType(c, cl);
-          var ev  = c._names.env(ecl);
-          var evi = c._names.envInstalled(ecl);
-          var evj = c._names.envJmpBuf(ecl);
+          var ecl = c._fuir.effectType(cl);
+          var ev  = c._names.fzThreadEffectsEnvironment.deref().field(c._names.env(ecl));
+          var evi = c._names.fzThreadEffectsEnvironment.deref().field(c._names.envInstalled(ecl));
+          var evj = c._names.fzThreadEffectsEnvironment.deref().field(c._names.envJmpBuf(ecl));
           var o   = c._names.OUTER;
           var e   = c._fuir.clazzIsRef(ecl) ? o : o.deref();
           return
@@ -551,7 +562,7 @@ public class Intrinsics extends ANY
     put("effects.exists"       , (c,cl,outer,in) ->
         {
           var ecl = c._fuir.clazzActualGeneric(cl, 0);
-          var evi = c._names.envInstalled(ecl);
+          var evi = c._names.fzThreadEffectsEnvironment.deref().field(c._names.envInstalled(ecl));
           return CStmnt.seq(CStmnt.iff(evi, c._names.FZ_TRUE.ret()), c._names.FZ_FALSE.ret());
         });
 
@@ -682,54 +693,6 @@ public class Intrinsics extends ANY
           }
       }
   }
-
-
-  /**
-   * Is cl one of the instrinsics in effect that changes the effect in
-   * the current environment?
-   *
-   * @param c the C backend
-   *
-   * @param cl the id of the intrinsic clazz
-   *
-   * @return true for effect.install and similar features.
-   */
-  static boolean isEffect(C c, int cl)
-  {
-    if (PRECONDITIONS) require
-      (c._fuir.clazzKind(cl) == FUIR.FeatureKind.Intrinsic);
-
-    return switch(c._fuir.clazzIntrinsicName(cl))
-      {
-      case "effect.replace",
-           "effect.default",
-           "effect.abortable",
-           "effect.abort" -> true;
-      default -> false;
-      };
-  }
-
-
-  /**
-   * For an intrinstic in effect that changes the effect in the
-   * current environment, return the type of the environment.  This type is used
-   * to distinguish different environments.
-   *
-   * @param c the C backend
-   *
-   * @param cl the id of the intrinsic clazz
-   *
-   * @return the type of the outer feature of cl
-   */
-  static int effectType(C c, int cl)
-  {
-    if (PRECONDITIONS) require
-      (isEffect(c, cl));
-
-    var or = c._fuir.clazzOuterRef(cl);
-    return c._fuir.clazzResultClazz(or);
-  }
-
 
 
   /**

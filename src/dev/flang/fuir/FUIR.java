@@ -26,11 +26,8 @@ Fuzion language implementation.  If not, see <https://www.gnu.org/licenses/>.
 
 package dev.flang.fuir;
 
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
-
 import java.util.TreeMap;
-import java.util.TreeSet;
+import java.util.stream.Stream;
 
 import dev.flang.air.Clazz;
 import dev.flang.air.Clazzes;
@@ -123,6 +120,7 @@ public class FUIR extends IR
     c_TRUE        { Clazz getIfCreated() { return Clazzes.c_TRUE     .getIfCreated(); } },
     c_FALSE       { Clazz getIfCreated() { return Clazzes.c_FALSE    .getIfCreated(); } },
     c_conststring { Clazz getIfCreated() { return Clazzes.conststring.getIfCreated(); } },
+    c_unit        { Clazz getIfCreated() { return Clazzes.c_unit     .getIfCreated(); } },
 
     // dummy entry to report failure of getSpecialId()
     c_NOT_FOUND   { Clazz getIfCreated() { return null;                               } };
@@ -149,7 +147,10 @@ public class FUIR extends IR
   final Clazz _main;
 
 
-  final Map2Int<Clazz> _clazzIds = new MapComparable2Int(CLAZZ_BASE);
+  /**
+   * Mapping from Clazz instances to int ids.
+   */
+  final Map2Int<Clazz> _clazzIds;
 
 
   /**
@@ -157,7 +158,7 @@ public class FUIR extends IR
    * unique, i.e., comparing the code index is equivalent to comparing the clazz
    * ids.
    */
-  private final TreeMap<Integer, Integer> _clazzCode = new TreeMap<>();
+  private final TreeMap<Integer, Integer> _clazzCode;
 
 
   /**
@@ -165,16 +166,40 @@ public class FUIR extends IR
    * unique, i.e., comparing the code index is equivalent to comparing the clazz
    * ids.
    */
-  private final TreeMap<Long, Integer> _clazzContract = new TreeMap<>();
+  private final TreeMap<Long, Integer> _clazzContract;
 
 
   /*--------------------------  constructors  ---------------------------*/
 
 
+  /**
+   * Create FUIR from given Clazz instance.
+   *
+   * @param main the main clazz.
+   */
   public FUIR(Clazz main)
   {
     _main = main;
+    _clazzIds = new MapComparable2Int(CLAZZ_BASE);
+    _clazzCode = new TreeMap<>();
+    _clazzContract = new TreeMap<>();
     Clazzes.findAllClasses(main());
+  }
+
+
+  /**
+   * Clone this FUIR such that modifications can be made by optimizers.  A heir
+   * of FUIR can use this to redefine methods.
+   *
+   * @param original the original FUIR instance that we are cloning.
+   */
+  public FUIR(FUIR original)
+  {
+    super(original);
+    _main = original._main;
+    _clazzIds = original._clazzIds;
+    _clazzCode = original._clazzCode;
+    _clazzContract = original._clazzContract;
   }
 
 
@@ -938,21 +963,7 @@ hw25 is
    */
   public boolean clazzNeedsCode(int cl)
   {
-    return clazzNeedsCode(_clazzIds.get(cl));
-  }
-
-
-  /**
-   * Does the backend need to generate code for this clazz since it might be
-   * called at runtime.  This is true for all features that are called directly
-   * or dynamically in a 'normal' call, i.e., not in an inheritance call.
-   *
-   * An inheritance call is inlined since it works on a different instance, the
-   * instance of the heir class.  Consequently, a clazz resulting from an
-   * inheritance call does not need code for itself.
-   */
-  boolean clazzNeedsCode(Clazz cc)
-  {
+    var cc = _clazzIds.get(cl);
     switch (clazzKind(cc))
       {
       case Abstract : return false;
@@ -1006,7 +1017,7 @@ hw25 is
   /**
    * Get the id of clazz fuzion.sys.array<u8>.data
    *
-   * @param the id of connststring.internalArray or -1 if that clazz was not created.
+   * @param the id of fuzion.sys.array<u8>.data or -1 if that clazz was not created.
    */
   public int clazz_fuzionSysArray_u8_data()
   {
@@ -1018,12 +1029,40 @@ hw25 is
   /**
    * Get the id of clazz fuzion.sys.array<u8>.length
    *
-   * @param the id of connststring.internalArray or -1 if that clazz was not created.
+   * @param the id of fuzion.sys.array<u8>.length or -1 if that clazz was not created.
    */
   public int clazz_fuzionSysArray_u8_length()
   {
     var cc = Clazzes.fuzionSysArray_u8_length;
     return cc == null ? -1 : _clazzIds.get(cc);
+  }
+
+
+  /**
+   * Get the id of the given special clazz.
+   *
+   * @param the id of clazz c or -1 if that clazz was not created.
+   */
+  public int clazz(SpecialClazzes c)
+  {
+    addClasses();
+    var cc = c.getIfCreated();
+    if (cc != null)
+      {
+        _clazzIds.add(cc);
+      }
+    return cc == null ? -1 : _clazzIds.get(cc);
+  }
+
+
+  /**
+   * Get the id of clazz u8
+   *
+   * @param the id of u8 or -1 if that clazz was not created.
+   */
+  public int clazz_u8()
+  {
+    return clazz(SpecialClazzes.c_u8);
   }
 
 
@@ -1266,7 +1305,7 @@ hw25 is
         if (CHECKS) check
           (clz.isRef() == tclazz.isRef());
         var in = (Clazz) clz._inner.get(f);  // NYI: cast would fail for open generic field
-        if (in != null && clazzNeedsCode(in))
+        if (in != null && clazzNeedsCode(_clazzIds.get(in)))
           {
             innerClazzes.add(clz);
             innerClazzes.add(in);
@@ -1609,6 +1648,34 @@ hw25 is
 
 
   /**
+   * For a given field cl whose outer instance is a value type, find the same
+   * field in the corresponding outer ref type.
+   *
+   * @param cl index of a clazz that is a field.
+   */
+  public int correspondingFieldInRefInstance(int cl)
+  {
+    var cc = _clazzIds.get(cl);
+    var rf = cc.correspondingFieldInRefInstance(cc);
+    return _clazzIds.get(rf);
+  }
+
+
+  /**
+   * For a given field cl whose outer instance is a ref type, find the same
+   * field in the corresponding outer value type.
+   *
+   * @param cl index of a clazz that is a field.
+   */
+  public int correspondingFieldInValueInstance(int cl)
+  {
+    var cc = _clazzIds.get(cl);
+    var rf = cc.correspondingFieldInValueInstance(cc);
+    return _clazzIds.get(rf);
+  }
+
+
+  /**
    * Get a string representation of the expr at the given index in given code
    * block.  Useful for debugging.
    *
@@ -1822,6 +1889,54 @@ hw25 is
       case Unit    -> codeIndex(c, ix, -1);
       };
   }
+
+
+  /*-----------------  convenience methods for effects  -----------------*/
+
+
+  /**
+   * Is cl one of the instrinsics in effect that changes the effect in
+   * the current environment?
+   *
+   * @param cl the id of the intrinsic clazz
+   *
+   * @return true for effect.install and similar features.
+   */
+  public boolean isEffect(int cl)
+  {
+    if (PRECONDITIONS) require
+      (clazzKind(cl) == FeatureKind.Intrinsic);
+
+    return switch(clazzIntrinsicName(cl))
+      {
+      case "effect.replace",
+           "effect.default",
+           "effect.abortable",
+           "effect.abort" -> true;
+      default -> false;
+      };
+  }
+
+
+
+  /**
+   * For an intrinstic in effect that changes the effect in the
+   * current environment, return the type of the environment.  This type is used
+   * to distinguish different environments.
+   *
+   * @param cl the id of the intrinsic clazz
+   *
+   * @return the type of the outer feature of cl
+   */
+  public int effectType(int cl)
+  {
+    if (PRECONDITIONS) require
+      (isEffect(cl));
+
+    var or = clazzOuterRef(cl);
+    return clazzResultClazz(or);
+  }
+
 
 }
 

@@ -20,13 +20,13 @@ Fuzion language implementation.  If not, see <https://www.gnu.org/licenses/>.
  *
  * Tokiwa Software GmbH, Germany
  *
- * Source of class Instance
+ * Source of class Call
  *
  *---------------------------------------------------------------------*/
 
-package dev.flang.fuir.analysis;
+package dev.flang.fuir.analysis.dfa;
 
-import java.util.TreeSet;
+import java.nio.charset.StandardCharsets;
 
 import dev.flang.fuir.FUIR;
 
@@ -62,9 +62,10 @@ public class Call extends ANY implements Comparable<Call>, Context
 
 
   /**
-   * The clazz this is an instance of.
+   * The clazz this is calling.
    */
   int _cc;
+
 
   /**
    * Is this a call to _cc's precondition?
@@ -84,23 +85,23 @@ public class Call extends ANY implements Comparable<Call>, Context
   List<Value> _args;
 
 
-
   /**
    * 'this' instance created by this call.
    */
-  Instance _instance;
+  Value _instance;
 
 
   /**
-   * result value returned from this call.  A value of null means that this call
-   * does not return at all, i.e., the call always diverges.
-   *
-   * A value of Value.UNDEFINED means that the call may return, but the value
-   * still needs to be found.
-   *
-   * Any other value gives the result of the call.
+   * true means that the call may return, false means the call has not been
+   * found to return, i.e., the result is null (aka void).
    */
-  Value _result;
+  boolean _returns = false;
+
+
+  /**
+   * The environment, i.e., the effects installed when this call is made.
+   */
+  final Env _env;
 
 
   /**
@@ -128,24 +129,16 @@ public class Call extends ANY implements Comparable<Call>, Context
    * @param context for debugging: Reason that causes this call to be part of
    * the analysis.
    */
-  public Call(DFA dfa, int cc, boolean pre, Value target, List<Value> args, Context context)
+  public Call(DFA dfa, int cc, boolean pre, Value target, List<Value> args, Env env, Context context)
   {
     _dfa = dfa;
     _cc = cc;
     _pre = pre;
     _target = target;
     _args = args;
+    _env = env;
     _context = context;
     _instance = dfa.newInstance(cc, this);
-    if (_dfa._fuir.clazzKind(cc) == IR.FeatureKind.Intrinsic)
-      {
-        var name = _dfa._fuir.clazzIntrinsicName(_cc);
-        _result = _dfa._intrinsics_.get(name).analyze(this);
-      }
-    else
-      {
-        _result = null;
-      }
   }
 
 
@@ -166,6 +159,13 @@ public class Call extends ANY implements Comparable<Call>, Context
       {
         r = Value.compare(_args.get(i), other._args.get(i));
       }
+    if (r == 0)
+      {
+        r =
+          _env == null && other._env == null ?  0 :
+          _env != null && other._env == null ? -1 :
+          _env == null && other._env != null ? +1 : _env.compareTo(other._env);
+      }
     return r;
   }
 
@@ -175,9 +175,13 @@ public class Call extends ANY implements Comparable<Call>, Context
    */
   void returns()
   {
-    if (_result == null)
+    if (!_returns)
       {
-        _result = Value.UNDEFINED;
+        _returns = true;
+        if (!_dfa._changed)
+          {
+            _dfa._changedSetBy = "Call.returns for " + this;
+          }
         _dfa._changed = true;
       }
   }
@@ -189,41 +193,85 @@ public class Call extends ANY implements Comparable<Call>, Context
    */
   public Value result()
   {
-    if (_result == Value.UNDEFINED)
+    Value result = null;
+    if (_dfa._fuir.clazzKind(_cc) == IR.FeatureKind.Intrinsic)
+      {
+        var name = _dfa._fuir.clazzIntrinsicName(_cc);
+        var idfa = _dfa._intrinsics_.get(name);
+        if (idfa != null)
+          {
+            result = _dfa._intrinsics_.get(name).analyze(this);
+          }
+        else
+          {
+            var at = _dfa._fuir.clazzTypeParameterActualType(_cc);
+            if (at >= 0)
+              {
+                var rc = _dfa._fuir.clazzResultClazz(_cc);
+                var t = _dfa.newInstance(rc, this);
+                var tname = _dfa.newConstString(_dfa._fuir.clazzAsStringNew(at).getBytes(StandardCharsets.UTF_8), this);
+                // NYI: DFA missing support for Type instance, need to set field t.name to tname.
+                result = t;
+              }
+            else
+              {
+                var msg = "DFA: code to handle intrinsic '" + name + "' is missing";
+                Errors.warning(msg);
+              }
+          }
+      }
+    else if (_returns)
       {
         var rf = _dfa._fuir.clazzResultField(_cc);
         if (_pre)
           {
-            _result = Value.UNIT;
+            result = Value.UNIT;
           }
         else if (rf == -1)
           {
-            _result = _instance;
+            result = _instance;
+          }
+        else if (FUIR.SpecialClazzes.c_unit == _dfa._fuir.getSpecialId(_dfa._fuir.clazzResultClazz(rf)))
+          {
+            result = Value.UNIT;
           }
         else
           {
             // should not be possible to return void (_result should be null):
             if (CHECKS) check
-              (_dfa._fuir.clazzIsVoidType(_dfa._fuir.clazzResultClazz(_cc)));
+              (!_dfa._fuir.clazzIsVoidType(_dfa._fuir.clazzResultClazz(_cc)));
 
-            _result = _instance.readField(_dfa, _cc, rf);
+            result = _instance.readField(_dfa, rf);
           }
       }
-    return _result;
+    return result;
   }
 
 
   /**
-   * Create human-readable string from this instance.
+   * Create human-readable string from this call.
    */
   public String toString()
   {
     var sb = new StringBuilder();
-    sb.append(_pre ? "precondition of " : "").append(_dfa._fuir.clazzAsString(_cc));
-    for (var a : _args)
+    sb.append(_pre ? "precondition of " : "")
+      .append(_dfa._fuir.clazzAsString(_cc));
+    if (_target != Value.UNIT)
       {
-        sb.append(" ").append(a);
+        sb.append(" target=")
+          .append(_target);
       }
+    for (var i = 0; i < _args.size(); i++)
+      {
+        var a = _args.get(i);
+        sb.append(" a")
+          .append(i)
+          .append("=")
+          .append(a);
+      }
+    var r = result();
+    sb.append(" => ")
+      .append(r == null ? "*** VOID ***" : r);
     return sb.toString();
   }
 
@@ -237,6 +285,45 @@ public class Call extends ANY implements Comparable<Call>, Context
     System.out.println(indent + "  |");
     System.out.println(indent + "  +- performs call " + this);
     return indent + "  ";
+  }
+
+
+  /**
+   * Get effect of given type in this call's environment or the default if none
+   * found.
+   *
+   * @param ecl clazz defining the effect type.
+   *
+   * @return null in case no effect of type ecl was found
+   */
+  Value getEffect(int ecl)
+  {
+    return
+      _env != null ? _env.getEffect(ecl)
+                   : _dfa._defaultEffects.get(ecl);
+  }
+
+
+  /**
+   * Replace effect of given type with a new value.
+   *
+   * NYI: This currently modifies the effect and hence the call. We should check
+   * how this could be avoided or handled better.
+   *
+   * @param ecl clazz defining the effect type.
+   *
+   * @param e new instance of this effect
+   */
+  void replaceEffect(int ecl, Value e)
+  {
+    if (_env != null)
+      {
+        _env.replaceEffect(ecl, e);
+      }
+    else
+      {
+        _dfa.replaceDefaultEffect(ecl, e);
+      }
   }
 
 

@@ -24,14 +24,10 @@ Fuzion language implementation.  If not, see <https://www.gnu.org/licenses/>.
  *
  *---------------------------------------------------------------------*/
 
-package dev.flang.fuir.analysis;
+package dev.flang.fuir.analysis.dfa;
 
 import java.util.TreeMap;
-
-import dev.flang.fuir.FUIR;
-
-import dev.flang.util.ANY;
-import dev.flang.util.Errors;
+import java.util.stream.Collectors;
 
 
 /**
@@ -41,7 +37,7 @@ import dev.flang.util.Errors;
  *
  * @author Fridtjof Siebert (siebert@tokiwa.software)
  */
-public class Instance extends Value implements Comparable<Instance>, Context
+public class Instance extends Value implements Comparable<Instance> // , Context
 {
 
 
@@ -55,12 +51,6 @@ public class Instance extends Value implements Comparable<Instance>, Context
 
 
   /**
-   * The clazz this is an instance of.
-   */
-  int _clazz;
-
-
-  /**
    * The DFA instance we are working with.
    */
   DFA _dfa;
@@ -69,13 +59,20 @@ public class Instance extends Value implements Comparable<Instance>, Context
   /**
    * Map from fields to the values that have been assigned to the fields.
    */
-  TreeMap<Integer, Value> _fields = new TreeMap<>();
+  final TreeMap<Integer, Value> _fields;
 
 
   /**
    * For debugging: Reason that causes this instance to be part of the analysis.
    */
   Context _context;
+
+
+  /**
+   * Is this instance the result of the IR command 'Box'.  If so, there is a
+   * terrible hack to find the field values.
+   */
+  final boolean _isBoxed;
 
 
   /*---------------------------  consructors  ---------------------------*/
@@ -93,9 +90,31 @@ public class Instance extends Value implements Comparable<Instance>, Context
    */
   public Instance(DFA dfa, int clazz, Context context)
   {
-    _clazz = clazz;
+    super(clazz);
     _dfa = dfa;
     _context = context;
+    _fields = new TreeMap<>();
+    _isBoxed = false;
+  }
+
+
+  /**
+   * Create boxed Instance of given value
+   *
+   * @param original the original value.
+   */
+  Instance(Instance original, int vc, int rc)
+  {
+    super(original._clazz);
+
+    if (PRECONDITIONS) require
+      (original._clazz == vc);
+
+    _clazz = rc;
+    _dfa = original._dfa;
+    _context = original._context;
+    _fields = (TreeMap<Integer, Value>) original._fields.clone();
+    _isBoxed = true;
   }
 
 
@@ -116,7 +135,7 @@ public class Instance extends Value implements Comparable<Instance>, Context
   /**
    * Add v to the set of values of given field within this instance.
    */
-  public void setField(int field, Value v)
+  public void setField(DFA dfa, int field, Value v)
   {
     if (PRECONDITIONS) require
       (v != null);
@@ -126,6 +145,11 @@ public class Instance extends Value implements Comparable<Instance>, Context
       {
         v = oldv.join(v);
       }
+    if (!_dfa._changed && (oldv == null || Value.COMPARATOR.compare(oldv, v) != 0))
+      {
+        _dfa._changedSetBy = "setField: new values "+v+" (was "+oldv+") for " + this;
+        _dfa._changed = true;
+      }
     _fields.put(field, v);
   }
 
@@ -133,24 +157,52 @@ public class Instance extends Value implements Comparable<Instance>, Context
   /**
    * Get set of values of given field within this instance.
    */
-  Value readFieldFromInstance(DFA dfa, int target, int field)
+  Value readFieldFromInstance(DFA dfa, int field)
   {
     if (PRECONDITIONS) require
-      (_clazz == target);
+      (_clazz == dfa._fuir.clazzOuterClazz(field));
 
     var v = _fields.get(field);
+    if (v == null && _isBoxed)
+      {
+        for (var f : _fields.keySet())
+          { // NYI: HACK: For a boxed value, we read the corresponding value
+            // type field. We should better copy all the fields over from the
+            // value type to the ref type.
+            if (dfa._fuir.clazzAsString(f).equals(dfa._fuir.clazzAsString(field).replace("ref ","")))
+              {
+                v = _fields.get(f);
+              }
+          }
+      }
     if (v == null)
       {
         if (dfa._reportResults)
           {
-            System.err.println("*** reading uninitialized field " + dfa._fuir.clazzAsString(field));
+            System.err.println("*** reading uninitialized field " + field + ": "+ dfa._fuir.clazzAsString(field) + " from instance of " + dfa._fuir.clazzAsString(_clazz) +
+                               (_isBoxed ? " Boxed!" : "") +
+                               "\n" +
+                               "fields available:\n  " + _fields.keySet().stream().map(x -> ""+x+":"+dfa._fuir.clazzAsString(x)).collect(Collectors.joining(",\n  ")));
             for (var f : _fields.keySet())
               {
-                System.out.println("values of "+dfa._fuir.clazzAsString(f)+": "+_fields.get(f));
+                if (dfa._fuir.clazzAsString(f).equals(dfa._fuir.clazzAsString(field).replace("ref ","")))
+                  {
+                    System.out.println("NYI: HACK: Using value version instead: "+v);
+                  }
               }
           }
       }
     return v;
+  }
+
+
+  /**
+   * Create the union of the values 'this' and 'v'. This is called by join()
+   * after common cases (same instnace, UNDEFINED) have been handled.
+   */
+  public Value joinInstances(Value v)
+  {
+    return new ValueSet(this, v);
   }
 
 
@@ -164,7 +216,6 @@ public class Instance extends Value implements Comparable<Instance>, Context
 
   /**
    * Show the context that caused the inclusion of this instance into the analysis.
-   */
   public String showWhy()
   {
     var indent = _context.showWhy();
@@ -172,6 +223,7 @@ public class Instance extends Value implements Comparable<Instance>, Context
     System.out.println(indent + "  +- creates Instance " + this);
     return indent + "  ";
   }
+   */
 
 }
 
