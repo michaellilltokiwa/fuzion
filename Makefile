@@ -340,11 +340,17 @@ $(BUILD_DIR)/examples: $(FZ_SRC)/examples
 $(BUILD_DIR)/UnicodeData.txt:
 	cd $(BUILD_DIR) && wget https://www.unicode.org/Public/UCD/latest/ucd/UnicodeData.txt
 
+$(BUILD_DIR)/SpecialCasing.txt:
+	cd $(BUILD_DIR) && wget https://www.unicode.org/Public/UCD/latest/ucd/SpecialCasing.txt
+
 $(BUILD_DIR)/UnicodeData.java.generated: $(CLASS_FILES_UTIL_UNICODE) $(BUILD_DIR)/UnicodeData.txt
 	$(JAVA) -cp $(CLASSES_DIR) dev.flang.util.unicode.ParseUnicodeData $(BUILD_DIR)/UnicodeData.txt >$@
 
 $(BUILD_DIR)/UnicodeData.java: $(BUILD_DIR)/UnicodeData.java.generated $(SRC)/dev/flang/util/UnicodeData.java.in
 	sed -e '/@@@ generated code start @@@/r build/UnicodeData.java.generated' $(SRC)/dev/flang/util/UnicodeData.java.in >$@
+
+$(BUILD_DIR)/special_casing.fz: $(CLASS_FILES_UTIL_UNICODE) $(BUILD_DIR)/SpecialCasing.txt
+	$(JAVA) -cp $(CLASSES_DIR) dev.flang.util.unicode.ParseUnicodeSpecialCasingData $(BUILD_DIR)/SpecialCasing.txt >$@
 
 .phony: doc
 doc: $(DOCUMENTATION)
@@ -354,7 +360,14 @@ $(BUILD_DIR)/doc/fumfile.html: $(SRC)/dev/flang/fe/LibraryModule.java
 	sed -n '/--asciidoc--/,/--asciidoc--/p' $^ | grep -v "\--asciidoc--" | asciidoc - >$@
 
 # phony target to regenerate UnicodeData.java using the latest UnicodeData.txt.
-# This must be phony since $(SRC)/dev/flang/util/UnicodeData.java would
+# This must be phony since $(SRC)/lib/unicode/special_casing.fz would
+# be a circular dependency
+.phony: unicode/special_casing
+unicode/special_casing: $(BUILD_DIR)/special_casing.fz
+	cp $^ $(FZ_SRC_LIB)/unicode/special_casing.fz
+
+# phony target to regenerate NYI.fz using the latest SpecialCasing.txt.
+# This must be phony since $(SRC)/lib/... would
 # be a circular dependency
 .phony: unicode
 unicode: $(BUILD_DIR)/UnicodeData.java
