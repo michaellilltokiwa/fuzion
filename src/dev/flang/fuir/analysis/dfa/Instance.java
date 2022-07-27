@@ -29,6 +29,8 @@ package dev.flang.fuir.analysis.dfa;
 import java.util.TreeMap;
 import java.util.stream.Collectors;
 
+import dev.flang.util.Errors;
+
 
 /**
  * Instance represents an abstract instance of a feature handled by the DFA
@@ -37,7 +39,7 @@ import java.util.stream.Collectors;
  *
  * @author Fridtjof Siebert (siebert@tokiwa.software)
  */
-public class Instance extends Value implements Comparable<Instance> // , Context
+public class Instance extends Value implements Comparable<Instance>
 {
 
 
@@ -179,10 +181,11 @@ public class Instance extends Value implements Comparable<Instance> // , Context
       {
         if (dfa._reportResults)
           {
-            System.err.println("*** reading uninitialized field " + field + ": "+ dfa._fuir.clazzAsString(field) + " from instance of " + dfa._fuir.clazzAsString(_clazz) +
-                               (_isBoxed ? " Boxed!" : "") +
-                               "\n" +
-                               "fields available:\n  " + _fields.keySet().stream().map(x -> ""+x+":"+dfa._fuir.clazzAsString(x)).collect(Collectors.joining(",\n  ")));
+            Errors.error("reading uninitialized field " + dfa._fuir.clazzAsString(field) + " from instance of " + dfa._fuir.clazzAsString(_clazz) +
+                         (_isBoxed ? " Boxed!" : "") +
+                         "\n" +
+                         "fields available:\n  " + _fields.keySet().stream().map(x -> ""+x+":"+dfa._fuir.clazzAsString(x)).collect(Collectors.joining(",\n  ")));
+
             for (var f : _fields.keySet())
               {
                 if (dfa._fuir.clazzAsString(f).equals(dfa._fuir.clazzAsString(field).replace("ref ","")))
@@ -213,17 +216,6 @@ public class Instance extends Value implements Comparable<Instance> // , Context
   {
     return _dfa._fuir.clazzAsString(_clazz);
   }
-
-  /**
-   * Show the context that caused the inclusion of this instance into the analysis.
-  public String showWhy()
-  {
-    var indent = _context.showWhy();
-    System.out.println(indent + "  |");
-    System.out.println(indent + "  +- creates Instance " + this);
-    return indent + "  ";
-  }
-   */
 
 }
 

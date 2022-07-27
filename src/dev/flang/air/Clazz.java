@@ -295,6 +295,15 @@ public class Clazz extends ANY implements Comparable<Clazz>
   private YesNo _isUnitType = YesNo.dontKnow;
 
 
+  /**
+   * This gives the id this clazz is mapped to in FUIR.
+   *
+   * NYI: Remove once FUIR is based on a .fuir file and not on Clazz instances
+   * and the AST.
+   */
+  public int _idInFUIR = -1;
+
+
   /*--------------------------  constructors  ---------------------------*/
 
 
@@ -730,7 +739,7 @@ public class Clazz extends ANY implements Comparable<Clazz>
    */
   public boolean isVoidType()
   {
-    return _type.compareTo(Types.resolved.t_void) == 0;
+    return this == Clazzes.c_void.get();
   }
 
 
@@ -1657,7 +1666,22 @@ public class Clazz extends ANY implements Comparable<Clazz>
     if (PRECONDITIONS) require
       (_argumentFields != null);
 
-    return this == Clazzes.c_void.getIfCreated() || Arrays.stream(argumentFields()).anyMatch(a -> a.resultClazz().isVoidType());
+    if (false)  // streams version is significantly slower
+      {
+        return Arrays.stream(argumentFields())
+                     .anyMatch(a -> a.resultClazz().isVoidType());
+      }
+    else  // array iteration version is fast:
+      {
+        for (var a : argumentFields())
+          {
+            if (a.resultClazz().isVoidType())
+              {
+                return true;
+              }
+          }
+      }
+    return false;
   }
 
 
