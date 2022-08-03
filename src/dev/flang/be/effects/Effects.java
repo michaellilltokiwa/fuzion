@@ -55,7 +55,7 @@ public class Effects extends CFG
   /**
    * Map from clazz cl to set of effects ecl that are required for a call to cl.
    */
-  Graph<Integer> _effects = new Graph<>();
+  public Graph<Integer> _effects = new Graph<>();
 
 
   /*---------------------------  consructors  ---------------------------*/
