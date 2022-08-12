@@ -17,43 +17,11 @@
 #
 #  Tokiwa Software GmbH, Germany
 #
-#  Source code of Fuzion standard library feature fuzion.sys.envVars
+#  Source code of Fuzion test Makefile
 #
 #  Author: Fridtjof Siebert (siebert@tokiwa.software)
 #
 # -----------------------------------------------------------------------
 
-# fuzion.sys.env_vars -- low-level feature to access environment variables
-#
-private env_vars is
-
-
-  # intrinsic to check if env var with given name exists
-  #
-  # NOTE: parameter s must be 0-terminated char *
-  #
-  private has0(s Object) bool is intrinsic
-
-
-  # intrinsic to get env var with given name
-  #
-  # NOTE: parameter s must be 0-terminated char *
-  #
-  private get0(s Object) string
-  is intrinsic
-
-
-  # check if env var with given name exists
-  #
-  has(s string) bool is
-    has0 (c_string s)
-
-
-  # intrinsic to get env var with given name
-  #
-  get(s string) option string is
-    a := c_string s
-    if has0 a then
-      get0 a
-    else
-      nil
+NAME = indentation_negative
+include ../negative.mk
