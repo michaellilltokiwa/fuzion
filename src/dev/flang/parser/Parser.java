@@ -2081,9 +2081,6 @@ simpleterm  : bracketTerm
         break;
       default: throw new Error("unhandled switch case");
       }
-        break;
-      default: throw new Error("unhandled switch case");
-      }
     if (!ignoredTokenBefore() && current() == Token.t_lcrochet)
       {
         result = indexCall(result);
