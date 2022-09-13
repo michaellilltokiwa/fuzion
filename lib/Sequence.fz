@@ -275,10 +275,13 @@ Sequence(T type) ref is
 
   # reduce this Sequence to R with an initial value init
   # and a reducing function f
-  reduce(R type, init R, f (R,T) -> R) R is
+  reduce(R type, init R, f (R,T) -> choice R (abort_reduce R)) R : Sequences is
     match asList
       nil => init
-      c Cons => c.tail.reduce R (f init c.head) f
+      c Cons =>
+        match (f init c.head)
+          r R => c.tail.reduce r f
+          a abort_reduce R => a.val
 
 
   # insert element v at position at
@@ -346,6 +349,9 @@ Sequence(T type) ref is
 # an instance
 #
 Sequences is
+
+
+  abort_reduce(R type, val R) is
 
 
   # create an empty list

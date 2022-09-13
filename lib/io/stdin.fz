@@ -51,23 +51,41 @@ private stdin(
   read(n i32) outcome string
   pre n >= 0
   is
-    any_error := mut (choice error nil) nil
-    tmp : string is
-      redef utf8 Sequence u8 is
-        streams.generate u8 (() ->
-            match nextByte
-              b u8 => b
-              end_of_file end_of_file => nil
-              error error => any_error <- error; nil)
 
-    arr := (tmp.asCodepoints.asStream.take n)
-    #  asArray, since we don't want this to be lazy
-      .asArray
+    read_codepoint(read_bytes list u8) outcome (option codepoint) is
+      match nextByte
+        byte u8 =>
 
-    match any_error.get
-      error error => error
-      * =>
-        strings.fromCodepoints arr
+          bytes := read_bytes ++ [byte]
+
+          match (strings.fromBytes bytes).codepointsAndErrors.first
+            c codepoint => c
+            e error =>
+              if bytes.count >= 4
+                e
+              else
+                read_codepoint bytes
+        end_of_file => nil
+        e error => e
+
+    l  := (1..n)
+      .reduce (choice (list codepoint) error) (lists.empty codepoint) (r, t ->
+        match read_codepoint (lists.empty u8)
+          e error             => e
+          oc option codepoint =>
+            match oc
+              nil         => Sequences.abort_reduce r
+              c codepoint =>
+                match r
+                  l list codepoint => l ++ [c]
+                  err error => panic "invalid "
+        )
+
+
+    match l
+      err error => err
+      l list codepoint =>
+        strings.fromCodepoints l
 
 
   # read from stdin until end of line or end of file
