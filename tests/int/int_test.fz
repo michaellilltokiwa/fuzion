@@ -17,21 +17,37 @@
 #
 #  Tokiwa Software GmbH, Germany
 #
-#  Source code of Fuzion test Makefile to be included for positive tests
+#  Source code of Fuzion test int
 #
-#  Author: Fridtjof Siebert (siebert@tokiwa.software)
+#  Author: Michael Lill (michael.lill@tokiwa.software)
 #
 # -----------------------------------------------------------------------
 
-# expected variables
-#
-#  NAME -- the name of the main feature to be tested
-#  FUZION -- the fz command
+int_test is
 
-FUZION = ../../bin/fz
+  exitCode := 0
 
-int:
-	$(FUZION) $(NAME) 2>err.txt
+  chck (b bool, msg string) unit is
+    if b
+      say "PASSED: $msg"
+    else
+      say "FAILED: $msg"
+      set exitCode := 1
 
-c:
-	($(FUZION) $(NAME) -c -o=testbin && ./testbin) 2>err.txt
+
+  for m in (i64 -5)..5 do
+    for n in (i64 -5)..5 do
+
+      chck (m=n  = (int m  = int n)) "m $m  = n $n"
+      chck (m<=n = (int m <= int n)) "m $m <= n $n"
+      chck (int m+n = (int m + int n)) "m $m + n $n"
+      chck (int m-n = (int m - int n)) "m $m - n $n"
+      chck (int m*n = (int m * int n)) "m $m * n $n"
+      if n != 0
+        chck (int m/n = (int m / int n)) "m $m / n $n"
+        chck (int m%n = (int m % int n)) "m $m % n $n"
+      if n >= 0
+        chck (int m**n = (int m ** int n)) "m $m ** n $n"
+
+
+  fuzion.std.exit exitCode

@@ -17,21 +17,11 @@
 #
 #  Tokiwa Software GmbH, Germany
 #
-#  Source code of Fuzion test Makefile to be included for positive tests
+#  Source code of Fuzion test Makefile
 #
 #  Author: Fridtjof Siebert (siebert@tokiwa.software)
 #
 # -----------------------------------------------------------------------
 
-# expected variables
-#
-#  NAME -- the name of the main feature to be tested
-#  FUZION -- the fz command
-
-FUZION = ../../bin/fz
-
-int:
-	$(FUZION) $(NAME) 2>err.txt
-
-c:
-	($(FUZION) $(NAME) -c -o=testbin && ./testbin) 2>err.txt
+NAME = int_test
+include ../positive.mk
