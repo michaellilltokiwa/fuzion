@@ -820,16 +820,17 @@ class LibraryOut extends DataOut
   /**
    * Determine the filename from a source file.
    *
-   * This replaced absolute paths that start with fuzionHome by a path relative
+   * This replaces absolute paths that start with sourcePath by a path relative
    * to $FUZION.
    */
   private String fileName(SourceFile sf)
   {
-    var fhp = _sourceModule._options._fuzionHome;
+    var sp = _sourceModule._options.sourcePaths();
+    var sd = sp.length == 1 ? sp[0] : null;
     var sfp = sf._fileName;
-    if (sfp.startsWith(fhp))
+    if (sd != null && sfp.startsWith(sd))
       {
-        var sfr = fhp.relativize(sfp);
+        var sfr = sd.relativize(sfp);
         sfp = FuzionConstants.SYMBOLIC_FUZION_HOME.resolve(sfr);
       }
     return sfp.toString();
@@ -1016,9 +1017,16 @@ class LibraryOut extends DataOut
         var g  = _fixUpsF  .get(i);
         var at = _fixUpsFAt.get(i);
         var o = _offsetsForFeature.get(g);
-        if (CHECKS) check
-          (o != null);
-        writeIntAt(at, o);
+        if (o == null)
+          {
+            System.out.println("NYI: writing module depending on other module not supported yet, missing offset for " + g.qualifiedName() + "!");
+          }
+        else
+          {
+            if (CHECKS) check
+              (o != null);
+            writeIntAt(at, o);
+          }
       }
     for (var i = 0; i<_fixUpsSourcePositions.size(); i++)
       {

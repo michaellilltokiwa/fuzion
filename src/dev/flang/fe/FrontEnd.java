@@ -28,7 +28,6 @@ package dev.flang.fe;
 
 import java.io.IOException;
 
-import java.nio.channels.Channels;
 import java.nio.channels.FileChannel;
 
 import java.nio.file.Files;
@@ -156,7 +155,7 @@ public class FrontEnd extends ANY
     var universe = new Universe();
     _universe = universe;
 
-    var sourcePaths = sourcePaths();
+    var sourcePaths = options.sourcePaths();
     var sourceDirs = new SourceDir[sourcePaths.length + options._modules.size()];
     for (int i = 0; i < sourcePaths.length; i++)
       {
@@ -167,8 +166,7 @@ public class FrontEnd extends ANY
         sourceDirs[sourcePaths.length + i] = new SourceDir(options._fuzionHome.resolve(Path.of("modules")).resolve(Path.of(options._modules.get(i))));
       }
     LibraryModule[] dependsOn;
-    var save = options._saveBaseLib;
-    _baseModule = save == null ? baseModule() : null;
+    _baseModule = options._loadBaseLib ? baseModule() : null;
     dependsOn = _baseModule == null ? new LibraryModule[] { } : new LibraryModule[] { _baseModule };
     if (options._loadSources)
       {
@@ -179,23 +177,6 @@ public class FrontEnd extends ANY
       {
         _module = null;
       }
-    if (save != null && Errors.count() == 0)
-      {
-        saveModule(save);
-      }
-  }
-
-
-  /**
-   * Get all the paths to use to read source code from
-   */
-  private Path[] sourcePaths()
-  {
-    return
-      (_options._saveBaseLib != null  ) ? new Path[] { _options._fuzionHome.resolve("lib") } :
-      (_options._readStdin         ||
-       _options._inputFile != null    ) ? new Path[] { }
-                                        : new Path[] { Path.of(".") };
   }
 
 
@@ -229,25 +210,6 @@ public class FrontEnd extends ANY
       options._readStdin         ? SourceFile.STDIN   :
       options._inputFile != null ? options._inputFile
                                  : null;
-  }
-
-
-  /**
-   * Save _module to a module file
-   */
-  private void saveModule(Path p)
-  {
-    var data = _module.data();
-    System.out.println(" + " + p);
-    try (var os = Files.newOutputStream(p))
-      {
-        Channels.newChannel(os).write(data);
-      }
-    catch (IOException io)
-      {
-        Errors.error("FrontEnd I/O error when writing module file",
-                     "While trying to write file '"+ p + "' received '" + io + "'");
-      }
   }
 
 

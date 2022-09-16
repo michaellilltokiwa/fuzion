@@ -26,6 +26,11 @@ Fuzion language implementation.  If not, see <https://www.gnu.org/licenses/>.
 
 package dev.flang.tools;
 
+import java.io.IOException;
+
+import java.nio.channels.Channels;
+
+import java.nio.file.Files;
 import java.nio.file.Path;
 
 import java.util.TreeMap;
@@ -36,11 +41,12 @@ import dev.flang.be.c.COptions;
 
 import dev.flang.be.effects.Effects;
 
-import dev.flang.be.interpreter.Intrinsics;
 import dev.flang.be.interpreter.Interpreter;
 
 import dev.flang.fe.FrontEnd;
 import dev.flang.fe.FrontEndOptions;
+
+import dev.flang.fuir.FUIR;
 
 import dev.flang.fuir.analysis.dfa.DFA;
 
@@ -51,6 +57,7 @@ import dev.flang.opt.Optimizer;
 import dev.flang.util.ANY;
 import dev.flang.util.List;
 import dev.flang.util.Errors;
+import dev.flang.util.FuzionOptions;
 
 
 /**
@@ -81,14 +88,20 @@ class Fuzion extends Tool
    */
   static enum Backend
   {
-    interpreter("-interpreter"),
+    interpreter("-interpreter")
+    {
+      void process(FuzionOptions options, FUIR fuir)
+      {
+        new Interpreter(options, fuir).run();
+      }
+    },
     c          ("-c")
     {
       String usage()
       {
         return "[-o=<file>] [-useGC] [-Xdfa=(on|off)]";
       }
-      boolean handleOption(String o)
+      boolean handleOption(Fuzion f, String o)
       {
         boolean result = false;
         if (o.startsWith("-o="))
@@ -108,17 +121,30 @@ class Fuzion extends Tool
           }
         return result;
       }
-    }
-    ,
+      void process(FuzionOptions options, FUIR fuir)
+      {
+        new C(new COptions(options, _binaryName_, _useBoehmGC_, _xdfa_), fuir).compile();
+      }
+    },
     java       ("-java"),
     classes    ("-classes"),
     llvm       ("-llvm"),
-    dfa        ("-dfa"),
+    dfa        ("-dfa")
+    {
+      void process(FuzionOptions options, FUIR fuir)
+      {
+        new DFA(options, fuir).dfa();
+      }
+    },
     effects    ("-effects")
     {
       String usage()
       {
         return new String(""); /* tricky: empty string != "" */
+      }
+      void process(FuzionOptions options, FUIR fuir)
+      {
+        new Effects(fuir).find();
       }
     },
     checkIntrinsics("-XXcheckIntrinsics")
@@ -131,14 +157,31 @@ class Fuzion extends Tool
       {
         return false;
       }
-      boolean processFrontEnd(FrontEnd fe)
+      void processFrontEnd(Fuzion f, FrontEnd fe)
       {
         new CheckIntrinsics(fe);
-        return true;
       }
     },
-    saveBaseLib("-XsaveBaseLib")
+    saveLib("-saveLib=")
     {
+      void parseBackendArg(Fuzion f, String a)
+      {
+        f._saveLib  = parsePath(a);
+      }
+      String usage()
+      {
+        return "[-XeraseInternalNamesInLib=(on|off)]";
+      }
+      boolean handleOption(Fuzion f, String o)
+      {
+        boolean result = false;
+        if (o.startsWith("-XeraseInternalNamesInLib"))
+          {
+            f._eraseInternalNamesInLib = parseOnOffArg(o);
+            result = true;
+          }
+        return result;
+      }
       boolean needsSources()
       {
         return true;
@@ -146,6 +189,27 @@ class Fuzion extends Tool
       boolean needsMain()
       {
         return false;
+      }
+      void processFrontEnd(Fuzion f, FrontEnd fe)
+      {
+        /*
+         * Save _module to a module file
+         */
+        if (Errors.count() == 0)
+          {
+            var p = f._saveLib;
+            var data = fe.module().data();
+            System.out.println(" + " + p);
+            try (var os = Files.newOutputStream(p))
+              {
+                Channels.newChannel(os).write(data);
+              }
+            catch (IOException io)
+              {
+                Errors.error("-saveLib: I/O error when writing module file",
+                             "While trying to write file '"+ p + "' received '" + io + "'");
+              }
+          }
       }
     },
     undefined;
@@ -182,14 +246,26 @@ class Fuzion extends Tool
         {
           _allBackendExtraUsage_.append("       @CMD@ " + _arg + " " + usage() + STD_OPTIONS + " --or--\n");
         }
+      if (arg.indexOf("=") >= 0)
+        {
+          arg = arg.substring(0, arg.indexOf("=")+1);
+        }
       _allBackends_.put(arg, this);
     }
 
+    /**
+     * parse the argument that activates this backend. This is not needed for
+     * backends like '-c' or '-dfa', but for those that require additional
+     * argument like '-saveLib=<path>'.
+     */
+    void parseBackendArg(Fuzion f, String a)
+    {
+    }
 
     /**
      * Does this backend handle a specific option? If so, must return true.
      */
-    boolean handleOption(String o)
+    boolean handleOption(Fuzion f, String o)
     {
       return false;
     }
@@ -223,9 +299,17 @@ class Fuzion extends Tool
      * If this backend processes the front end data directly, this method will
      * do that and return true.
      */
-    boolean processFrontEnd(FrontEnd fe)
+    void processFrontEnd(Fuzion f, FrontEnd fe)
     {
-      return false;
+      var mir = fe.createMIR();                                                       f.timer("createeMIR");
+      var air = new MiddleEnd(fe._options, mir, fe.module() /* NYI: remove */).air(); f.timer("me");
+      var fuir = new Optimizer(fe._options, air).fuir();                              f.timer("ir");
+      process(fe._options, fuir);
+    }
+
+    void process(FuzionOptions options, FUIR fuir)
+    {
+      Errors.fatal("backend '" + this + "' not supported yet");
     }
   }
 
@@ -253,15 +337,22 @@ class Fuzion extends Tool
 
 
   /**
-   * Should we save the base library?
+   * Should we save a library?
    */
-  Path _saveBaseLib = null;
+  Path _saveLib = null;
+
+
+  /**
+   * Should we load the base library? We do not want to load if when using
+   * -saveLib= backend to create the base library file.
+   */
+  boolean _loadBaseLib = true;
 
 
   /**
    * When saving a library, should we erase internal names?
    */
-  Boolean _eraseInternalNamesInLib = null;
+  boolean _eraseInternalNamesInLib = true;
 
 
   /**
@@ -281,6 +372,12 @@ class Fuzion extends Tool
    * List of modules added using '-module'.
    */
   List<String> _modules = new List<>();
+
+
+  /**
+   * List of source directories added using '-sourceDir'.
+   */
+  List<String> _sourceDirs = new List<>();
 
 
   /**
@@ -347,7 +444,7 @@ class Fuzion extends Tool
   protected String STANDARD_OPTIONS(boolean xtra)
   {
     return super.STANDARD_OPTIONS(xtra) +
-      (xtra ? "[-XfuzionHome=<path>] [-XsaveBaseLib=<path>] [-XeraseInternalNamesInLib=(on|off)] " : "");
+      (xtra ? "[-XfuzionHome=<path>] [-XloadBaseLib=(on|off)] " : "");
   }
 
 
@@ -358,7 +455,7 @@ class Fuzion extends Tool
   protected String USAGE0()
   {
     return
-      "Usage: " + _cmd + " [-h|--help|-version] [" + _allBackendArgs_ + "] " + STD_OPTIONS + "[-modules={<m>,..} [-debug[=<n>]] [-safety=(on|off)] [-unsafeIntrinsics=(on|off)] (<main> | <srcfile>.fz | -)  --or--\n" +
+      "Usage: " + _cmd + " [-h|--help|-version] [" + _allBackendArgs_ + "] " + STD_OPTIONS + "[-modules={<m>,..} [-debug[=<n>]] [-safety=(on|off)] [-unsafeIntrinsics=(on|off)] [-sourceDirs={<path>,..}] (<main> | <srcfile>.fz | -)  --or--\n" +
       _allBackendExtraUsage_.toString().replace("@CMD@", _cmd) +
       "       " + _cmd + " -pretty " + STD_OPTIONS + " ({<file>} | -)\n" +
       "       " + _cmd + " -latex " + STD_OPTIONS + "\n" +
@@ -521,26 +618,32 @@ class Fuzion extends Tool
       {
         if (!parseGenericArg(a))
           {
+            var arg = a;
+            if (arg.indexOf("=") >= 0)
+              {
+                arg = arg.substring(0, arg.indexOf("=")+1);
+              }
             if (a.equals("-"))
               {
                 _readStdin = true;
               }
-            else if (_allBackends_.containsKey(a))
+            else if (_allBackends_.containsKey(arg))
               {
                 if (_backend != Backend.undefined)
                   {
                     fatal("arguments must specify at most one backend, found '" + _backend._arg + "' and '" + a + "'");
                   }
-                _backend = _allBackends_.get(a);
+                _backend = _allBackends_.get(arg);
+                _backend.parseBackendArg(this, a);
               }
             else if (a.startsWith("-XfuzionHome="            )) { _fuzionHome              = parsePath(a);              }
-            else if (a.startsWith("-XsaveBaseLib="           )) { _saveBaseLib             = parsePath(a);              }
-            else if (a.startsWith("-XeraseInternalNamesInLib")) { _eraseInternalNamesInLib = parseOnOffArg(a);          }
+            else if (a.startsWith("-XloadBaseLib="           )) { _loadBaseLib             = parseOnOffArg(a);          }
             else if (a.startsWith("-modules="                )) { _modules.addAll(parseStringListArg(a));               }
             else if (a.matches("-debug(=\\d+|)"              )) { _debugLevel              = parsePositiveIntArg(a, 1); }
             else if (a.startsWith("-safety="                 )) { _safety                  = parseOnOffArg(a);          }
             else if (a.startsWith("-unsafeIntrinsics="       )) { _enableUnsafeIntrinsics  = parseOnOffArg(a);          }
-            else if (_backend.handleOption(a))
+            else if (a.startsWith("-sourceDirs="             )) { _sourceDirs.addAll(parseStringListArg(a));            }
+            else if (_backend.handleOption(this, a))
               {
               }
             else if (a.startsWith("-"))
@@ -556,21 +659,6 @@ class Fuzion extends Tool
                 _main = a;
               }
           }
-      }
-    if (_saveBaseLib != null)
-      {
-        if (_backend == Backend.undefined)
-          {
-            _backend = Backend.saveBaseLib;
-          }
-        else
-          {
-            fatal("no backend may be specified in conjunction with -XsaveBaseLib");
-          }
-      }
-    else if (_backend == Backend.saveBaseLib)
-      {
-        _saveBaseLib = Path.of("base.fum");
       }
     if (_backend == Backend.undefined)
       {
@@ -588,10 +676,6 @@ class Fuzion extends Tool
       {
         fatal("no '-' to read from stdin may be given for backend '" + _backend + "'");
       }
-    if (_eraseInternalNamesInLib != null && _backend != Backend.saveBaseLib)
-      {
-        fatal("-XeraseInternalNamesInLib may only be specified when creating a library using -XsaveBaseLib");
-      }
     if (_main != null && _readStdin)
       {
         fatal("cannot process main feature name together with stdin input");
@@ -604,11 +688,13 @@ class Fuzion extends Tool
       {
         var options = new FrontEndOptions(_verbose,
                                           _fuzionHome,
-                                          _saveBaseLib,
-                                          _eraseInternalNamesInLib == null ? true : _eraseInternalNamesInLib,
+                                          _loadBaseLib,
+                                          _eraseInternalNamesInLib,
                                           _modules,
                                           _debugLevel,
                                           _safety,
+                                          _enableUnsafeIntrinsics,
+                                          _sourceDirs,
                                           _readStdin,
                                           _main,
                                           _backend.needsSources());
@@ -616,49 +702,40 @@ class Fuzion extends Tool
           {
             options.setTailRec();
           }
-        long jvmStartTime = java.lang.management.ManagementFactory.getRuntimeMXBean().getStartTime();
-        long prepTime = System.currentTimeMillis();
+        timer("prep");
         var fe = new FrontEnd(options);
-        if (_saveBaseLib == null && !_backend.processFrontEnd(fe))
-          {
-            var mir = fe.createMIR();
-            long feTime = System.currentTimeMillis();
-            var air = new MiddleEnd(options, mir, fe.module() /* NYI: remove */).air();
-            long meTime = System.currentTimeMillis();
-            var fuir = new Optimizer(options, air).fuir();
-            long irTime = System.currentTimeMillis();
-            switch (_backend)
-              {
-              case interpreter:
-                {
-                  Intrinsics.ENABLE_UNSAFE_INTRINSICS = _enableUnsafeIntrinsics;  // NYI: Add to Fuzion IR or BE Config
-                  var in = new Interpreter(options, fuir);
-                  irTime = System.currentTimeMillis();
-                  in.run(); break;
-                }
-              case c          : new C(new COptions(options, _binaryName_, _useBoehmGC_, _xdfa_), fuir).compile(); break;
-              case effects    : new Effects(fuir).find(); break;
-              case dfa        : new DFA(options, fuir).dfa(); break;
-              default         : Errors.fatal("backend '" + _backend + "' not supported yet"); break;
-              }
-            long beTime = System.currentTimeMillis();
-
-            beTime -= irTime;
-            irTime -= meTime;
-            meTime -= feTime;
-            feTime -= prepTime;
-            prepTime -= jvmStartTime;
-            options.verbosePrintln(1, "Elapsed time for phases: prep "+prepTime+"ms, fe "+feTime+"ms, me "+meTime+"ms, ir "+irTime+"ms, be "+beTime+"ms");
-          }
-        else
-          {
-            long feTime = System.currentTimeMillis();
-            feTime -= prepTime;
-            prepTime -= jvmStartTime;
-            options.verbosePrintln(1, "Elapsed time for phases: prep "+prepTime+"ms, fe "+feTime+"ms");
-          }
+        timer("fe");
+        _backend.processFrontEnd(this, fe);
+        timer("be");
+        options.verbosePrintln(1, "Elapsed time for phases: " + _times);
       };
   }
+
+
+  /**
+   * To be called whenever a major task was completed. Will record the time
+   * since last call to timer together with name to be printed when verbose
+   * output is activated.
+   */
+  void timer(String name)
+  {
+    var t = System.currentTimeMillis();
+    var delta = t - _timer;
+    _timer = t;
+    _times.append(_times.length() == 0 ? "" : ", ").append(name).append(" ").append(delta).append("ms");
+  }
+
+  /**
+   * Time required for phases recorded by timer().
+   */
+  StringBuilder _times = new StringBuilder();
+
+
+  /**
+   * Last time timer() was called, in System.currentTimeMillis();
+   */
+  long _timer = java.lang.management.ManagementFactory.getRuntimeMXBean().getStartTime();
+
 
 }
 

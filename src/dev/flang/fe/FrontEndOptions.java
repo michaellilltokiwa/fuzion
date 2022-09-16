@@ -48,6 +48,12 @@ public class FrontEndOptions extends FuzionOptions
 
 
   /**
+   * Directories to load source files from.
+   */
+  final List<String> _sourceDirs;
+
+
+  /**
    * Read code from stdin?
    */
   final boolean _readStdin;
@@ -78,9 +84,9 @@ public class FrontEndOptions extends FuzionOptions
 
 
   /**
-   * Path to save the base library module to, null if not saving the standard lib.
+   * true to load base library (false if we are creating it)
    */
-  final Path _saveBaseLib;
+  final boolean _loadBaseLib;
 
 
   /**
@@ -102,23 +108,34 @@ public class FrontEndOptions extends FuzionOptions
   /**
    * Costructor initializing fields as given.
    */
-  public FrontEndOptions(int verbose, Path fuzionHome, Path saveBaseLib, boolean eraseInternalNamesInLib, List<String> modules, int fuzionDebugLevel, boolean fuzionSafety, boolean readStdin, String main, boolean loadSources)
+  public FrontEndOptions(int verbose,
+                         Path fuzionHome,
+                         boolean loadBaseLib,
+                         boolean eraseInternalNamesInLib,
+                         List<String> modules,
+                         int fuzionDebugLevel,
+                         boolean fuzionSafety,
+                         boolean enableUnsafeIntrinsics,
+                         List<String> sourceDirs,
+                         boolean readStdin,
+                         String main,
+                         boolean loadSources)
   {
     super(verbose,
           fuzionDebugLevel,
-          fuzionSafety);
+          fuzionSafety,
+          enableUnsafeIntrinsics);
 
     if (PRECONDITIONS) require
                          (verbose >= 0,
                           fuzionHome != null,
-                          readStdin || main != null || saveBaseLib != null || !loadSources,
                           !readStdin || main == null,
-                          saveBaseLib == null || !readStdin && main == null,
                           modules != null);
 
     _fuzionHome = fuzionHome;
-    _saveBaseLib = saveBaseLib;
+    _loadBaseLib = loadBaseLib;
     _eraseInternalNamesInLib = eraseInternalNamesInLib;
+    _sourceDirs = sourceDirs;
     _readStdin = readStdin;
     Path inputFile = null;
     if (main != null)
@@ -154,6 +171,20 @@ public class FrontEndOptions extends FuzionOptions
 
 
   /*-----------------------------  methods  -----------------------------*/
+
+
+  /**
+   * Get all the paths to use to read source code from
+   */
+  Path[] sourcePaths()
+  {
+    return
+      (_readStdin         ||
+       _inputFile != null ||
+       !_sourceDirs.isEmpty()) ? _sourceDirs.stream().map(x -> Path.of(x)).toArray(Path[]::new)
+                               : new Path[] { Path.of(".") };
+  }
+
 
 }
 
