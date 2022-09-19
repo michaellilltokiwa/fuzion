@@ -349,7 +349,6 @@ public class Errors extends ANY
   {
     error(s, detail);
     System.err.println("*** fatal errors encountered, stopping.");
-    System.exit(1);
   }
 
 
@@ -367,7 +366,6 @@ public class Errors extends ANY
   {
     error(pos, s, detail);
     System.err.println("*** fatal errors encountered, stopping.");
-    System.exit(1);
   }
 
 
@@ -408,7 +406,6 @@ public class Errors extends ANY
   {
     error(pos, s, detail);
     System.err.println("*** fatal errors encountered, stopping.");
-    System.exit(1);
   }
 
 
@@ -436,7 +433,6 @@ public class Errors extends ANY
                 (warningCount() > 0 ? " and " + singularOrPlural(warningCount(), "warning")
                                     : "") +
                 ".");
-        System.exit(1);
       }
     else if (warningStatistics && warningCount() > 0)
       {
