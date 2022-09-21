@@ -78,12 +78,15 @@ is
   infix << (other uint) uint
   pre other <= uint i32s.max.as_u64
   is
-    if other = zero
+    shift_left other.as_u32
+
+
+  private shift_left(shift u32) uint is
+    if shift = 0
       thiz
-    else if other >= uint 32
-      uint (data ++ zeros (other.as_i32 / 32)) unit << other % (uint 32)
+    else if shift >= 32
+      (uint (data ++ zeros (shift / 32).as_i32) unit).shift_left (shift%32)
     else
-      shift := other.as_u32
       (l,carry_over) := data
         .reverse
         .reduce (lists.empty u32, u32 0) (r,t ->
@@ -123,23 +126,23 @@ is
       # the shifted divisor is still positive.
       # This is done recursively and the results
       # are added up.
-      highest_bit_diff uint := highest_bit - divisor.highest_bit
-      shift := if thiz -! (divisor << highest_bit_diff) then highest_bit_diff else highest_bit_diff-one
-      remainder := thiz - (divisor << shift)
+      highest_bit_diff := highest_bit - divisor.highest_bit
+      shift := if thiz -! (divisor.shift_left highest_bit_diff) then highest_bit_diff else (highest_bit_diff-1)
+      remainder := thiz - (divisor.shift_left shift)
       (q,rem) := remainder.divide_with_remainder divisor
-      ((one << shift) + q, rem)
+      ((one << (uint shift.as_u64)) + q, rem)
 
 
   # the highest 1 bit in this integer
   # example: uint 0 => 0
   # example: uint 1 => 1
   # example: uint 8 => 4
-  highest_bit uint
+  highest_bit u32
   is
     if uint.this = zero
-      zero
+      0
     else
-      uint ((data.count.as_u32 - 1) * 32 + data.first.highest_bit).as_u64
+      (data.count.as_u32 - 1) * 32 + data.first.highest_bit
 
 
   # add two unsigned ints
