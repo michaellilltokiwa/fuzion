@@ -72,6 +72,12 @@ public class FrontEndOptions extends FuzionOptions
 
 
   /**
+   * List of modules to be dumped to stdout after loading
+   */
+  final List<String> _dumpModules;
+
+
+  /**
    * main feature name, null iff _readStdin
    */
   final String _main;
@@ -113,6 +119,7 @@ public class FrontEndOptions extends FuzionOptions
                          boolean loadBaseLib,
                          boolean eraseInternalNamesInLib,
                          List<String> modules,
+                         List<String> dumpModules,
                          int fuzionDebugLevel,
                          boolean fuzionSafety,
                          boolean enableUnsafeIntrinsics,
@@ -135,7 +142,6 @@ public class FrontEndOptions extends FuzionOptions
     _fuzionHome = fuzionHome;
     _loadBaseLib = loadBaseLib;
     _eraseInternalNamesInLib = eraseInternalNamesInLib;
-    _sourceDirs = sourceDirs;
     _readStdin = readStdin;
     Path inputFile = null;
     if (main != null)
@@ -165,8 +171,14 @@ public class FrontEndOptions extends FuzionOptions
       }
     _inputFile = inputFile;
     _modules = modules;
+    _dumpModules = dumpModules;
     _main = main;
     _loadSources = loadSources;
+    if (sourceDirs == null)
+      {
+        sourceDirs = inputFile != null || readStdin ? new List<>() : new List<>(".");
+      }
+    _sourceDirs = sourceDirs;
   }
 
 
@@ -178,11 +190,7 @@ public class FrontEndOptions extends FuzionOptions
    */
   Path[] sourcePaths()
   {
-    return
-      (_readStdin         ||
-       _inputFile != null ||
-       !_sourceDirs.isEmpty()) ? _sourceDirs.stream().map(x -> Path.of(x)).toArray(Path[]::new)
-                               : new Path[] { Path.of(".") };
+    return _sourceDirs.stream().map(x -> Path.of(x)).toArray(Path[]::new);
   }
 
 

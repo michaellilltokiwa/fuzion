@@ -57,6 +57,7 @@ import dev.flang.opt.Optimizer;
 import dev.flang.util.ANY;
 import dev.flang.util.List;
 import dev.flang.util.Errors;
+import dev.flang.util.FuzionConstants;
 import dev.flang.util.FuzionOptions;
 
 
@@ -99,7 +100,7 @@ class Fuzion extends Tool
     {
       String usage()
       {
-        return "[-o=<file>] [-useGC] [-Xdfa=(on|off)]";
+        return "[-o=<file>] [-useGC] [-Xdfa=(on|off)] ";
       }
       boolean handleOption(Fuzion f, String o)
       {
@@ -140,7 +141,7 @@ class Fuzion extends Tool
     {
       String usage()
       {
-        return new String(""); /* tricky: empty string != "" */
+        return "";
       }
       void process(FuzionOptions options, FUIR fuir)
       {
@@ -170,7 +171,7 @@ class Fuzion extends Tool
       }
       String usage()
       {
-        return "[-XeraseInternalNamesInLib=(on|off)]";
+        return "[-XeraseInternalNamesInLib=(on|off)] ";
       }
       boolean handleOption(Fuzion f, String o)
       {
@@ -198,16 +199,25 @@ class Fuzion extends Tool
         if (Errors.count() == 0)
           {
             var p = f._saveLib;
-            var data = fe.module().data();
-            System.out.println(" + " + p);
-            try (var os = Files.newOutputStream(p))
+            var n = p.getFileName().toString();
+            var sfx = FuzionConstants.MODULE_FILE_SUFFIX;
+            if (n.endsWith(sfx))
               {
-                Channels.newChannel(os).write(data);
+                n = n.substring(0, n.length() - sfx.length());
               }
-            catch (IOException io)
+            var data = fe.module().data(n);
+            if (data != null)
               {
-                Errors.error("-saveLib: I/O error when writing module file",
-                             "While trying to write file '"+ p + "' received '" + io + "'");
+                System.out.println(" + " + p);
+                try (var os = Files.newOutputStream(p))
+                  {
+                    Channels.newChannel(os).write(data);
+                  }
+                catch (IOException io)
+                  {
+                    Errors.error("-saveLib: I/O error when writing module file",
+                                 "While trying to write file '"+ p + "' received '" + io + "'");
+                  }
               }
           }
       }
@@ -238,14 +248,6 @@ class Fuzion extends Tool
         (arg != null && arg.startsWith("-"));
 
       _arg = arg;
-      if (usage() == "")
-        {
-          _allBackendArgs_.append(_allBackendArgs_.length() == 0 ? "" : "|").append(arg);
-        }
-      else
-        {
-          _allBackendExtraUsage_.append("       @CMD@ " + _arg + " " + usage() + STD_OPTIONS + " --or--\n");
-        }
       if (arg.indexOf("=") >= 0)
         {
           arg = arg.substring(0, arg.indexOf("=")+1);
@@ -313,8 +315,6 @@ class Fuzion extends Tool
     }
   }
 
-  static StringBuilder _allBackendArgs_ = new StringBuilder();
-  static StringBuilder _allBackendExtraUsage_ = new StringBuilder();
   static TreeMap<String, Backend> _allBackends_ = new TreeMap<>();
 
   static { var __ = Backend.undefined; } /* make sure _allBackendArgs_ is initialized */
@@ -369,15 +369,21 @@ class Fuzion extends Tool
 
 
   /**
-   * List of modules added using '-module'.
+   * List of modules added using '-modules'.
    */
   List<String> _modules = new List<>();
 
 
   /**
+   * List of modules added using '-XdumpModules'.
+   */
+  List<String> _dumpModules = new List<>();
+
+
+  /**
    * List of source directories added using '-sourceDir'.
    */
-  List<String> _sourceDirs = new List<>();
+  List<String> _sourceDirs = null;
 
 
   /**
@@ -449,17 +455,44 @@ class Fuzion extends Tool
 
 
   /**
-   * The basic usage, using STD_OPTIONS as a placeholder for standard
-   * options.
+   * The usage, includes STANDARD_OPTIONS(xtra).
+   *
+   * @param xtra include extra options
    */
-  protected String USAGE0()
+  protected String USAGE(boolean xtra)
   {
+    var std = STANDARD_OPTIONS(xtra);
+    var stdBe = "[-modules={<m>,..} [-debug[=<n>]] [-safety=(on|off)] [-unsafeIntrinsics=(on|off)] [-sourceDirs={<path>,..}] " +
+      (xtra ? "[-XdumpModules={<name>,..}] " : "") +
+      "(<main> | <srcfile>.fz | -) ";
+    var aba = new StringBuilder();
+    var abe = new StringBuilder();
+    for (var ab : _allBackends_.entrySet())
+      {
+        var b = ab.getValue();
+        var ba = b._arg;
+        var bu = b.usage();
+        if (bu == "")
+          {
+            if (!ba.startsWith("-X") || xtra)
+              {
+                aba.append(aba.length() == 0 ? "" : "|").append(ba);
+              }
+          }
+        else
+          {
+            if (CHECKS) check
+              (bu.endsWith(" "));
+
+            abe.append("       " + _cmd + " " + ba + " " + bu + std + stdBe + " --or--\n");
+          }
+      }
     return
-      "Usage: " + _cmd + " [-h|--help|-version] [" + _allBackendArgs_ + "] " + STD_OPTIONS + "[-modules={<m>,..} [-debug[=<n>]] [-safety=(on|off)] [-unsafeIntrinsics=(on|off)] [-sourceDirs={<path>,..}] (<main> | <srcfile>.fz | -)  --or--\n" +
-      _allBackendExtraUsage_.toString().replace("@CMD@", _cmd) +
-      "       " + _cmd + " -pretty " + STD_OPTIONS + " ({<file>} | -)\n" +
-      "       " + _cmd + " -latex " + STD_OPTIONS + "\n" +
-      "       " + _cmd + " -acemode " + STD_OPTIONS + "\n";
+      "Usage: " + _cmd + " [-h|--help|-version] [" + aba + "] " + std + " --or--\n" +
+      abe +
+      "       " + _cmd + " -pretty " + std + " ({<file>} | -)\n" +
+      "       " + _cmd + " -latex " + std + "\n" +
+      "       " + _cmd + " -acemode " + std + "\n";
   }
 
 
@@ -639,10 +672,11 @@ class Fuzion extends Tool
             else if (a.startsWith("-XfuzionHome="            )) { _fuzionHome              = parsePath(a);              }
             else if (a.startsWith("-XloadBaseLib="           )) { _loadBaseLib             = parseOnOffArg(a);          }
             else if (a.startsWith("-modules="                )) { _modules.addAll(parseStringListArg(a));               }
+            else if (a.startsWith("-XdumpModules="           )) { _dumpModules             = parseStringListArg(a);     }
             else if (a.matches("-debug(=\\d+|)"              )) { _debugLevel              = parsePositiveIntArg(a, 1); }
             else if (a.startsWith("-safety="                 )) { _safety                  = parseOnOffArg(a);          }
             else if (a.startsWith("-unsafeIntrinsics="       )) { _enableUnsafeIntrinsics  = parseOnOffArg(a);          }
-            else if (a.startsWith("-sourceDirs="             )) { _sourceDirs.addAll(parseStringListArg(a));            }
+            else if (a.startsWith("-sourceDirs="             )) { _sourceDirs = new List<>(); _sourceDirs.addAll(parseStringListArg(a)); }
             else if (_backend.handleOption(this, a))
               {
               }
@@ -691,6 +725,7 @@ class Fuzion extends Tool
                                           _loadBaseLib,
                                           _eraseInternalNamesInLib,
                                           _modules,
+                                          _dumpModules,
                                           _debugLevel,
                                           _safety,
                                           _enableUnsafeIntrinsics,

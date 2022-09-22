@@ -26,13 +26,13 @@ Fuzion language implementation.  If not, see <https://www.gnu.org/licenses/>.
 
 package dev.flang.fe;
 
-import java.nio.file.Path;
+import java.nio.ByteBuffer;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.TreeSet;
 import java.util.TreeMap;
+
+import java.security.SecureRandom;
+import java.security.NoSuchAlgorithmException;
 
 import dev.flang.ast.AbstractAssign;
 import dev.flang.ast.AbstractBlock;
@@ -61,6 +61,7 @@ import dev.flang.ast.Universe;
 
 import dev.flang.ir.IR;
 
+import dev.flang.util.ANY;
 import dev.flang.util.DataOut;
 import dev.flang.util.Errors;
 import dev.flang.util.FuzionConstants;
@@ -74,7 +75,7 @@ import dev.flang.util.SourcePosition;
  *
  * @author Fridtjof Siebert (siebert@tokiwa.software)
  */
-class LibraryOut extends DataOut
+class LibraryOut extends ANY
 {
 
 
@@ -93,13 +94,19 @@ class LibraryOut extends DataOut
   private TreeMap<String, SourceFile> _sourceFiles = new TreeMap<>();
 
 
+  /**
+   * Data created for this library module, to be saved as .fum file.
+   */
+  private FixUps _data = new FixUps();
+
+
   /*--------------------------  constructors  ---------------------------*/
 
 
   /**
    * Constructor to write library for given SourceModule.
    */
-  LibraryOut(SourceModule sm)
+  LibraryOut(SourceModule sm, String name)
   {
     super();
 
@@ -113,24 +120,104 @@ class LibraryOut extends DataOut
    *   +--------+--------+---------------+-----------------------------------------------+
    *   | true   | 1      | byte[]        | MIR_FILE_MAGIC                                |
    *   +        +--------+---------------+-----------------------------------------------+
+   *   |        | 1      | Name          | module name                                   |
+   *   +        +--------+---------------+-----------------------------------------------+
+   *   |        | 1      | u128          | module version                                |
+   *   +        +--------+---------------+-----------------------------------------------+
+   *   |        | 1      | int           | number modules this module depends on n       |
+   *   +        +--------+---------------+-----------------------------------------------+
+   *   |        | n      | ModuleRef     | reference to another module                   |
+   *   +        +--------+---------------+-----------------------------------------------+
    *   |        | 1      | InnerFeatures | inner Features                                |
    *   +        +--------+---------------+-----------------------------------------------+
    *   |        | 1      | SourceFiles   | source code files                             |
    *   +--------+--------+---------------+-----------------------------------------------+
    */
 
-    write(FuzionConstants.MIR_FILE_MAGIC);
+    // first, write features just to collect referenced modules
     innerFeatures(sm._universe);
-    sourceFiles();
-    fixUps();
-    sm._options.verbosePrintln(2, "" +
-                               _offsetsForFeature.size() + " features " +
-                               _offsetsForType.size() + " types and " +
-                               _sourceFiles.size() + " source files includes in fum file.");
+    var rm = _data.referencedModules();
+    _data = null;
+
+    // now that we know the referenced modules, we start over:
+    var v = version();
+    if (v != null)
+      {
+        _data = new FixUps();
+        _data.write(FuzionConstants.MIR_FILE_MAGIC);
+        _data.writeName(name);
+        _data.write(v);
+        _data.writeInt(rm.size());
+        for (var m : rm)
+          {
+            moduleRef(m);
+          }
+        innerFeatures(sm._universe);
+        sourceFiles();
+        _data.fixUps(this);
+        sm._options.verbosePrintln(2, "" +
+                                   _data.featureCount() + " features " +
+                                   _data.typeCount() + " types and " +
+                                   _sourceFiles.size() + " source files includes in fum file.");
+      }
   }
 
 
   /*-----------------------------  methods  -----------------------------*/
+
+
+  /**
+   * Create a version number of this module file.  Currently, the version is
+   * just a cryptographically strong random number.
+   */
+  byte[] version()
+  {
+    var alg = "DRBG"; // or "SHA1PRNG"? NYI: Choose best algorithm here!
+    try
+      {
+        var result = new byte[16];
+        var r = SecureRandom.getInstance(alg);
+        r.nextBytes(result);
+        return result;
+      }
+    catch (NoSuchAlgorithmException e)
+      {
+        Errors.error("failed to produce secure random using algorithm '" + alg + "': " + e);
+        return null;
+      }
+  }
+
+
+  /**
+   * Create a ByteBuffer instance from the data of this library, null if not
+   * data available (due to an error).
+   */
+  ByteBuffer buffer()
+  {
+    return _data != null ? _data.buffer() : null;
+  }
+
+
+  /**
+   * Collect the binary data for a ModuleRef
+   *
+   * Data format for module references:
+   *
+   *   +---------------------------------------------------------------------------------+
+   *   | ModuleRef                                                                       |
+   *   +--------+--------+---------------+-----------------------------------------------+
+   *   | cond.  | repeat | type          | what                                          |
+   *   +--------+--------+---------------+-----------------------------------------------+
+   *   | true   | 1      | Name          | module name                                   |
+   *   +        +--------+---------------+-----------------------------------------------+
+   *   |        | 1      | u128          | module version                                |
+   *   +--------+--------+---------------+-----------------------------------------------+
+   */
+  void moduleRef(LibraryModule m)
+  {
+    _data.writeName(m.name());
+    _data.write(m.version());
+  }
 
 
   /**
@@ -156,7 +243,7 @@ class LibraryOut extends DataOut
     var m = _sourceModule.declaredFeatures(f);
     if (m == null)
       {
-        writeInt(0);
+        _data.writeInt(0);
       }
     else
       {
@@ -200,13 +287,13 @@ class LibraryOut extends DataOut
               }
           }
 
-        var szPos = offset();
-        writeInt(0);
-        var innerPos = offset();
+        var szPos = _data.offset();
+        _data.writeInt(0);
+        var innerPos = _data.offset();
 
         // write the actual data
         features(innerFeatures);
-        writeIntAt(szPos, offset() - innerPos);
+        _data.writeIntAt(szPos, _data.offset() - innerPos);
       }
   }
 
@@ -290,8 +377,7 @@ class LibraryOut extends DataOut
    */
   void feature(Feature f)
   {
-    _offsetsForFeature.put(f, offset());
-    var ix = offset();
+    _data.add(f);
     var k =
       !f.isConstructor() ? f.kind().ordinal() :
       f.isThisRef()      ? FuzionConstants.MIR_FILE_KIND_CONSTRUCTOR_REF
@@ -310,27 +396,27 @@ class LibraryOut extends DataOut
         k = k | FuzionConstants.MIR_FILE_KIND_HAS_TYPE_FEATURE;
       }
     var n = f.featureName();
-    write(k);
+    _data.write(k);
     var bn = n.baseName();
     if (_sourceModule._options._eraseInternalNamesInLib && bn.startsWith(FuzionConstants.INTERNAL_NAME_PREFIX))
       {
         bn = "";
       }
-    writeName(bn);
-    writeInt (n.argCount());  // NYI: use better integer encoding
-    writeInt (n._id);         // NYI: id /= 0 only if argCount = 0, so join these two values.
+    _data.writeName(bn);
+    _data.writeInt (n.argCount());  // NYI: use better integer encoding
+    _data.writeInt (n._id);         // NYI: id /= 0 only if argCount = 0, so join these two values.
     pos(f.pos());
     if (!f.outer().isUniverse())
       {
-        writeOffset(f.outer());
+        _data.writeOffset(f.outer());
       }
     else
       {
-        writeInt(0);
+        _data.writeInt(0);
       }
     if ((k & FuzionConstants.MIR_FILE_KIND_HAS_TYPE_FEATURE) != 0)
       {
-        writeOffset(f.typeFeature());
+        _data.writeOffset(f.typeFeature());
       }
     if (CHECKS) check
       (f.arguments().size() == f.featureName().argCount());
@@ -340,26 +426,26 @@ class LibraryOut extends DataOut
       }
     // NYI: Suppress output of inherits for fields, intrinsics, etc.?
     var i = f.inherits();
-    writeInt(i.size());
+    _data.writeInt(i.size());
     for (var p : i)
       {
         code(p, false);
       }
-    writeInt(f.contract().req.size());
+    _data.writeInt(f.contract().req.size());
     for (var c : f.contract().req)
       {
         code(c.cond, false);
       }
-    writeInt(f.contract().ens.size());
+    _data.writeInt(f.contract().ens.size());
     for (var c : f.contract().ens)
       {
         code(c.cond, false);
       }
     var r = f.redefines();
-    writeInt(r.size());
+    _data.writeInt(r.size());
     for(var rf : r)
       {
-        writeOffset(rf);
+        _data.writeOffset(rf);
       }
     if (f.isRoutine())
       {
@@ -400,29 +486,29 @@ class LibraryOut extends DataOut
    */
   void type(AbstractType t)
   {
-    var off = offset(t);
+    var off = _data.offset(t);
     if (off >= 0)
       {
-        writeInt(-2);     // NYI: optimization: maybe write just one integer, e.g., -index-2
-        writeInt(off);
+        _data.writeInt(-2);     // NYI: optimization: maybe write just one integer, e.g., -index-2
+        _data.writeInt(off);
       }
     else if (t == Types.t_ADDRESS)
       {
-        writeInt(-4);
+        _data.writeInt(-4);
       }
     else if (t == Types.resolved.universe.thisType())
       {
-        writeInt(-3);
+        _data.writeInt(-3);
       }
     else
       {
-        addOffset(t, offset());
+        _data.addOffset(t, _data.offset());
         if (t.isGenericArgument())
           {
             if (CHECKS) check
               (!t.isRef());
-            writeInt(-1);
-            writeOffset(t.genericArgument().typeParameter());
+            _data.writeInt(-1);
+            _data.writeOffset(t.genericArgument().typeParameter());
           }
         else
           {
@@ -430,9 +516,9 @@ class LibraryOut extends DataOut
             // there is no explicit value type at this phase:
             if (CHECKS) check
               (makeRef || t.isRef() == t.featureOfType().isThisRef());
-            writeInt(t.generics().size());
-            writeOffset(t.featureOfType());
-            writeBool(makeRef);
+            _data.writeInt(t.generics().size());
+            _data.writeOffset(t.featureOfType());
+            _data.writeBool(makeRef);
             for (var gt : t.generics())
               {
                 type(gt);
@@ -465,13 +551,13 @@ class LibraryOut extends DataOut
   }
   void code(Expr code, boolean dumpResult)
   {
-    var szPos = offset();
-    writeInt(0);
-    var codePos = offset();
+    var szPos = _data.offset();
+    _data.writeInt(0);
+    var codePos = _data.offset();
 
     // write the actual code data
     expressions(code, dumpResult, null);
-    writeIntAt(szPos, offset() - codePos);
+    _data.writeIntAt(szPos, _data.offset() - codePos);
   }
 
 
@@ -543,7 +629,7 @@ class LibraryOut extends DataOut
    *   | true   | 1      | int           | assigned field index                          |
    *   +--------+--------+---------------+-----------------------------------------------+
    */
-        writeOffset(a._assignedField);
+        _data.writeOffset(a._assignedField);
       }
     else if (s instanceof Unbox u)
       {
@@ -561,7 +647,7 @@ class LibraryOut extends DataOut
    *   +--------+--------+---------------+-----------------------------------------------+
    */
         type(u.type());
-        write(u._needed ? 1 : 0);
+        _data.write(u._needed ? 1 : 0);
       }
     else if (s instanceof Box b)
       {
@@ -586,7 +672,7 @@ class LibraryOut extends DataOut
           }
         if (!dumpResult)
           {
-            write(IR.ExprKind.Unit.ordinal());
+            _data.write(IR.ExprKind.Unit.ordinal());
           }
       }
     else if (s instanceof Constant c)
@@ -607,8 +693,8 @@ class LibraryOut extends DataOut
    */
         type(c.type());
         var d = c.data();
-        writeInt(d.length);
-        write(d);
+        _data.writeInt(d.length);
+        _data.write(d);
       }
     else if (s instanceof AbstractCurrent)
       {
@@ -618,11 +704,11 @@ class LibraryOut extends DataOut
       {
         lastPos = expressions(i.cond, lastPos);
         lastPos = exprKindAndPos(IR.ExprKind.Match, lastPos, s.pos());
-        writeInt(2);
-        writeInt(1);
+        _data.writeInt(2);
+        _data.writeInt(1);
         type(Types.resolved.f_TRUE.resultType());
         code(i.block);
-        writeInt(1);
+        _data.writeInt(1);
         type(Types.resolved.f_FALSE.resultType());
         if (i.elseBlock != null)
           {
@@ -672,18 +758,18 @@ class LibraryOut extends DataOut
    *   | c()    |        |               |                                               |
    *   +--------+--------+---------------+-----------------------------------------------+
    */
-        writeOffset(c.calledFeature());
+        _data.writeOffset(c.calledFeature());
         type(c.type());
         int n;
         var cf = c.calledFeature();
         if (cf.hasOpenGenericsArgList())
           {
-            writeInt(c._actuals.size());
+            _data.writeInt(c._actuals.size());
           }
         if (cf.generics().isOpen())
           {
             n = c._generics.size();
-            writeInt(n);
+            _data.writeInt(n);
           }
         else
           {
@@ -699,11 +785,11 @@ class LibraryOut extends DataOut
           (cf.resultType().isOpenGeneric() == (c.select() >= 0));
         if (cf.resultType().isOpenGeneric())
           {
-            writeInt(c.select());
+            _data.writeInt(c.select());
           }
         if (dumpResult)
           {
-            write(IR.ExprKind.Pop.ordinal());
+            _data.write(IR.ExprKind.Pop.ordinal());
           }
       }
     else if (s instanceof AbstractMatch m)
@@ -722,7 +808,7 @@ class LibraryOut extends DataOut
    *   +--------+--------+---------------+-----------------------------------------------+
    */
         var cs = m.cases();
-        writeInt(cs.size());
+        _data.writeInt(cs.size());
         for (var c : cs)
           {
   /*
@@ -743,15 +829,15 @@ class LibraryOut extends DataOut
             var f = c.field();
             if (f != null)
               {
-                writeInt(-1);
-                writeOffset(f);
+                _data.writeInt(-1);
+                _data.writeOffset(f);
               }
             else
               {
                 var ts = c.types();
                 if (CHECKS) check
                   (ts.size() > 0);
-                writeInt(ts.size());
+                _data.writeInt(ts.size());
                 for (var t : ts)
                   {
                     type(t);
@@ -823,7 +909,7 @@ class LibraryOut extends DataOut
    * This replaces absolute paths that start with sourcePath by a path relative
    * to $FUZION.
    */
-  private String fileName(SourceFile sf)
+  String fileName(SourceFile sf)
   {
     var sp = _sourceModule._options.sourcePaths();
     var sd = sp.length == 1 ? sp[0] : null;
@@ -831,7 +917,7 @@ class LibraryOut extends DataOut
     if (sd != null && sfp.startsWith(sd))
       {
         var sfr = sd.relativize(sfp);
-        sfp = FuzionConstants.SYMBOLIC_FUZION_HOME.resolve(sfr);
+        sfp = FuzionConstants.SYMBOLIC_FUZION_HOME_LIB_SOURCE.resolve(sfr);
       }
     return sfp.toString();
   }
@@ -851,12 +937,12 @@ class LibraryOut extends DataOut
   {
     if (lastPos == null || lastPos.compareTo(newPos) != 0)
       {
-        write(k.ordinal() | 0x80);
+        _data.write(k.ordinal() | 0x80);
         pos(newPos);
       }
     else
       {
-        write(k.ordinal());
+        _data.write(k.ordinal());
       }
     return newPos;
   }
@@ -880,12 +966,11 @@ class LibraryOut extends DataOut
    */
     if (!pos.isBuiltIn())
       {
-        _fixUpsSourcePositions.add(pos);
-        _fixUpsSourcePositionsAt.add(offset());
+        _data.addSourcePosition(pos);
         var sf = pos._sourceFile;
         _sourceFiles.put(fileName(sf), sf);
       }
-    writeInt(0);
+    _data.writeInt(0);
   }
 
 
@@ -917,155 +1002,18 @@ class LibraryOut extends DataOut
    */
   void sourceFiles()
   {
-    writeInt(_sourceFiles.size());
+    _data.writeInt(_sourceFiles.size());
     for (var e : _sourceFiles.entrySet())
       {
         var sf = e.getValue();
         var n = fileName(sf);
-        writeName(n);
-        writeInt(sf.byteLength());
-        _sourceFilePositions.put(n, offset());
-        write(sf.bytes());
+        _data.writeName(n);
+        _data.writeInt(sf.byteLength());
+        _data.addSourceFilePosition(n);
+        _data.write(sf.bytes());
       }
   }
 
-
-  /*--------------------------  fixup handling  -------------------------*/
-
-
-  /**
-   * Features that are referenced before being defined and hence need a fixup:
-   */
-  ArrayList<AbstractFeature> _fixUpsF = new ArrayList<>();
-
-
-  /**
-   * Positions of fixups for features
-   */
-  ArrayList<Integer> _fixUpsFAt = new ArrayList<>();
-
-
-  /**
-   * Feature offsets in this file
-   */
-  Map<AbstractFeature, Integer> _offsetsForFeature = new TreeMap<>();
-
-
-  /**
-   * Type offsets in this file
-   */
-  Map<AbstractType, Integer> _offsetsForType = new TreeMap<>();
-
-
-  /**
-   * SourcePositions that need fixup.
-   */
-  ArrayList<SourcePosition> _fixUpsSourcePositions = new ArrayList<>();
-
-
-  /**
-   * offsets of SourcePositions that need fixup.
-   */
-  ArrayList<Integer> _fixUpsSourcePositionsAt = new ArrayList<>();
-
-
-  /**
-   * source file position offsets in this file.
-   */
-  Map<String, Integer> _sourceFilePositions = new TreeMap<>();
-
-
-  /**
-   * Write offset of given feature, create fixup if not known yet.
-   */
-  void writeOffset(AbstractFeature f)
-  {
-    int v;
-    if (f.isUniverse())
-      {
-        v = 0;
-      }
-    else if (f == null)
-      {
-        v = -1;
-      }
-    else
-      {
-        var o = _offsetsForFeature.get(f);
-        if (o == null)
-          {
-            _fixUpsF.add(f);
-            _fixUpsFAt.add(offset());
-            v = -1;
-          }
-        else
-          {
-            v = (int) o;
-          }
-      }
-    writeInt(v);
-  }
-
-
-  /**
-   * Perform fixups
-   */
-  private void fixUps()
-  {
-    for (var i = 0; i<_fixUpsF.size(); i++)
-      {
-        var g  = _fixUpsF  .get(i);
-        var at = _fixUpsFAt.get(i);
-        var o = _offsetsForFeature.get(g);
-        if (o == null)
-          {
-            System.out.println("NYI: writing module depending on other module not supported yet, missing offset for " + g.qualifiedName() + "!");
-          }
-        else
-          {
-            if (CHECKS) check
-              (o != null);
-            writeIntAt(at, o);
-          }
-      }
-    for (var i = 0; i<_fixUpsSourcePositions.size(); i++)
-      {
-        var p  = _fixUpsSourcePositions  .get(i);
-        var at = _fixUpsSourcePositionsAt.get(i);
-        var sf = p._sourceFile;
-        var n = fileName(sf);
-        var o = _sourceFilePositions.get(n) + p.bytePos();
-        if (CHECKS) check
-          (o > 0);
-        writeIntAt(at, o);
-      }
-  }
-
-
-  /**
-   * Record offset as the offset of type t.
-   *
-   * @param t a type that was or will be written out
-   *
-   * @param offset of t in the offset in the .fum/MIR file
-   */
-  void addOffset(AbstractType t, int offset)
-  {
-    if (PRECONDITIONS) require
-      (offset(t) == -1);
-
-    _offsetsForType.put(t, offset);
-  }
-
-
-  /**
-   * Get the offset that was previously recored for type t, or -1 if no offset
-   * was record (i.e., t has not been written yet).
-   */
-  int offset(AbstractType t)
-  {
-    return _offsetsForType.getOrDefault(t, -1);
-  }
 
 }
 
