@@ -104,10 +104,355 @@ f64(val f64) : float f64, f64s is
       else
         0.0
 
+  // port of: https://github.com/ulfjack/ryu/blob/master/src/main/java/info/adams/ryu/RyuDouble.java
+  // https://github.com/ulfjack/ryu
+  // https://dl.acm.org/citation.cfm?doid=3296979.3192369
+  ryu is
+
+    double_mantissa_mask := (u64 1 << significandBits.as_u64) - 1
+    double_exponent_mask := (u64 1 << exponentBits.as_u64) - 1
+    double_exponent_bias := (u64 1 << (exponentBits.as_u64 - 1)) - 1
+
+    pow5bits(e u64) =>
+      ((e * 1217359) >> 19) + 1
+
+    decimal_length(v u64) u64 is
+      if (v >= 1000000000000000000) then 19
+      else if (v >= 100000000000000000) then 18
+      else if (v >= 10000000000000000) then 17
+      else if (v >= 1000000000000000) then 16
+      else if (v >= 100000000000000) then 15
+      else if (v >= 10000000000000) then 14
+      else if (v >= 1000000000000) then 13
+      else if (v >= 100000000000) then 12
+      else if (v >= 10000000000) then 11
+      else if (v >= 1000000000) then 10
+      else if (v >= 100000000) then 9
+      else if (v >= 10000000) then 8
+      else if (v >= 1000000) then 7
+      else if (v >= 100000) then 6
+      else if (v >= 10000) then 5
+      else if (v >= 1000) then 4
+      else if (v >= 100) then 3
+      else if (v >= 10) then 2
+      else 1
+
+    multiple_of_power_of5(val u64, q i64) =>
+      (pow5_factor val) >= q
+
+
+    pow5_factor(val u64) i64 is
+      // We want to find the largest power of 5 that divides value.
+      if ((val % 5) != 0) then 0
+      else if ((val % 25) != 0) then 1
+      else if ((val % 125) != 0) then 2
+      else if ((val % 625) != 0) then 3
+      else
+        for count in ((u64 4)..)
+        while val % (count*5) = 0
+        do
+        else
+          count.as_i64
+
+    POW5_BITCOUNT := u64 121
+    POW5_INV_BITCOUNT := u64 22
+    POW5_QUARTER_BITCOUNT := u64 31
+    mask := (u64 1 << POW5_QUARTER_BITCOUNT) - u64 1
+
+    POW5_SPLIT array2 u64 := array2 326 4 (i,j ->
+      pow := uint 5 ** uint i.as_u64
+      shift := pow.highest_bit.as_u32 - POW5_BITCOUNT + (u32 3 - j.as_u32) * POW5_QUARTER_BITCOUNT
+      ((pow >> shift.as_uint) & mask).as_u64
+    )
+
+    POW5_INV_SPLIT array2 u64 := array2 291 4 (i,j ->
+      pow := uint 5 ** uint i.as_u64
+
+      inve := ((uint 1) << pow.highest_bit - (uint 1) + POW5_INV_BITCOUNT.as_uint) / pow + uint 1
+
+      tmp := inve >> (uint (3-j).as_u64 * POW5_QUARTER_BITCOUNT.as_uint)
+      (if j = 0 then tmp else tmp & mask).as_u64
+    )
+
+    /**
+    * Compute the high digits of m * 5^p / 10^q = m * 5^(p - q) / 2^q = m * 5^i / 2^j, with q chosen
+    * such that m * 5^i / 2^j has sufficiently many decimal digits to represent the original floating
+    * point number.
+    */
+    mul_pow5div_pow2(m u64, i, j i32)
+    pre (actual_shift j) >= 0
+      =>
+      // m has at most 55 bits.
+      m_high := m >> 31
+      m_low := m & 0x7fffffff
+      bits13 := m_high * POW5_SPLIT[i, 0]
+      bits03 := m_low * POW5_SPLIT[i, 0]
+      bits12 := m_high * POW5_SPLIT[i, 1]
+      bits02 := m_low * POW5_SPLIT[i, 1]
+      bits11 := m_high * POW5_SPLIT[i, 2]
+      bits01 := m_low * POW5_SPLIT[i, 2]
+      bits10 := m_high * POW5_SPLIT[i, 3]
+      bits00 := m_low * POW5_SPLIT[i, 3]
+
+      ((((((
+          ((bits00 >> 31) + bits01 + bits10) >> 31)
+                          + bits02 + bits11) >> 31)
+                          + bits03 + bits12) >> 21)
+                          + (bits13 << 10)) >> (actual_shift j)
+
+    actual_shift(j i32) =>
+      (j - 3 * 31 - 21).as_u64
+
+    # Compute the high digits of m / 5^i / 2^j such that the result is accurate to at least 9
+    # decimal digits. i and j are already chosen appropriately.
+    #
+    mul_pow5_inv_div_pow2(m u64, i, j i32)
+    pre (actual_shift j) >= 0
+      =>
+      // m has at most 55 bits.
+      m_high := m >> 31
+      m_low := m & 0x7fffffff
+      bits13 := m_high * POW5_INV_SPLIT[i, 0]
+      bits03 := m_low * POW5_INV_SPLIT[i, 0]
+      bits12 := m_high * POW5_INV_SPLIT[i, 1]
+      bits02 := m_low * POW5_INV_SPLIT[i, 1]
+      bits11 := m_high * POW5_INV_SPLIT[i, 2]
+      bits01 := m_low * POW5_INV_SPLIT[i, 2]
+      bits10 := m_high * POW5_INV_SPLIT[i, 3]
+      bits00 := m_low * POW5_INV_SPLIT[i, 3]
+
+      ((((((
+          ((bits00 >> 31) + bits01 + bits10) >> 31)
+                          + bits02 + bits11) >> 31)
+                          + bits03 + bits12) >> 21)
+                          + (bits13 << 10)) >> (actual_shift j)
+
+    max(a,b u64) => if a > b then a else b
+
+    as_string(scientific_notatation bool) string is
+      // Step 1: Decode the floating point number, and unify normalized and subnormal cases.
+      // First, handle all the trivial cases.
+      if (val.isNaN) then "NaN"
+      else if (f64.this = f64s.positiveInfinity) then "Infinity"
+      else if (f64.this = f64s.negativeInfinity) then "-Infinity"
+      else if (val = 0.0)
+        if sign = -1 then "0.0" else "-0.0"
+      else
+        bits := val.castTo_u64
+        mantissa_bits := significandBits.as_u64
+
+        // Otherwise extract the mantissa and exponent bits and run the full algorithm.
+        ieee_exponent := (bits >> mantissa_bits) & double_exponent_mask
+        ieee_mantissa := bits & double_mantissa_mask
+
+        normalize(ieee_exponent u64, ieee_mantissa u64) =>
+          if (ieee_exponent = 0)
+            // Denormal number - no implicit leading 1, and the exponent is 1, not 0.
+            (u64 1 - double_exponent_bias - mantissa_bits, ieee_mantissa)
+          else
+            // Add implicit leading 1.
+            (ieee_exponent - double_exponent_bias - mantissa_bits, ieee_mantissa | (u64 1 << mantissa_bits))
+
+        (e2,m2) := normalize ieee_exponent ieee_mantissa
+
+        // Step 2: Determine the interval of legal decimal representations.
+        even := (m2 & 1) = 0
+        mv := u64 4 * m2
+        mp := u64 4 * m2 + 2
+        mm_shift := if (m2 != (u64 1 << mantissa_bits)) || (ieee_exponent <= 1) then u64 1 else u64 0
+        mm := u64 4 * m2 - 1 - mm_shift
+
+        // Step 3: Convert to a decimal power base using 128-bit arithmetic.
+        // -1077 = 1 - 1023 - 53 - 2 <= e_2 - 2 <= 2046 - 1023 - 53 - 2 = 968
+        step_3(e3 u64) tuple u64 u64 u64 bool bool i64 is
+          if (e3 >= 0)
+            q := max (u64 0) (((e3 * 78913) >> 18) - 1)
+            // k = constant + floor(log_2(5^q))
+            k := POW5_INV_BITCOUNT + pow5bits q - 1
+            i := -e3 + q + k
+
+            if q <= 21
+              if mv % 5 == 0
+                (mul_pow5_inv_div_pow2 mv q i, mul_pow5_inv_div_pow2 mp q i, mul_pow5_inv_div_pow2 mm q i, false, multiple_of_power_of5(mv, q), q)
+              else if roundingMode.acceptUpperBound even
+                (mul_pow5_inv_div_pow2 mv q i, mul_pow5_inv_div_pow2 mp q i, mul_pow5_inv_div_pow2 mm q i, multiple_of_power_of5(mm, q), false, q)
+              else if multiple_of_power_of5 mp q
+                (mul_pow5_inv_div_pow2 mv q i, (mul_pow5_inv_div_pow2 mp q i)-1, mul_pow5_inv_div_pow2 mm q i, false, false, q)
+              else
+                (mul_pow5_inv_div_pow2 mv q i, (mul_pow5_inv_div_pow2 mp q i), mul_pow5_inv_div_pow2 mm q i, false, false, q)
+          else
+            q := max (i64 0) (((-e3 * 732923) >> 20) - 1)
+            i := -e3 - q
+            k := pow5bits i - POW5_BITCOUNT
+            j := q - k
+            (mul_pow5div_pow2(mv, i, j), mul_pow5div_pow2(mp, i, j), mul_pow5div_pow2(mm, i, j), false, false, q + e3)
+
+            if q <= 1
+              (mul_pow5div_pow2(mv, i, j), mul_pow5div_pow2(mp, i, j), mul_pow5div_pow2(mm, i, j), false, true, q + e3)
+              if roundingMode.acceptUpperBound even
+                (mul_pow5div_pow2(mv, i, j), mul_pow5div_pow2(mp, i, j), mul_pow5div_pow2(mm, i, j), mm_shift = 1, true, q + e3)
+              else
+                (mul_pow5div_pow2(mv, i, j), mul_pow5div_pow2(mp, i, j) -  1, mul_pow5div_pow2(mm, i, j), false, true, q + e3)
+            else if q < 63
+              (mul_pow5div_pow2(mv, i, j), mul_pow5div_pow2(mp, i, j), mul_pow5div_pow2(mm, i, j), false, (mv & ((1 << (q - (1))) - 1)) == 0, q + e3)
+            else
+              (mul_pow5div_pow2(mv, i, j), mul_pow5div_pow2(mp, i, j), mul_pow5div_pow2(mm, i, j), false, false, q + e3)
+
+        (dv, dp, dm, dmIsTrailingZeros, dvIsTrailingZeros, e10) := step_3 e2-2
+
+
+        # // Step 4: Find the shortest decimal representation in the interval of legal representations.
+        # //
+        # // We do some extra work here in order to follow Float/Double.toString semantics. In particular,
+        # // that requires printing in scientific format if and only if the exponent is between -3 and 7,
+        # // and it requires printing at least two decimal digits.
+        # //
+        # // Above, we moved the decimal dot all the way to the right, so now we need to count digits to
+        # // figure out the correct exponent for scientific notation.
+        # vplength := decimal_length dp
+        # exp := e10 + vplength - 1
+
+        # removed := 0
+
+        # lastRemovedDigit := 0
+        # if (dmIsTrailingZeros || dvIsTrailingZeros)
+        #   while (dp / 10 > dm / 10)
+        #     if ((dp < 100) && scientific_notation)
+        #       // Double.toString semantics requires printing at least two digits.
+        #       break
+
+        #     dmIsTrailingZeros := dmIsTrailingZeros & (dm % 10 == 0)
+        #     dvIsTrailingZeros := dvIsTrailingZeros & (lastRemovedDigit == 0)
+        #     lastRemovedDigit := (dv % 10)
+        #     dp /= 10
+        #     dv /= 10
+        #     dm /= 10
+        #     removed++
+        #   if (dmIsTrailingZeros && roundingMode.acceptLowerBound(even))
+        #     while (dm % 10 == 0)
+        #       if ((dp < 100) && scientific_notation)
+        #         // Double.toString semantics requires printing at least two digits.
+        #         break
+
+        #       dvIsTrailingZeros &= lastRemovedDigit == 0
+        #       lastRemovedDigit = (int) (dv % 10)
+        #       dp /= 10
+        #       dv /= 10
+        #       dm /= 10
+        #       removed++
+
+
+        #   if (dvIsTrailingZeros && (lastRemovedDigit == 5) && (dv % 2 == 0))
+        #     // Round even if the exact numbers is .....50..0.
+        #     lastRemovedDigit = 4
+
+        #   output := dv +
+        #       ((dv == dm && !(dmIsTrailingZeros && roundingMode.acceptLowerBound(even))) || (lastRemovedDigit >= 5) ? 1 : 0)
+        # else
+        #   while (dp / 10 > dm / 10) {
+        #     if ((dp < 100) && scientific_notation)
+        #       // Double.toString semantics requires printing at least two digits.
+        #       break
+
+        #     lastRemovedDigit = (int) (dv % 10)
+        #     dp /= 10
+        #     dv /= 10
+        #     dm /= 10
+        #     removed++
+
+        #   output := dv + ((dv == dm || (lastRemovedDigit >= 5)) ? 1 : 0)
+
+        # olength := vplength - removed
+
+      #   // Step 5: Print the decimal representation.
+      #   // We follow Double.toString semantics here.
+      #   char[] result = new char[24]
+      #   int index = 0
+      #   if (sign)
+      #     result[index++] = '-'
+
+
+      #   // Values in the interval [1E-3, 1E7) are special.
+      #   if (scientificNotation) {
+      #     // Print in the format x.xxxxxE-yy.
+      #     for (int i = 0; i < olength - 1; i++) {
+      #       int c = (int) (output % 10); output /= 10
+      #       result[index + olength - i] = (char) ('0' + c)
+      #     }
+      #     result[index] = (char) ('0' + output % 10)
+      #     result[index + 1] = '.'
+      #     index += olength + 1
+      #     if (olength == 1) {
+      #       result[index++] = '0'
+      #     }
+
+      #     // Print 'E', the exponent sign, and the exponent, which has at most three digits.
+      #     result[index++] = 'E'
+      #     if (exp < 0) {
+      #       result[index++] = '-'
+      #       exp = -exp
+      #     }
+      #     if (exp >= 100) {
+      #       result[index++] = (char) ('0' + exp / 100)
+      #       exp %= 100
+      #       result[index++] = (char) ('0' + exp / 10)
+      #     } else if (exp >= 10) {
+      #       result[index++] = (char) ('0' + exp / 10)
+      #     }
+      #     result[index++] = (char) ('0' + exp % 10)
+      #     return new String(result, 0, index)
+      #   } else {
+      #     // Otherwise follow the Java spec for values in the interval [1E-3, 1E7).
+      #     if (exp < 0) {
+      #       // Decimal dot is before any of the digits.
+      #       result[index++] = '0'
+      #       result[index++] = '.'
+      #       for (int i = -1; i > exp; i--) {
+      #         result[index++] = '0'
+      #       }
+      #       int current = index
+      #       for (int i = 0; i < olength; i++) {
+      #         result[current + olength - i - 1] = (char) ('0' + output % 10)
+      #         output /= 10
+      #         index++
+      #       }
+      #     } else if (exp + 1 >= olength) {
+      #       // Decimal dot is after any of the digits.
+      #       for (int i = 0; i < olength; i++) {
+      #         result[index + olength - i - 1] = (char) ('0' + output % 10)
+      #         output /= 10
+      #       }
+      #       index += olength
+      #       for (int i = olength; i < exp + 1; i++) {
+      #         result[index++] = '0'
+      #       }
+      #       result[index++] = '.'
+      #       result[index++] = '0'
+      #     } else {
+      #       // Decimal dot is somewhere between the digits.
+      #       int current = index + 1
+      #       for (int i = 0; i < olength; i++) {
+      #         if (olength - i - 1 == exp) {
+      #           result[current + olength - i - 1] = '.'
+      #           current--
+      #         }
+      #         result[current + olength - i - 1] = (char) ('0' + output % 10)
+      #         output /= 10
+      #       }
+      #       index += olength + 1
+      #     }
+      #     return new String(result, 0, index)
+      #   }
+      # }
+
+
 
   # convert this to a string.
   #
-  redef asString string is intrinsic
+  redef asString string is
+    // Double.toString semantics requires using scientific notation if and only if outside this range.
+    scientific_notation := !((val >= (10.0 ** -3.0)) && (val < (10.0 ** 7.0)))
+    ryu.as_string scientific_notation
 
 
 # f64s -- unit type defining features related to f64 but not requiring an

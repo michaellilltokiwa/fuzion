@@ -118,6 +118,7 @@ u32(val u32) : wrappingInteger u32, hasInterval u32, u32s is
     is
       u128 0 as_u64
   as_int  => int as_i64
+  as_uint  => uint as_u64
 
   low8bits  u8  is intrinsic
   low16bits u16 is intrinsic
