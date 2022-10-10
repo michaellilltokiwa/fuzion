@@ -88,7 +88,7 @@ public class ModuleRef extends ANY
 
 
   /**
-   * Size of the data wiritten to this madule's .tum riles.
+   * Size of the data written to this module's .fum file.
    */
   int size()
   {
