@@ -30,7 +30,7 @@ exit (
   # the handler this effect uses to exit
   p exitHandler,
 
-  redef r effectModes,
+  redef r effectMode.val,
 
   _ unit
   ) : effect r
@@ -75,7 +75,7 @@ exitHandler ref is
 exit_type is
 
   installDefault is
-    if !(effects.exists<exit>)
+    if !effects.exists exit
       _ := exit defaultExitHandler effectMode.default unit
 
   # default exit handler using io.err and exit with return code 1

@@ -28,7 +28,6 @@ package dev.flang.fe;
 
 import java.io.IOException;
 
-import java.nio.channels.Channels;
 import java.nio.channels.FileChannel;
 
 import java.nio.file.Files;
@@ -36,6 +35,7 @@ import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 
 import java.util.EnumSet;
+import java.util.TreeMap;
 
 import dev.flang.mir.MIR;
 
@@ -48,6 +48,7 @@ import dev.flang.ast.Types;
 import dev.flang.util.ANY;
 import dev.flang.util.Errors;
 import dev.flang.util.FuzionConstants;
+import dev.flang.util.List;
 import dev.flang.util.SourceDir;
 import dev.flang.util.SourceFile;
 
@@ -136,6 +137,13 @@ public class FrontEnd extends ANY
 
 
   /**
+   * The library modules loaded so far.  Maps the module name, e.g. "base" to
+   * the corresponding LibraryModule instance.
+   */
+  TreeMap<String, LibraryModule> _modules = new TreeMap<>();
+
+
+  /**
    * The module we are compiling. null if !options._loadSources or Errors.count() != 0
    */
   private final SourceModule _module;
@@ -151,24 +159,49 @@ public class FrontEnd extends ANY
   {
     _options = options;
     Types.reset();
+    Errors.reset();
+    FeatureName.reset();
     var universe = new Universe();
     _universe = universe;
 
-    var sourcePaths = sourcePaths();
+    var sourcePaths = options.sourcePaths();
     var sourceDirs = new SourceDir[sourcePaths.length + options._modules.size()];
     for (int i = 0; i < sourcePaths.length; i++)
       {
         sourceDirs[i] = new SourceDir(sourcePaths[i]);
       }
+    var lms = new List<LibraryModule>();
+    if (options._loadBaseLib)
+      {
+        _baseModule = module(modulePath("base"));
+        if (_baseModule != null)
+          {
+            lms.add(_baseModule);
+          }
+      }
+    else
+      {
+        _baseModule = null;
+      }
     for (int i = 0; i < options._modules.size(); i++)
       {
-        sourceDirs[sourcePaths.length + i] = new SourceDir(options._fuzionHome.resolve(Path.of("modules")).resolve(Path.of(options._modules.get(i))));
+        var m = _options._modules.get(i);
+        var p = modulePath(_options._modules.get(i));
+        if (Files.exists(p))
+          {
+            var loaded = module(p);
+            if (loaded != null)
+              {
+                lms.add(loaded);
+              }
+          }
+        else
+          { // NYI: Fallback if module file does not exists use source files instead. Remove this.
+            sourceDirs[sourcePaths.length + i] = new SourceDir(options._fuzionHome.resolve(Path.of("modules")).resolve(Path.of(m)));
+          }
       }
-    LibraryModule[] dependsOn;
-    var save = options._saveBaseLib;
-    _baseModule = save == null ? baseModule() : null;
-    dependsOn = _baseModule == null ? new LibraryModule[] { } : new LibraryModule[] { _baseModule };
-    if (options._loadSources && Errors.count() == 0)
+    var dependsOn = lms.toArray(LibraryModule[]::new);
+    if (options._loadSources)
       {
         _module = new SourceModule(options, sourceDirs, inputFile(options), options._main, dependsOn, universe);
         _module.createASTandResolve();
@@ -177,41 +210,37 @@ public class FrontEnd extends ANY
       {
         _module = null;
       }
-    if (save != null && Errors.count() == 0)
-      {
-        saveModule(save);
-      }
   }
 
 
   /**
-   * Get all the paths to use to read source code from
+   * Determine the path to load module 'name' from.  E.g., for module 'base',
+   * this returns the path '<fuzionHome>/modules/base.fum'.
+   *
+   * @þaram a module name, without path or suffix
+   *
+   * @return the path to the module, never null.
    */
-  private Path[] sourcePaths()
+  private Path modulePath(String name)
   {
-    return
-      (_options._saveBaseLib != null  ) ? new Path[] { _options._fuzionHome.resolve("lib") } :
-      (_options._readStdin         ||
-       _options._inputFile != null    ) ? new Path[] { }
-                                        : new Path[] { Path.of(".") };
+    return _options._fuzionHome.resolve("modules").resolve(name + ".fum");
   }
 
 
   /**
-   * Load Base module for given options.
+   * Load module from given path.
    */
-  private LibraryModule baseModule()
+  private LibraryModule module(Path p)
   {
-    var b = _options._fuzionHome.resolve("modules").resolve("base.fum");
-    try (var ch = (FileChannel) Files.newByteChannel(b, EnumSet.of(StandardOpenOption.READ)))
+    try (var ch = (FileChannel) Files.newByteChannel(p, EnumSet.of(StandardOpenOption.READ)))
       {
         var data = ch.map(FileChannel.MapMode.READ_ONLY, 0, ch.size());
-        return new LibraryModule("base", data, new LibraryModule[0], _universe);
+        return new LibraryModule(this, data, new LibraryModule[0], _universe);
       }
     catch (IOException io)
       {
         Errors.error("FrontEnd I/O error when reading module file",
-                     "While trying to read file '"+ b + "' received '" + io + "'");
+                     "While trying to read file '"+ p + "' received '" + io + "'");
         return null;
       }
   }
@@ -227,25 +256,6 @@ public class FrontEnd extends ANY
       options._readStdin         ? SourceFile.STDIN   :
       options._inputFile != null ? options._inputFile
                                  : null;
-  }
-
-
-  /**
-   * Save _module to a module file
-   */
-  private void saveModule(Path p)
-  {
-    var data = _module.data();
-    System.out.println(" + " + p);
-    try (var os = Files.newOutputStream(p))
-      {
-        Channels.newChannel(os).write(data);
-      }
-    catch (IOException io)
-      {
-        Errors.error("FrontEnd I/O error when writing module file",
-                     "While trying to write file '"+ p + "' received '" + io + "'");
-      }
   }
 
 

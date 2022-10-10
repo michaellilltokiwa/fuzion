@@ -30,7 +30,7 @@ random (
   # the provider this effect uses to create random numbers
   p randomProvider,
 
-  redef r effectModes
+  redef r effectMode.val
   ) : effect r
 is
 
@@ -143,7 +143,7 @@ randomProvider ref is
 randoms is
 
   installDefault is
-    if !(effects.exists<random>)
+    if !effects.exists random
       _ := random simpleRandomProviders.default effectMode.default
 
 

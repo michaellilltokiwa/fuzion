@@ -26,12 +26,12 @@ Fuzion language implementation.  If not, see <https://www.gnu.org/licenses/>.
 
 package dev.flang.air;
 
-import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
+import java.util.stream.Stream;
 
 import dev.flang.ast.AbstractAssign; // NYI: remove dependency!
 import dev.flang.ast.AbstractBlock; // NYI: remove dependency!
@@ -48,8 +48,6 @@ import dev.flang.ast.Expr; // NYI: remove dependency!
 import dev.flang.ast.Feature; // NYI: remove dependency!
 import dev.flang.ast.If; // NYI: remove dependency!
 import dev.flang.ast.InlineArray; // NYI: remove dependency!
-import dev.flang.ast.Old; // NYI: remove dependency!
-import dev.flang.ast.Stmnt; // NYI: remove dependency!
 import dev.flang.ast.Tag; // NYI: remove dependency!
 import dev.flang.ast.Types; // NYI: remove dependency!
 import dev.flang.ast.Unbox; // NYI: remove dependency!
@@ -343,7 +341,17 @@ public class Clazzes extends ANY
         // but it might be overkill in some cases. We might rethink this and,
         // e.g. treat clazzes of inherited features with a reference outer clazz
         // the same.
-        var newcl =  new Clazz(actualType, select, outer);
+
+        Clazz newcl;
+        if (wouldCreateCycleInOuters(actualType, outer))
+          {
+            newcl = clazz(actualType);
+          }
+        else
+          {
+            newcl =  new Clazz(actualType, select, outer);
+          }
+
         result = intern(newcl);
         if (result == newcl)
           {
@@ -375,6 +383,17 @@ public class Clazzes extends ANY
 
 
   /**
+   * Would creating new clazz for actualType and outer result in a cycle?
+   */
+  private static boolean wouldCreateCycleInOuters(AbstractType actualType, Clazz outer)
+  {
+    if (PRECONDITIONS) require
+      (Errors.count() > 0 || !actualType.dependsOnGenerics());
+    return outer != null && outer.selfAndOuters().anyMatch(ou -> actualType.featureOfType().equals(ou.feature()));
+  }
+
+
+  /**
    * As long as there are clazzes that were created via create(), call
    * findAllClasses on that clazz and layout the class.
    *
@@ -383,7 +402,7 @@ public class Clazzes extends ANY
    */
   public static void findAllClasses(Clazz main)
   {
-    var toLayout = new List<Clazz>();
+    var toLayout = new LinkedList<Clazz>();
     int clazzCount = 0;
 
     // make sure internally referenced clazzes do exist:
@@ -509,7 +528,7 @@ public class Clazzes extends ANY
   static void calledDynamically(AbstractFeature f)
   {
     if (PRECONDITIONS) require
-      (isUsedAtAll(f),
+      (Errors.count() > 0 || isUsedAtAll(f),
        f.generics().list.isEmpty());
 
     if (!_calledDynamically_.contains(f))
@@ -641,14 +660,15 @@ public class Clazzes extends ANY
   static int getRuntimeClazzIds(int count)
   {
     if (PRECONDITIONS) require
-      (runtimeClazzIdCount() <= Integer.MAX_VALUE - count);
+      (runtimeClazzIdCount() <= Integer.MAX_VALUE - count,
+       count >= 0);
 
     int result = runtimeClazzIdCount_;
     runtimeClazzIdCount_ = result + count;
 
     if (POSTCONDITIONS) ensure
-                          (result >= 0,
-                           result < runtimeClazzIdCount());
+      (result >= 0,
+       result + count <= runtimeClazzIdCount());
 
     return result;
   }
@@ -854,12 +874,11 @@ public class Clazzes extends ANY
         if (f.kind() == AbstractFeature.Kind.TypeParameter)
           {
             var tpc = innerClazz.resultClazz();
+            tpc._typeType = innerClazz.typeParameterActualType()._type;
             do
               {
                 addUsedFeature(tpc.feature(), c.pos());
                 tpc.instantiated(c.pos());
-                var name = tpc.lookup(Types.resolved.f_Type_name, dev.flang.ast.Call.NO_GENERICS, Clazzes.isUsedAt(tpc.feature()));
-                addUsedFeature(name.feature(), c.pos());
                 tpc = tpc._outer;
               }
             while (tpc != null && !tpc.feature().isUniverse());
@@ -1042,11 +1061,6 @@ public class Clazzes extends ANY
     else if (e instanceof AbstractMatch m)
       {
         result = outerClazz.actualClazz(m.type());
-      }
-
-    else if (e instanceof Old o)
-      {
-        result = clazz(o.e, outerClazz);
       }
 
     else if (e instanceof Universe)

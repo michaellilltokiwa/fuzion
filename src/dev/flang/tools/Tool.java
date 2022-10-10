@@ -61,11 +61,6 @@ public abstract class Tool extends ANY
   /*----------------------------  constants  ----------------------------*/
 
 
-  /**
-   * Placeholder within USAGE0() result to hold standard options.
-   */
-  public static final String STD_OPTIONS = "@STANDARD_OPTIONS@";
-
   private static final String XTRA_OPTIONS = "[-X|--Xhelp] [-XjavaProf] " +
     "[" + Errors.MAX_ERROR_MESSAGES_OPTION   + "=<n>] " +
     "[" + Errors.MAX_WARNING_MESSAGES_OPTION + "=<n>] ";
@@ -141,21 +136,11 @@ public abstract class Tool extends ANY
 
 
   /**
-   * The basic usage, using STD_OPTIONS as a placeholder for standard
-   * options.
-   */
-  protected abstract String USAGE0();
-
-
-  /**
-   * The usage, created from USAGE0() by adding STANDARD_OPTIONS().
+   * The usage, must include STANDARD_OPTIONS(xtra).
    *
    * @param xtra include extra options
    */
-  protected final String USAGE(boolean xtra)
-  {
-    return USAGE0().replace(STD_OPTIONS, STANDARD_OPTIONS(xtra));
-  }
+  protected abstract String USAGE(boolean xtra);
 
 
   /**
@@ -358,7 +343,7 @@ public abstract class Tool extends ANY
    *
    * @return the string after the first "=" in a, may be empty, may not be null
    */
-  protected String parseString(String a)
+  protected static String parseString(String a)
   {
     if (PRECONDITIONS) require
       (a.indexOf("=") >= 0);
@@ -374,7 +359,7 @@ public abstract class Tool extends ANY
    *
    * @return the path after the first "=" in a.
    */
-  protected Path parsePath(String a)
+  protected static Path parsePath(String a)
   {
     if (PRECONDITIONS) require
       (a.indexOf("=") >= 0);
@@ -390,7 +375,7 @@ public abstract class Tool extends ANY
    *
    * @return true iff a is set to 'on' or an error was reported.
    */
-  protected boolean parseOnOffArg(String a)
+  protected static boolean parseOnOffArg(String a)
   {
     if (PRECONDITIONS) require
       (a.indexOf("=") >= 0);
@@ -418,15 +403,19 @@ public abstract class Tool extends ANY
    *
    * @return the list containing the single elements, e.g. ["abc","def","ghi"]
    */
-  protected List<String> parseStringListArg(String a)
+  protected static List<String> parseStringListArg(String a)
   {
     if (PRECONDITIONS) require
       (a.indexOf("=") >= 0);
 
     List<String> result = new List<>();
-    for (var s : a.substring(a.indexOf("=")+1).split(","))
+    var strings = a.substring(a.indexOf("=")+1);
+    if (!strings.equals(""))
       {
-        result.add(s);
+        for (var s : strings.split(","))
+          {
+            result.add(s);
+          }
       }
     return result;
   }
