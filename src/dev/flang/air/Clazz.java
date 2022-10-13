@@ -645,30 +645,7 @@ public class Clazz extends ANY implements Comparable<Clazz>
       (t != null,
        Errors.count() > 0 || !t.isOpenGeneric());
 
-    return actualClazz0(t, -1);
-  }
-
-
-  /**
-   * Convert a given type to the actual runtime clazz within this class. The
-   * formal generics arguments will first be replaced via actualType(t), and the
-   * Clazz will be created from the result.
-   *
-   * NYI: This should be private, it is used only by actualClazz() and at one
-   * location in be/interpreter that should be removed.
-   *
-   * @param t the original type
-   *
-   * @param select specifies the actual type parameter in case
-   * t.isOpenGeneric().
-   */
-  public Clazz actualClazz0(AbstractType t, int select)
-  {
-    if (PRECONDITIONS) require
-      (t != null,
-       Errors.count() > 0 || ((select >= 0) == t.isOpenGeneric()));
-
-    return Clazzes.clazz(actualType(t, select));
+    return Clazzes.clazz(actualType(t, -1));
   }
 
 
@@ -1153,18 +1130,10 @@ public class Clazz extends ANY implements Comparable<Clazz>
     var result = clazzForField_.get(field);
     if (result == null)
       {
-        var fo = field.outer();
-        if (CHECKS) check
-          (Errors.count() > 0 || fo != null);
-
         result =
-          field.isTypeParameter() ? resultClazz() :
-          fo == null ? Clazzes.error.get() :
-          field.isOuterRef() && fo.isOuterRefAdrOfValue()     ? actualClazz(Types.t_ADDRESS) :
-          field.isOuterRef() && fo.isOuterRefCopyOfValue() ||
-          !field.isOuterRef() && field != fo.resultField() // NYI: use lookup/resultClazz for all fields
-                                                           ? actualClazz0(field.resultType(), select)
-                                                           : lookup(field, Call.NO_GENERICS, Clazzes.isUsedAt(field)).resultClazz();
+          field.isOuterRef() &&
+          field.outer().isOuterRefAdrOfValue() ? actualClazz(Types.t_ADDRESS)
+                                               : lookup(field, select, Call.NO_GENERICS, Clazzes.isUsedAt(field), false).resultClazz();
         if (select < 0)
           {
             clazzForField_.put(field, result);
@@ -1906,6 +1875,41 @@ public class Clazz extends ANY implements Comparable<Clazz>
 
 
   /**
+   * For a type clazz such as 'i32.type', this will set the type this clazz
+   * represents.
+   *
+   * NYI: This is currently set in Clazzes.findClasses() when processing
+   * TypeParameters.  It would be nicer (less error prone etc.) to have this
+   * information available directly when this instance of Clazz is created.
+   *
+   * Maybe if we added a type parameter to feature 'Type' or to all instances
+   * inheriting from 'Type', we could have this information available directly.
+   */
+  AbstractType _typeType = null;
+
+
+  /**
+   * For a type clazz such as 'i32.type' return its name, such as 'i32'.
+   */
+  public String typeName()
+  {
+    if (isRef()) // the type was boxed, so get the name from the original value type
+      {
+        return asValue().typeName();
+      }
+    else if (_typeType == null)
+      {
+        Errors.error("*** internal error: type name is not set for '" + this + "'");
+        return "** UNDEF **";
+      }
+    else
+      {
+        return _typeType.asString();
+      }
+  }
+
+
+  /**
    * For a type parameter, return the actual type.
    */
   public Clazz typeParameterActualType()
@@ -1944,8 +1948,7 @@ public class Clazz extends ANY implements Comparable<Clazz>
     else
       {
         var tf = cf.typeFeature();
-        return Clazzes.create(tf.thisType().asRef(),
-                              _outer == null ? Clazzes.universe.get() : _outer.typeClazz());
+        return Clazzes.create(tf.thisType(), _outer.typeClazz());
       }
   }
 

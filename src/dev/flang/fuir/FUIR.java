@@ -26,6 +26,8 @@ Fuzion language implementation.  If not, see <https://www.gnu.org/licenses/>.
 
 package dev.flang.fuir;
 
+import java.nio.charset.StandardCharsets;
+
 import java.util.BitSet;
 import java.util.TreeMap;
 import java.util.stream.Stream;
@@ -266,8 +268,10 @@ public class FUIR extends IR
       {
         for (var cl : Clazzes.all())
           {
-            if (cl._type != Types.t_ADDRESS     // NYI: would be better to not create this dummy clazz in the first place
-                )
+            if (CHECKS) check
+              (cl._type != Types.t_ERROR);
+
+            if (cl._type != Types.t_ADDRESS)     // NYI: would be better to not create this dummy clazz in the first place
               {
                 add(cl);
               }
@@ -449,6 +453,21 @@ public class FUIR extends IR
   {
     var cc = clazz(cl);
     return id(cc.resultClazz());
+  }
+
+
+  /**
+   * For a clazz that represents a Fuzion type such as 'i32.type', return the
+   * corresponding name of the type such as 'i32'.
+   *
+   * @param cl a clazz id of a type clazz
+   *
+   * @return the name of the type represented by instances of cl, using UTF8 encoding.
+   */
+  public byte[] clazzTypeName(int cl)
+  {
+    var cc = clazz(cl);
+    return cc.typeName().getBytes(StandardCharsets.UTF_8);
   }
 
 
@@ -1777,7 +1796,7 @@ hw25 is
       {
       case AdrOf   -> "AdrOf";
       case Assign  -> "Assign to " + clazzAsString(accessedClazz(cl, c, ix));
-      case Box     -> "Box";
+      case Box     -> "Box " + clazzAsString(boxValueClazz(cl, c, ix)) + " => " + clazzAsString(boxResultClazz(cl, c, ix));
       case Unbox   -> "Unbox";
       case Call    -> "Call to " + clazzAsString(accessedClazz(cl, c, ix));
       case Current -> "Current";

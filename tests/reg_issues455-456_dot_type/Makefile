@@ -17,40 +17,11 @@
 #
 #  Tokiwa Software GmbH, Germany
 #
-#  Source code of Fuzion standard library feature Type
+#  Source code of Fuzion test Makefile
 #
 #  Author: Fridtjof Siebert (siebert@tokiwa.software)
 #
 # -----------------------------------------------------------------------
 
-# Type -- parent feature of all type features
-#
-# type features 'f.type' are declared implicitly for every feature f.
-# Type features do not contain state, they are unit types.
-#
-Type ref is
-
-
-  # name of this type, including type parameters, e.g. 'option (list i32)'.
-  #
-  name string is intrinsic
-
-
-  # string representation of this type to be used for debugging.
-  #
-  # result has the form "Type of '<name>'", but this might change in the future
-  #
-  redef asString => "Type of '$name'"
-
-
-# Types -- features related to Type but not requiring an instance of Type
-#
-Types is
-
-  # Get the Type instance corresponding to a given type
-  #
-  # The result of 'Types.get x' is the same as 'x.type'.
-  # Internally, Fuzion's front end implements 'x.type' using
-  # 'Types.get x'.
-  #
-  get(T type) => T
+NAME = dot_type_test
+include ../simple.mk

@@ -312,7 +312,8 @@ public class Interpreter extends ANY
           {
             var v = (ValueWithClazz) args.get(0);
             Clazz cl = v.clazz();
-            ca = (Callable) ((DynamicBinding)cl._dynamicBinding).callable(c.calledFeature());
+            var db = (DynamicBinding) cl._dynamicBinding;
+            ca = (Callable) db.callable(c.calledFeature());
           }
         result = ca.call(args);
         FuzionThread.current()._callStack.pop();
@@ -801,15 +802,9 @@ public class Interpreter extends ANY
             {
               result = (args) -> {
                 var rc = innerClazz.resultClazz();
-                var r = new Instance(rc);
-                var or = rc.feature().outerRef();
-                if (or != null && Clazzes.isUsedAtAll(or))
-                  {
-                    setOuter(rc.feature(), rc, r, new Instance(rc._outer));
-                  }
-                var name = rc.lookup(Types.resolved.f_Type_name, dev.flang.ast.Call.NO_GENERICS, Clazzes.isUsedAt(rc.feature()));
-                setField(name.feature(), -1,  rc, r, value(innerClazz.typeParameterActualType()._type.asString()));
-                return r;
+                if (CHECKS) check  // check that outer ref, if exists, is unused:
+                  (rc.feature().outerRef() == null || !Clazzes.isUsedAtAll(rc.feature().outerRef()));
+                return new Instance(rc);
               };
               break;
             }
