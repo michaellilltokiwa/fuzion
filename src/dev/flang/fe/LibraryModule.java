@@ -157,6 +157,12 @@ public class LibraryModule extends Module
   final ModuleRef[] _modules;
 
 
+  /**
+   * The front end that loaded this module.
+   */
+  private final FrontEnd _fe;
+
+
   /*--------------------------  constructors  ---------------------------*/
 
 
@@ -167,6 +173,7 @@ public class LibraryModule extends Module
   {
     super(dependsOn);
 
+    _fe = fe;
     _mir = null;
     _data = data;
     _universe = universe;
@@ -184,12 +191,11 @@ public class LibraryModule extends Module
       {
         var n = moduleRefName(p);
         var v = moduleRefVersion(p);
-        var mr = new ModuleRef(fe, moduleOffset, n, v);
+        var mr = new ModuleRef(moduleOffset, n, v, fe.loadModule(n));
         _modules[i] = mr;
         moduleOffset = moduleOffset + mr.size();
         p = moduleRefNextPos(p);
       }
-    fe._modules.put(name(), this);
 
     var dm = fe._options._dumpModules;
     if (DUMP ||
@@ -495,7 +501,7 @@ public class LibraryModule extends Module
           }
         else if (k == -3)
           {
-            return Types.resolved.universe.thisType();
+            return _fe._universe.thisType();
           }
         else if (k == -2)
           {

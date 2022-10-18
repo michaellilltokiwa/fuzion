@@ -238,6 +238,7 @@ public class SourceModule extends Module implements SrcModule, MirModule
     if (CHECKS) check
       (_universe != null);
 
+    _res = new Resolution(_options, _universe, this);
     if (_dependsOn.length > 0)
       {
         _universe.setState(Feature.State.RESOLVED);
@@ -254,7 +255,6 @@ public class SourceModule extends Module implements SrcModule, MirModule
       }
 
     _main = parseMain();
-    _res = new Resolution(_options, _universe, this);
     findDeclarations(_universe, null);
     _universe.scheduleForResolution(_res);
     _res.resolve();
@@ -367,10 +367,12 @@ public class SourceModule extends Module implements SrcModule, MirModule
    * During resolution, load all inner classes of this that are
    * defined in separate files.
    */
-  private void loadInnerFeatures(AbstractFeature f)
+  void loadInnerFeatures(AbstractFeature f)
   {
-    if (!_closed)
+    if (!f._loadedInner &&
+        !_closed)  /* NYI: restrict this to f.isVisibleFrom(this) or similar */
       {
+        f._loadedInner = true;
         for (var root : _sourceDirs)
           {
             try
@@ -619,6 +621,14 @@ public class SourceModule extends Module implements SrcModule, MirModule
                   }
               }
           }
+
+        // NYI: cleanup: See #462: Remove once sub-directries are loaded
+        // directly, not implicitly when outer feature is found
+        for (var inner : s.values())
+          {
+            loadInnerFeatures(inner);
+          }
+
       }
     return s;
   }
@@ -680,35 +690,22 @@ public class SourceModule extends Module implements SrcModule, MirModule
           {
             data(cf)._heirs.add(outer);
             _res.resolveDeclarations(cf);
-            if (cf instanceof LibraryFeature clf)
-              {
-                var s = clf._libModule.declaredOrInheritedFeaturesOrNull(cf);
-                if (s != null)
-                  {
-                    for (var fnf : s.entrySet())
-                      {
-                        var fn = fnf.getKey();
-                        var f = fnf.getValue();
-                        if (CHECKS) check
-                          (cf != outer);
 
-                        var newfn = cf.handDown(this, f, fn, p, outer);
-                        addInheritedFeature(outer, p.pos(), newfn, f);
-                      }
-                  }
-              }
-            else
-              {
-                for (var fnf : declaredOrInheritedFeatures(cf).entrySet())
-                  {
-                    var fn = fnf.getKey();
-                    var f = fnf.getValue();
-                    if (CHECKS) check
-                      (cf != outer);
+            // NYI: cleanup: See #460: Add abstract method for this to
+            // AbstractFeature with implementation in LibraryFeature and
+            // Feature:
+            var s = (cf instanceof LibraryFeature clf) ? clf._libModule.declaredOrInheritedFeaturesOrNull(cf)
+                                                       : declaredOrInheritedFeatures(cf);
 
-                    var newfn = cf.handDown(this, f, fn, p, outer);
-                    addInheritedFeature(outer, p.pos(), newfn, f);
-                  }
+            for (var fnf : s.entrySet())
+              {
+                var fn = fnf.getKey();
+                var f = fnf.getValue();
+                if (CHECKS) check
+                  (cf != outer);
+
+                var newfn = cf.handDown(this, f, fn, p, outer);
+                addInheritedFeature(outer, p.pos(), newfn, f);
               }
           }
       }
@@ -800,8 +797,11 @@ public class SourceModule extends Module implements SrcModule, MirModule
       }
     else if (existing.outer() == outer)
       {
-        // This cannot happen, this case was already handled in addDeclaredInnerFeature:
-        throw new Error();
+        if (Errors.count() == 0)
+          { // This can happen only as the result of previous errors since this
+            // case was already handled in addDeclaredInnerFeature:
+            throw new Error();
+          }
       }
     else if (existing.generics() != FormalGenerics.NONE)
       {
@@ -875,7 +875,7 @@ public class SourceModule extends Module implements SrcModule, MirModule
           }
       }
     df.put(fn, f);
-    if (outer instanceof Feature of && of.state().atLeast(Feature.State.RESOLVED_DECLARATIONS))
+    if (!(outer instanceof Feature of) || of.state().atLeast(Feature.State.RESOLVED_DECLARATIONS))
       {
         addToDeclaredOrInheritedFeatures(outer, f);
         if (!outer.isChoice() || !f.isField())  // A choice does not inherit any fields
@@ -1105,6 +1105,7 @@ public class SourceModule extends Module implements SrcModule, MirModule
         var type_fs = new List<AbstractFeature>();
         var nontype_fs = new List<AbstractFeature>();
         var orig_o = o;
+        _res.resolveDeclarations(o);
         do
           {
             var fs = lookupFeatures(o, name).values();

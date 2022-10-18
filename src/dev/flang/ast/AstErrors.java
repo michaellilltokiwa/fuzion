@@ -825,11 +825,30 @@ public class AstErrors extends ANY
 
   public static void duplicateFeatureDeclaration(SourcePosition pos, AbstractFeature f, AbstractFeature existing)
   {
-    error(pos,
-          "Duplicate feature declaration",
-          "Feature that was declared repeatedly: " + s(f) + "\n" +
-          "originally declared at " + existing.pos().show() + "\n" +
-          "To solve this, consider renaming one of these two features or changing its number of arguments");
+    // suppress error message if errors were reported already and any feature
+    // involved is f_ERROR
+    if (count() == 0 || (f                != Types.f_ERROR &&
+                         f       .outer() != Types.f_ERROR &&
+                         existing         != Types.f_ERROR &&
+                         existing.outer() != Types.f_ERROR    ))
+      {
+        // NYI: HACK: see #461: This is an ugly workaround that just ignores the
+        // fact that type features can be defined repeatedly.
+        if (f.qualifiedName().endsWith("#type"))
+          {
+            warning(pos,
+                    "Duplicate feature declaration (ignored since these are type features, see #461)",
+                    "Feature that was declared repeatedly: " + s(f) + "\n" +
+                    "originally declared at " + existing.pos().show() + "\n" +
+                    "To solve this, consider renaming one of these two features or changing its number of arguments");
+            return;
+          }
+        error(pos,
+              "Duplicate feature declaration",
+              "Feature that was declared repeatedly: " + s(f) + "\n" +
+              "originally declared at " + existing.pos().show() + "\n" +
+              "To solve this, consider renaming one of these two features or changing its number of arguments");
+      }
   }
 
   public static void qualifiedDeclarationNotAllowedForField(Feature f)
@@ -904,18 +923,30 @@ public class AstErrors extends ANY
     return solution;
   }
 
+  static boolean errorInOuterFeatures(AbstractFeature f)
+  {
+    while (f != null && f != Types.f_ERROR)
+      {
+        f = f.outer();
+      }
+    return f == Types.f_ERROR;
+  }
+
   static void calledFeatureNotFound(Call call,
                                     FeatureName calledName,
                                     AbstractFeature targetFeature)
   {
-    var solution = solutionDeclareReturnTypeIfResult(calledName.baseName(),
-                                                     calledName.argCount());
-    error(call.pos(),
-          "Could not find called feature",
-          "Feature not found: " + sbn(calledName) + "\n" +
-          "Target feature: " + s( targetFeature) + "\n" +
-          "In call: " + s(call) + "\n" +
-          solution);
+    if (count() == 0 || !errorInOuterFeatures(targetFeature))
+      {
+        var solution = solutionDeclareReturnTypeIfResult(calledName.baseName(),
+                                                         calledName.argCount());
+        error(call.pos(),
+              "Could not find called feature",
+              "Feature not found: " + sbn(calledName) + "\n" +
+              "Target feature: " + s(targetFeature) + "\n" +
+              "In call: " + s(call) + "\n" +
+              solution);
+      }
   }
 
   static void expectedActualTypeInCall(SourcePosition pos,
