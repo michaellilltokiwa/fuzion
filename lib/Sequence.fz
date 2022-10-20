@@ -360,6 +360,12 @@ Sequence(T type) ref is
     zip (0..) (a,b -> (b, a))
 
 
+  # convenience feature to work around type inference issues
+  # NYI remove when type inference gets better
+  as_seq Sequence T is
+    Sequence.this
+
+
 # Sequences -- unit type defining features related to Sequence but not requiring
 # an instance
 #
