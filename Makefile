@@ -84,6 +84,7 @@ FZ_SRC_LIB = $(FZ_SRC)/lib
 FUZION_FILES_LIB = $(shell find $(FZ_SRC_LIB) -name "*.fz")
 
 MOD_BASE              = $(BUILD_DIR)/modules/base.fum
+MOD_NOM               = $(BUILD_DIR)/modules/nom.fum
 MOD_TERMINAL          = $(BUILD_DIR)/modules/terminal.fum
 MOD_JAVA_BASE_DIR              = $(BUILD_DIR)/modules/java.base
 MOD_JAVA_XML_DIR               = $(BUILD_DIR)/modules/java.xml
@@ -104,6 +105,7 @@ ALL = \
 	$(BUILD_DIR)/bin/fz \
 	$(BUILD_DIR)/bin/fzjava \
 	$(MOD_BASE) \
+	$(MOD_NOM) \
 	$(MOD_TERMINAL) \
 	$(MOD_JAVA_BASE) \
 	$(MOD_JAVA_XML) \
@@ -290,6 +292,10 @@ $(MOD_BASE): $(BUILD_DIR)/lib $(BUILD_DIR)/bin/fz
 $(MOD_TERMINAL): $(MOD_BASE) $(BUILD_DIR)/bin/fz $(FZ_SRC)/modules/terminal/src/terminal.fz
 	mkdir -p $(@D)
 	$(BUILD_DIR)/bin/fz -sourceDirs=$(FZ_SRC)/modules/terminal/src -saveLib=$@
+
+$(MOD_NOM): $(MOD_BASE) $(BUILD_DIR)/bin/fz $(FZ_SRC)/modules/nom/src/nom.fz
+	mkdir -p $(@D)
+	$(BUILD_DIR)/bin/fz -sourceDirs=$(FZ_SRC)/modules/nom/src -saveLib=$@
 
 $(BUILD_DIR)/bin/fzjava: $(FZ_SRC)/bin/fzjava $(CLASS_FILES_TOOLS_FZJAVA)
 	mkdir -p $(@D)
