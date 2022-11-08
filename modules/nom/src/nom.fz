@@ -33,8 +33,10 @@ nom is
   # a parser takes an input of type I
   # and produces either an error
   # or a result of type O and a rest of type R
-  parser(I, R, O type) ref is
-    parse(i I) parse_result R O is abstract
+  parser(I, R, O type, p I -> parse_result R O) is
+    parse(i I) parse_result R O is
+      p i
+
 
   # the result of parsing, if successful
   success(R, O type, rest R, out O) is
@@ -54,14 +56,15 @@ nom is
   branch is
 
     # return result of first succeeding parser
-    alt(redef I, R, O type, parsers Sequence (parser I R O)) : parser I R O is
-      parse(input I) parse_result R O is
+    alt(I, R, O type, parsers Sequence (parser I R O)) parser I R O is
+      parser I R O (input ->
         parsers
           .mapSequence (p -> p.parse input)
           .filter (r -> match r
                           success => true
                           error => false)
           .first (error "alt: no parser successful")
+      )
 
 
 
@@ -69,18 +72,18 @@ nom is
   string_parsers is
 
     # matches the of str
-    tag(str string) : parser (Sequence codepoint) (Sequence codepoint) (Sequence codepoint)
+    tag(str string) parser (Sequence codepoint) (Sequence codepoint) (Sequence codepoint)
     is
-      parse(input (Sequence codepoint)) parse_result (Sequence codepoint) (Sequence codepoint) is
+      parser (Sequence codepoint) (Sequence codepoint) (Sequence codepoint) (input ->
         if (input.zip str.asCodepoints (a,b -> (a,b))) ∀ (x -> (a,b) := x; a=b)
           success (input.drop str.codepointLength).as_seq str.asCodepoints
         else
           error "tag ($str) not found"
+      )
 
     # matches input as often as possible but at least m times and at most n times.
-    take_while_m_n(m, n i32, cond (codepoint) -> bool) : parser (Sequence codepoint) (Sequence codepoint) (Sequence codepoint) is
-      parse(input (Sequence codepoint)) parse_result (Sequence codepoint) (Sequence codepoint)
-      is
+    take_while_m_n(m, n i32, cond (codepoint) -> bool) parser (Sequence codepoint) (Sequence codepoint) (Sequence codepoint) is
+      parser (Sequence codepoint) (Sequence codepoint) (Sequence codepoint) (input ->
         if input.isEmpty
           error "input is empty"
         else
@@ -91,26 +94,28 @@ nom is
             error "not enough codepoints matched, expected $m or more, got {taken.count}"
           else
             success (input.drop taken.count).as_seq taken.as_seq
+      )
 
     # match zero or more whitespace
-    whitespace0 : parser (Sequence codepoint) (Sequence codepoint) (Sequence codepoint) is
-      parse(input (Sequence codepoint)) parse_result (Sequence codepoint) (Sequence codepoint) is
+    whitespace0 parser (Sequence codepoint) (Sequence codepoint) (Sequence codepoint) is
+      parser (Sequence codepoint) (Sequence codepoint) (Sequence codepoint) (input ->
         ws := input.takeWhile (x -> x.isBlank)
         success (input.drop ws.count).as_seq ws.as_seq
+      )
 
     # match one or more digit
     digit1 parser (Sequence codepoint) (Sequence codepoint) (Sequence codepoint) is
       take_while1 (c -> codepoints.ascii_digit.contains c.val)
 
     # take while cond is satisfied, but at least one codepoint
-    take_while1(cond codepoint -> bool) : parser (Sequence codepoint) (Sequence codepoint) (Sequence codepoint), strings is
-      # NYI: type necessary currently, crash in both backends
-      p parser (Sequence codepoint) (Sequence codepoint) (Sequence codepoint) := sequence.take_while0 cond
-      parse(input (Sequence codepoint)) parse_result (Sequence codepoint) (Sequence codepoint) is
+    take_while1(cond codepoint -> bool) parser (Sequence codepoint) (Sequence codepoint) (Sequence codepoint) : strings is
+      p := sequence.take_while0 cond
+      parser (Sequence codepoint) (Sequence codepoint) (Sequence codepoint) (input ->
         match p.parse input
           s success =>
             if s.out.isEmpty then error "take_while1, no matches" else success s.rest s.out
           e error => e
+      )
 
     # convert a parser taking a sequence of codepoints to a parser that takes a string
     to_string_input(R, O type, p parser (Sequence codepoint) R O) parser string R O is
@@ -130,15 +135,16 @@ nom is
   sequence is
 
     # take while cond is satisfied
-    take_while0(T type, cond T -> bool) : parser (Sequence T) (Sequence T) (Sequence T) is
-      parse(input Sequence T) parse_result (Sequence T) (Sequence T) is
+    take_while0(T type, cond T -> bool) parser (Sequence T) (Sequence T) (Sequence T) is
+      parser (Sequence T) (Sequence T) (Sequence T) (input ->
         rest Sequence T := input.dropWhile cond
         matched Sequence T := input.takeWhile cond
         success rest matched
+      )
 
     # return result of p1 and p2 as tuple, drop result of p_seq
-    separated_pair(redef I type, R1, R2, R3, O1, O2, O3 type, p1 parser I R1 O1, p_sep parser R1 R2 O2, p2 parser R2 R3 O3) : parser I R3 (tuple O1 O3) is
-      parse(input I) parse_result R3 (tuple O1 O3) is
+    separated_pair(I, R1, R2, R3, O1, O2, O3 type, p1 parser I R1 O1, p_sep parser R1 R2 O2, p2 parser R2 R3 O3) parser I R3 (tuple O1 O3) is
+      parser I R3 (tuple O1 O3) (input ->
         match p1.parse input
           s1 success =>
             match p_sep.parse s1.rest
@@ -148,6 +154,7 @@ nom is
                   e3 error => e3
               e2 error => e2
           e1 error => e1
+      )
 
 
 
@@ -155,8 +162,8 @@ nom is
   multi is
 
     # apply parser multiple times, return results as sequence
-    many0 (redef I, O type, p parser I I O) : parser I I (Sequence O) is
-      parse(input I) parse_result I (Sequence O) is
+    many0 (I, O type, p parser I I O) parser I I (Sequence O) is
+      parse I -> parse_result I (Sequence O) := (input ->
         match p.parse input
           s1 success I O =>
             match (parse s1.rest)
@@ -164,10 +171,12 @@ nom is
               error => panic "invalid state, many0 must always succeed."
           # NYI type inference should infer correct type of emtpy array
           error => success input (lists.empty O).as_seq
+      )
+      parser I I (Sequence O) parse
 
     # parse a separated list of values, zero or more values
-    separated_list0(redef I, O type, D type, p_sep parser I I D, p_value parser I I O) : parser I I (Sequence O) is
-      parse(input I) parse_result I (Sequence O) is
+    separated_list0(I, O, D type, p_sep parser I I D, p_value parser I I O) parser I I (Sequence O) is
+      parser I I (Sequence O) (input ->
         match p_value.parse input
           s1 success =>
             match (many0 (combinator.preceded p_sep p_value)).parse s1.rest
@@ -175,16 +184,18 @@ nom is
               e error => panic "invalid state, many always succeeds"
           # NYI type inference should infer correct type of emtpy array
           error => success input (lists.empty O).as_seq
+      )
 
     # parse a separated list of values, one or more values
-    separated_list1(redef I, O type, D type, p_sep parser I I D, p_value parser I I O) : parser I I (Sequence O) is
-      parse(input I) parse_result I (Sequence O) is
+    separated_list1(I, O, D type, p_sep parser I I D, p_value parser I I O) parser I I (Sequence O) is
+      parser I I (Sequence O) (input ->
         match p_value.parse input
           s1 success =>
             match (many0 (combinator.preceded p_sep p_value)).parse s1.rest
               s2 success => success s2.rest ([s1.out]++s2.out).as_seq
               error => panic "invalid state, many always succeeds"
           e error => e
+      )
 
 
 
@@ -192,8 +203,8 @@ nom is
   combinator is
 
     # apply p1 then p2 and return their results as a tuple.
-    tuple2(redef I type, O1, O2 type, p1 parser I I O1, p2 parser I I O2) : parser I I (tuple O1 O2) is
-      parse(input I) parse_result I (tuple O1 O2) is
+    tuple2(I, O1, O2 type, p1 parser I I O1, p2 parser I I O2) parser I I (tuple O1 O2) is
+      parser I I (tuple O1 O2) (input ->
         match p1.parse(input)
           s1 success I O1 =>
             match p2.parse s1.rest
@@ -201,10 +212,11 @@ nom is
                 success s2.rest (s1.out, s2.out)
               e2 error => e2
           e1 error => e1
+      )
 
     # apply p1 then p2 then p3 and return their results as a tuple.
-    tuple3(redef I type, O1, O2, O3 type, p1 parser I I O1, p2 parser I I O2, p3 parser I I O3) : parser I I (tuple O1 O2 O3) is
-      parse(input I) parse_result I (tuple O1 O2 O3) is
+    tuple3(I type, O1, O2, O3 type, p1 parser I I O1, p2 parser I I O2, p3 parser I I O3) parser I I (tuple O1 O2 O3) is
+      parser I I (tuple O1 O2 O3) (input ->
         match p1.parse(input)
           s1 success I O1 =>
             match p2.parse s1.rest
@@ -214,18 +226,20 @@ nom is
                   e3 error => e3
               e2 error => e2
           e1 error => e1
+      )
 
     # discard the output of the first parser, return the result of the second parser
-    preceded(redef I type, O1, O2 type, p1 parser I I O1, p2 parser I I O2) : parser I I O2 is
-      parse(input I) parse_result I O2 is
+    preceded(I, O1, O2 type, p1 parser I I O1, p2 parser I I O2) parser I I O2 is
+      parser I I O2 (input ->
         match p1.parse input
           s1 success I O1 =>
             p2.parse s1.rest
           e1 error => e1
+      )
 
     # discard p1 and p3, return result of p2
-    delimited(redef I type, O1, O2, O3 type, p1 parser I I O1, p2 parser I I O2, p3 parser I I O3) : parser I I O2 is
-      parse(input I) parse_result I O2 is
+    delimited(I, O1, O2, O3 type, p1 parser I I O1, p2 parser I I O2, p3 parser I I O3) parser I I O2 is
+      parser I I O2 (input ->
         match p1.parse(input)
           s1 success I O1 =>
             match p2.parse s1.rest
@@ -235,30 +249,35 @@ nom is
                   e3 error => e3
               e2 error => e2
           e1 error => e1
+      )
 
     # map the result of parser p
-    map_res(redef I, R type, O1, O2 type, p parser I R O1, mapper O1 -> outcome O2) : parser I R O2 is
-      parse(input I) parse_result R O2 is
+    map_res(I, R, O1, O2 type, p parser I R O1, mapper O1 -> outcome O2) parser I R O2 is
+      parser I R O2 (input ->
         match p.parse input
           s success R O1 =>
             match mapper s.out
               o O2 => success s.rest o
               e2 error => e2
           e1 error => e1
+      )
 
     # map input to parser p
-    map_inp(I1, I2 type, redef R, O type, p parser I1 R O, mapper1 I2 -> I1) : parser I2 R O is
-      parse(input I2) parse_result R O is
+    map_inp(I1, I2, R, O type, p parser I1 R O, mapper1 I2 -> I1) parser I2 R O is
+      parser I2 R O (input ->
         p.parse (mapper1 input)
+      )
 
     # convert parser to lazy
-    as_lazy(redef I, R, O type, p () -> parser I R O) : parser I R O is
+    as_lazy(I, R, O type, p () -> parser I R O) parser I R O is
       op option (parser I R O) := nil
       p_cached:= mut op
-      parse(input I) parse_result R O is
+      parse I -> parse_result R O:= (input ->
         match p_cached.get
           p parser I R O => p.parse input
           nil =>
             p_cached.put (p())
             parse input
+      )
+      parser I R O parse
 
