@@ -608,7 +608,7 @@ public abstract class AbstractFeature extends ANY implements Comparable<Abstract
     if (result == null)
       {
         var p = pos();
-        var typeFeature = new Feature(p, visibility(), 0, NoType.INSTANCE, new List<>(name), new List<Feature>(),
+        var typeFeature = new Feature(p, SourcePosition.notAvailable, visibility(), 0, NoType.INSTANCE, new List<>(name), new List<Feature>(),
                                       inh,
                                       Contract.EMPTY_CONTRACT,
                                       new Impl(p, new Block(p, new List<>()), Impl.Kind.Routine));
