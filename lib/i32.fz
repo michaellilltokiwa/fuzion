@@ -35,7 +35,7 @@ i32(val i32) : wrappingInteger i32, hasInterval i32, i32s is
   # would negation -thiz cause an overflow?
   redef wrappedOnNeg => isMin
 
-  # would addtion thiz + other cause an overflow or underflow?
+  # would addition thiz + other cause an overflow or underflow?
   redef overflowOnAdd (other i32) => thiz > 0 && max -° thiz < other
   redef underflowOnAdd(other i32) => thiz < 0 && min -° thiz > other
 
@@ -183,6 +183,9 @@ i32s : wrappingIntegers i32 is
 
   redef min => -0x_8000_0000
   redef max =>  0x_7fff_ffff
+
+  # returns the number in whose bit representation all bits are ones
+  redef all_bits_set => i32 -1
 
 
 # i32 -- returns value of unit type i32s

@@ -34,7 +34,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 
 import java.util.ArrayList;
-import java.util.Optional;
 import java.util.TreeMap;
 import java.util.TreeSet;
 
@@ -84,6 +83,8 @@ class Fuzion extends Tool
   static String  _binaryName_ = null;
   static boolean _useBoehmGC_ = false;
   static boolean _xdfa_ = true;
+  static String _cCompiler_ = null;
+  static String _cFlags_ = null;
 
 
   /**
@@ -107,7 +108,7 @@ class Fuzion extends Tool
     {
       String usage()
       {
-        return "[-o=<file>] [-useGC] [-Xdfa=(on|off)] ";
+        return "[-o=<file>] [-useGC] [-Xdfa=(on|off)] [-CC=<c compiler>] [-CFlags=\"list of c compiler flags\"] ";
       }
       boolean handleOption(Fuzion f, String o)
       {
@@ -127,11 +128,21 @@ class Fuzion extends Tool
             _xdfa_ = parseOnOffArg(o);
             result = true;
           }
+        else if (o.startsWith("-CC="))
+          {
+            _cCompiler_ = o.substring(4);
+            result = true;
+          }
+        else if (o.startsWith("-CFlags="))
+          {
+            _cFlags_ = o.substring(8);
+            result = true;
+          }
         return result;
       }
       void process(FuzionOptions options, FUIR fuir)
       {
-        new C(new COptions(options, _binaryName_, _useBoehmGC_, _xdfa_), fuir).compile();
+        new C(new COptions(options, _binaryName_, _useBoehmGC_, _xdfa_, _cCompiler_, _cFlags_), fuir).compile();
       }
     },
 
@@ -372,16 +383,9 @@ class Fuzion extends Tool
 
 
   /**
-   * Value of property with name FUZION_HOME_PROPERTY.  Used only to initialize
-   * _fuzionHome.
-   */
-  private String _fuzionHomeProperty = System.getProperty(FUZION_HOME_PROPERTY);
-
-
-  /**
    * Home directory of the Fuzion installation.
    */
-  Path _fuzionHome = _fuzionHomeProperty != null ? Path.of(_fuzionHomeProperty) : null;
+  Path _fuzionHome = (new FuzionHome())._fuzionHome;
 
 
   /**
@@ -425,7 +429,7 @@ class Fuzion extends Tool
   /**
    * List of module directories added using '-moduleDirs'.
    */
-  List<String> _moduleDirs = null;
+  List<String> _moduleDirs = new List<>();
 
 
   /**
@@ -706,13 +710,14 @@ class Fuzion extends Tool
    */
   private Runnable parseArgsForBackend(String[] args)
   {
-    ArrayList<String> argsLeft = null;
+    ArrayList<String> applicationArgs = new ArrayList<>();
+    boolean getApplicationArgs = false;
 
     for (var a : args)
       {
-        if (argsLeft != null)
+        if (getApplicationArgs)
           {
-            argsLeft.add(a);
+            applicationArgs.add(a);
           }
         else if (!parseGenericArg(a))
           {
@@ -724,16 +729,12 @@ class Fuzion extends Tool
             if (a.equals("-"))
               {
                 _readStdin = true;
-
-                if (_backend.takesApplicationArgs() || _backend == Backend.undefined)
-                  {
-                    argsLeft = new ArrayList<String>();
-                  }
+                getApplicationArgs = _backend.takesApplicationArgs() || _backend == Backend.undefined;
               }
             else if ((_backend.takesApplicationArgs() || _backend == Backend.undefined) && a.equals("--"))
               {
                 /* stop argument parsing */
-                argsLeft = new ArrayList<String>();
+                getApplicationArgs = true;
               }
             else if (_allBackends_.containsKey(arg))
               {
@@ -749,7 +750,7 @@ class Fuzion extends Tool
             else if (a.startsWith("-modules="                )) { _modules.addAll(parseStringListArg(a));               }
             else if (a.startsWith("-XdumpModules="           )) { _dumpModules             = parseStringListArg(a);     }
             else if (a.startsWith("-sourceDirs="             )) { _sourceDirs = new List<>(); _sourceDirs.addAll(parseStringListArg(a)); }
-            else if (a.startsWith("-moduleDirs="             )) { _moduleDirs = new List<>(); _moduleDirs.addAll(parseStringListArg(a)); }
+            else if (a.startsWith("-moduleDirs="             )) {                             _moduleDirs.addAll(parseStringListArg(a)); }
             else if (_backend.runsCode() && a.matches("-debug(=\\d+|)"       )) { _debugLevel              = parsePositiveIntArg(a, 1); }
             else if (_backend.runsCode() && a.startsWith("-safety="          )) { _safety                  = parseOnOffArg(a);          }
             else if (_backend.runsCode() && a.startsWith("-unsafeIntrinsics=")) { _enableUnsafeIntrinsics  = parseOnOffArg(a);          }
@@ -767,11 +768,7 @@ class Fuzion extends Tool
             else
               {
                 _main = a;
-
-                if (_backend.takesApplicationArgs() || _backend == Backend.undefined)
-                  {
-                    argsLeft = new ArrayList<String>();
-                  }
+                getApplicationArgs = _backend.takesApplicationArgs() || _backend == Backend.undefined;
               }
           }
       }
@@ -779,20 +776,13 @@ class Fuzion extends Tool
       {
         _backend = Backend.interpreter;
       }
-    if (_main == null && !_readStdin && _backend.needsMain())
+    if (_backend.needsMain() && _main == null && !_readStdin)
       {
-        if (argsLeft != null && argsLeft.size() >= 1)
+        if (applicationArgs.size() >= 1)
           {
-            String mainOrStdin = argsLeft.remove(0);
-
-            if (mainOrStdin.equals("-"))
-              {
-                _readStdin = true;
-              }
-            else
-              {
-                _main = mainOrStdin;
-              }
+            String mainOrStdin = applicationArgs.remove(0);
+            _readStdin = mainOrStdin.equals("-");
+            _main = _readStdin ? null : mainOrStdin;
           }
         else
           {
@@ -815,7 +805,6 @@ class Fuzion extends Tool
       {
         fatal("neither property '" + FUZION_HOME_PROPERTY + "' is set nor argument '-XfuzionHome=<path>' is given");
       }
-    final Optional<ArrayList<String>> _argsLeft = Optional.ofNullable(argsLeft);
     return () ->
       {
         var options = new FrontEndOptions(_verbose,
@@ -836,7 +825,7 @@ class Fuzion extends Tool
           {
             options.setTailRec();
           }
-        options.setBackendArgs(_argsLeft.orElse(new ArrayList<String>()));
+        options.setBackendArgs(applicationArgs);
         timer("prep");
         var fe = new FrontEnd(options);
         timer("fe");
