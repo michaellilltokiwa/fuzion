@@ -35,7 +35,7 @@ u16(val u16) : wrappingInteger u16, hasInterval u16, u16s is
   # would negation -thiz cause an overflow?
   redef wrappedOnNeg => !isZero
 
-  # would addtion thiz + other cause an overflow or underflow?
+  # would addition thiz + other cause an overflow or underflow?
   redef overflowOnAdd (other u16) => max -° thiz < other
   redef underflowOnAdd(other u16) => false
 
@@ -83,6 +83,8 @@ u16(val u16) : wrappingInteger u16, hasInterval u16, u16s is
   redef infix <= (other u16) bool is intrinsic
   redef infix >  (other u16) bool is intrinsic
   redef infix >= (other u16) bool is intrinsic
+
+  u16.type.equality(a, b u16) bool is intrinsic
 
   as_i8 i8
     pre
@@ -169,6 +171,9 @@ u16s : wrappingIntegers u16 is
 
   redef min => u16 0
   redef max => u16 0xffff
+
+  # returns the number in whose bit representation all bits are ones
+  redef all_bits_set => u16 0xffff
 
 
 # u16 -- returns value of unit type u16s

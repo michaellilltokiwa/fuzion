@@ -173,7 +173,7 @@ public class SourceModule extends Module implements SrcModule, MirModule
     if (p != null)
       {
         var stmnts = parseFile(p);
-        ((AbstractBlock) _universe.code()).statements_.addAll(stmnts);
+        ((AbstractBlock) _universe.code())._statements.addAll(stmnts);
         for (var s : stmnts)
           {
             if (s instanceof Feature f)
@@ -565,7 +565,7 @@ public class SourceModule extends Module implements SrcModule, MirModule
     inner.visit(new FeatureVisitor()
       {
         public Call      action(Call      c, AbstractFeature outer) {
-          if (c.name == null)
+          if (c.name() == null)
             { /* this is an anonymous feature declaration */
               if (CHECKS) check
                 (Errors.count() > 0  || c.calledFeature() != null);
@@ -601,6 +601,64 @@ public class SourceModule extends Module implements SrcModule, MirModule
        inner.state() == Feature.State.LOADED);
   }
 
+
+  /**
+   * Add type new feature.
+   *
+   * This is somewhat ugly since it addes typeFeature to the declaredFeatures or
+   * decalredOrInheritedFeatures of the outer types even after those had been
+   * determined already.
+   *
+   * @param outerType the static outer type of universe.
+   *
+   * @param typeFeature the new (static or non-static) type feature declared
+   * within nonStaticOuterType.
+   */
+  public AbstractFeature addTypeFeature(AbstractFeature outerType,
+                                        Feature typeFeature)
+  {
+    var nonStaticOuterType = outerType.isUniverse() ? outerType : outerType.typeFeaturesNonStaticParent();
+    var result = typeFeature;
+    findDeclarations(typeFeature, nonStaticOuterType);
+    addDeclared(false, nonStaticOuterType, typeFeature);
+    addDeclared(true,  outerType, typeFeature);
+    typeFeature.scheduleForResolution(_res);
+    resolveDeclarations(typeFeature);
+    return result;
+  }
+
+
+  /**
+   * Add inner feature to the set of declared (or inherited) features of outer.
+   *
+   * NYI: CLEANUP: This is a little ugly since it is used to add type features
+   * while the sets of declared and inherited features had already been
+   * determined.
+   *
+   * @param inherited true to add inner to declaredOrInherited, false to add it
+   * to declare and declaredOrInherited.
+   *
+   * @param outer the outer feature
+   *
+   * @param inner the feature to be added.
+   */
+  private void addDeclared(boolean inherited, AbstractFeature outer, AbstractFeature inner)
+  {
+    var d = data(outer);
+    var fn = inner.featureName();
+    if (!inherited && d._declaredFeatures != null)
+      {
+        if (CHECKS) check
+          (!d._declaredFeatures.containsKey(fn) || d._declaredFeatures.get(fn) == inner);
+        d._declaredFeatures.put(fn, inner);
+      }
+    if (d._declaredOrInheritedFeatures != null)
+      {
+        if (CHECKS) check
+          (!d._declaredOrInheritedFeatures.containsKey(fn) || d._declaredOrInheritedFeatures.get(fn) == inner);
+        d._declaredOrInheritedFeatures.put(fn, inner);
+      }
+  }
 
 
   /*-----------------------  attachng data to AST  ----------------------*/
@@ -671,8 +729,8 @@ public class SourceModule extends Module implements SrcModule, MirModule
 
 
   /**
-   * Add all declared features to declaredOrInheritedFeatures_.  In case a
-   * declared feature exists in declaredOrInheritedFeatures_ (because it was
+   * Add all declared features to _declaredOrInheritedFeatures.  In case a
+   * declared feature exists in _declaredOrInheritedFeatures (because it was
    * inherited), check if the declared feature redefines the inherited
    * feature. Otherwise, report an error message.
    *
@@ -696,7 +754,7 @@ public class SourceModule extends Module implements SrcModule, MirModule
   /**
    * Add f with name fn to the declaredOrInherited features of outer.
    *
-   * In case a declared feature exists in declaredOrInheritedFeatures_ (because
+   * In case a declared feature exists in _declaredOrInheritedFeatures (because
    * it was inherited), check if the declared feature redefines the inherited
    * feature. Otherwise, report an error message.
    *
@@ -811,11 +869,11 @@ public class SourceModule extends Module implements SrcModule, MirModule
 
 
   /**
-   * Add feature under given name to declaredOrInheritedFeatures_ of all direct
+   * Add feature under given name to _declaredOrInheritedFeatures of all direct
    * and indirect heirs of this feature.
    *
    * This is used in addDeclaredInnerFeature to add features during syntactic
-   * sugar resolution after declaredOrInheritedFeatures_ has already been set.
+   * sugar resolution after _declaredOrInheritedFeatures has already been set.
    *
    * @param fn the name of the feature, after possible renaming during inheritance
    *
