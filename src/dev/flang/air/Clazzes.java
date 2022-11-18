@@ -31,7 +31,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
-import java.util.stream.Stream;
 
 import dev.flang.ast.AbstractAssign; // NYI: remove dependency!
 import dev.flang.ast.AbstractBlock; // NYI: remove dependency!
@@ -144,6 +143,11 @@ public class Clazzes extends ANY
             }
         }
       return _clazz;
+    }
+    public void clear()
+    {
+      _dummy = null;
+      _clazz = null;
     }
   }
 
@@ -1294,51 +1298,55 @@ public class Clazzes extends ANY
     f._usedAt = at;
   }
 
-  public static void clear()
+  /**
+   * reset all statically held data
+   * and set closed to false again
+   */
+  public static void reset()
   {
     clazzes.clear();
     _clazzesForTypes_.clear();
     clazzesToBeVisited.clear();
-    closed = false;
-    _calledDynamically_.clear();
-    _whenCalled_.clear();
-    _whenCalledDynamically_.clear();
-
-    universe    = new OnDemandClazz(null, true);
-    c_void      = new OnDemandClazz(() -> Types.resolved.t_void             );
-    bool        = new OnDemandClazz(() -> Types.resolved.t_bool             );
-    c_TRUE      = new OnDemandClazz(() -> Types.resolved.f_TRUE .thisType() );
-    c_FALSE     = new OnDemandClazz(() -> Types.resolved.f_FALSE.thisType() );
-    i8          = new OnDemandClazz(() -> Types.resolved.t_i8               );
-    i16         = new OnDemandClazz(() -> Types.resolved.t_i16              );
-    i32         = new OnDemandClazz(() -> Types.resolved.t_i32              );
-    i64         = new OnDemandClazz(() -> Types.resolved.t_i64              );
-    u8          = new OnDemandClazz(() -> Types.resolved.t_u8               );
-    u16         = new OnDemandClazz(() -> Types.resolved.t_u16              );
-    u32         = new OnDemandClazz(() -> Types.resolved.t_u32              );
-    u64         = new OnDemandClazz(() -> Types.resolved.t_u64              );
-    f32         = new OnDemandClazz(() -> Types.resolved.t_f32              );
-    f64         = new OnDemandClazz(() -> Types.resolved.t_f64              );
-    ref_i8      = new OnDemandClazz(() -> Types.resolved.t_ref_i8           );
-    ref_i16     = new OnDemandClazz(() -> Types.resolved.t_ref_i16          );
-    ref_i32     = new OnDemandClazz(() -> Types.resolved.t_ref_i32          );
-    ref_i64     = new OnDemandClazz(() -> Types.resolved.t_ref_i64          );
-    ref_u8      = new OnDemandClazz(() -> Types.resolved.t_ref_u8           );
-    ref_u16     = new OnDemandClazz(() -> Types.resolved.t_ref_u16          );
-    ref_u32     = new OnDemandClazz(() -> Types.resolved.t_ref_u32          );
-    ref_u64     = new OnDemandClazz(() -> Types.resolved.t_ref_u64          );
-    ref_f32     = new OnDemandClazz(() -> Types.resolved.t_ref_f32          );
-    ref_f64     = new OnDemandClazz(() -> Types.resolved.t_ref_f64          );
-    object      = new OnDemandClazz(() -> Types.resolved.t_object           );
-    string      = new OnDemandClazz(() -> Types.resolved.t_string           );
-    conststring = new OnDemandClazz(() -> Types.resolved.t_conststring      , true /* needed? */);
-    c_unit      = new OnDemandClazz(() -> Types.resolved.t_unit             );
-    error       = new OnDemandClazz(() -> Types.t_ERROR                     );
+    universe.clear();
+    c_void.clear();
+    bool.clear();
+    c_TRUE.clear();
+    c_FALSE.clear();
+    i8.clear();
+    i16.clear();
+    i32.clear();
+    i64.clear();
+    u8.clear();
+    u16.clear();
+    u32.clear();
+    u64.clear();
+    f32.clear();
+    f64.clear();
+    ref_i8.clear();
+    ref_i16.clear();
+    ref_i32.clear();
+    ref_i64.clear();
+    ref_u8.clear();
+    ref_u16.clear();
+    ref_u32.clear();
+    ref_u64.clear();
+    ref_f32.clear();
+    ref_f64.clear();
+    object.clear();
+    string.clear();
+    conststring.clear();
+    c_unit.clear();
+    error.clear();
     constStringInternalArray = null;
     fuzionSysArray_u8 = null;
     fuzionSysArray_u8_data = null;
     fuzionSysArray_u8_length = null;
+    closed = false;
+    _whenCalledDynamically_.clear();
+    _whenCalled_.clear();
+    _calledDynamically_.clear();
   }
+
 
 }
 

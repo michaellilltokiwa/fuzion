@@ -17,36 +17,11 @@
 #
 #  Tokiwa Software GmbH, Germany
 #
-#  Source code of Fuzion standard library feature comparable_sequence
+#  Source code of Fuzion test Makefile
 #
-#  Author: Michael Lill (michael.lill@tokiwa.software)
+#  Author: Fridtjof Siebert (siebert@tokiwa.software)
 #
 # -----------------------------------------------------------------------
 
-# comparable_sequence -- a Sequence that inherits from hasEquals
-#
-comparable_sequence(A (hasEquals A).type, from Sequence A) : Sequence A, hasEquals (comparable_sequence A)
-is
-
-  # create a list from this Sequence.
-  #
-  redef asList => from.asList
-
-
-  # equality check implementation for inherited hasEquals
-  infix = (o comparable_sequence A) bool is
-    fa := from.asArray
-    oa := o.asArray
-    if fa.count != oa.count
-      false
-    else
-      (0..(from.count - 1)) ∀ (i -> fa[i] = oa[i])
-
-  # NYI: #637:
-  # comparable_sequence(A (hasEquals A).type, a, b comparable_sequence A) bool is
-  #   aa := a.asArray
-  #   ba := b.asArray
-  #   if aa.count ≟ ba.count
-  #     (0..(a.count - 1)) ∀ (i -> equals A aa[i] ba[i])
-  #   else
-  #     false
+override NAME = issue176
+include ../simple.mk
