@@ -820,6 +820,10 @@ public class Call extends AbstractCall
             _actuals = new List(oldTarget);
             _actuals.addAll(oldActuals);
           }
+        else
+          {
+            _target = oldTarget;
+          }
       }
   }
 
