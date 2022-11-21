@@ -26,11 +26,8 @@ Fuzion language implementation.  If not, see <https://www.gnu.org/licenses/>.
 
 package dev.flang.ast;
 
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Iterator;
 import java.util.ListIterator;
-import java.util.Map;
 import java.util.SortedMap;
 import java.util.TreeMap;
 
