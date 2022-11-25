@@ -28,9 +28,12 @@ jobs:
 
       - name: install choco packages
         shell: powershell
-        run: choco install openjdk --version 18.0.0
+        run: choco install openjdk --version 17.0.0
 
       - uses: actions/checkout@v2
+
+      - name: echo 🌍
+        run: echo 🌍
 
 # NYI how can we set PATH???
       - name: echo PATH
