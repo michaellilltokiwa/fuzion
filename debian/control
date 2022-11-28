@@ -1,0 +1,13 @@
+Source: fuzion
+Section: devel
+Priority: optional
+Maintainer: Michael Lill <michael.lill@posteo.de>
+Build-Depends: debhelper-compat (= 12)
+Standards-Version: 4.5.0
+Homepage: <https://github.com/tokiwa-software/fuzion>
+
+Package: fuzion
+Architecture: any
+Multi-Arch: foreign
+Depends: libgc1 (>= 1:8.0.0)
+Description: A programming language that unifies concepts to improve productivity and to use tools for performance and correctness.
