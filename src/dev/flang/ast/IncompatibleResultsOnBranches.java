@@ -26,12 +26,10 @@ Fuzion language implementation.  If not, see <https://www.gnu.org/licenses/>.
 
 package dev.flang.ast;
 
-import java.util.Iterator;
-import java.util.TreeMap;
-import java.util.TreeSet;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 import dev.flang.util.ANY;
-import dev.flang.util.Errors;
 import dev.flang.util.List;
 import dev.flang.util.SourcePosition;
 
@@ -52,13 +50,13 @@ public class IncompatibleResultsOnBranches extends ANY
   /**
    * The different types in source code order.
    */
-  private List<AbstractType> _types = new List<>();
+  private List<AbstractType> _types;
 
   /**
    * For each type, a list of expressions from different branches that produce
    * this type.
    */
-  private TreeMap<AbstractType, List<SourcePosition>> _positions = new TreeMap<>();
+  private Map<AbstractType, List<SourcePosition>> _positions;
 
 
   /*--------------------------  constructors  ---------------------------*/
@@ -76,37 +74,22 @@ public class IncompatibleResultsOnBranches extends ANY
    */
   public IncompatibleResultsOnBranches(SourcePosition pos,
                                        String msg,
-                                       Iterator<Expr> it)
+                                       List<Expr> expr)
   {
-    while (it.hasNext())
-      {
-        add(it.next());
-      }
+    _types = expr
+      .stream()
+      .map(b -> b.type())
+      .collect(List.collector());
     if (CHECKS) check
       (_types.size() > 1);
+
+    _positions =  expr.stream().collect(Collectors.groupingBy(
+      Expr::type,
+      Collectors.mapping(Expr::posOfLast, List.collector())));
 
     AstErrors.incompatibleResultsOnBranches(pos, msg, _types, _positions);
   }
 
-
-  /*-----------------------------  methods  -----------------------------*/
-
-
-  /**
-   * Add the given expression to _types and _positions.
-   */
-  private void add(Expr e)
-  {
-    var t = e.type();
-    List<SourcePosition> l = _positions.get(t);
-    if (l == null)
-      {
-        _types.add(t);
-        l = new List<>();
-        _positions.put(t, l);
-      }
-    l.add(e.posOfLast());
-  }
 
 }
 

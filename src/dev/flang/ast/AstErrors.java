@@ -857,7 +857,9 @@ public class AstErrors extends ANY
   public static void qualifiedDeclarationNotAllowedForField(Feature f)
   {
     var q = f._qname;
-    var o = new List<>(q.subList(0, f._qname.size()-1).iterator());
+    var o = q.subList(0, f._qname.size()-1)
+             .stream()
+             .collect(List.collector());
     error(f.pos(),
           "Qualified declaration not allowed for field",
           "All fields have to be declared textually within the source of their outer features.\n" +

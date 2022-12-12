@@ -647,22 +647,21 @@ public class C extends ANY
              cf.print(
                CStmnt.seq(
                  CStmnt.struct(CNames.fzThreadEffectsEnvironment.code(),
-                   new List<CStmnt>(
-                     ordered
-                       .stream()
-                       .filter(cl -> _fuir.clazzNeedsCode(cl) &&
-                               _fuir.clazzKind(cl) == FUIR.FeatureKind.Intrinsic &&
-                               _fuir.isEffect(cl))
-                       .mapToInt(cl -> _fuir.effectType(cl))
-                       .distinct()
-                       .mapToObj(cl -> Stream.of(
-                                         CStmnt.decl(_types.clazz(cl), _names.env(cl)),
-                                         CStmnt.decl("bool", _names.envInstalled(cl)),
-                                         CStmnt.decl("jmp_buf*", _names.envJmpBuf(cl))
-                                       )
-                       )
-                       .flatMap(x -> x)
-                       .iterator())),
+                  ordered
+                    .stream()
+                    .filter(cl -> _fuir.clazzNeedsCode(cl) &&
+                            _fuir.clazzKind(cl) == FUIR.FeatureKind.Intrinsic &&
+                            _fuir.isEffect(cl))
+                    .mapToInt(cl -> _fuir.effectType(cl))
+                    .distinct()
+                    .mapToObj(cl -> Stream.of(
+                                      CStmnt.decl(_types.clazz(cl), _names.env(cl)),
+                                      CStmnt.decl("bool", _names.envInstalled(cl)),
+                                      CStmnt.decl("jmp_buf*", _names.envJmpBuf(cl))
+                                    )
+                    )
+                    .flatMap(x -> x)
+                    .collect(List.collector())),
                  CStmnt.decl("_Thread_local", "struct " + CNames.fzThreadEffectsEnvironment.code() + "*", CNames.fzThreadEffectsEnvironment)
                )
              );

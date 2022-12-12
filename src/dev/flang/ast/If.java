@@ -26,7 +26,7 @@ Fuzion language implementation.  If not, see <https://www.gnu.org/licenses/>.
 
 package dev.flang.ast;
 
-import java.util.Iterator;
+import java.util.stream.Stream;
 
 import dev.flang.util.List;
 import dev.flang.util.SourcePosition;
@@ -155,27 +155,19 @@ public class If extends ExprWithPos
 
 
   /**
-   * Create an Iterator over all branches in this if statement, including all
+   * Create a stream of all branches in this if statement, including all
    * else-if branches.
    */
-  Iterator<Expr> branches()
+  Stream<Block> branches()
   {
-    return new Iterator<Expr>()
-    {
-      If curIf = If.this;
-      boolean blockReturned = false;
-      public boolean hasNext()
-      {
-        return curIf != null;
-      }
-      public Expr next()
-      {
-        Expr result   = !blockReturned ? curIf.block : curIf.elseBlock != null ? curIf.elseBlock : null;
-        blockReturned = !blockReturned && curIf.elseBlock != null;
-        curIf         = blockReturned ? curIf : curIf.elseIf;
-        return result;
-      }
-    };
+    return Stream
+      .of(
+        Stream.of(block),
+        Stream.ofNullable(elseIf).flatMap(x->x.branches()),
+        Stream.ofNullable(elseBlock)
+      )
+      .reduce(Stream::concat)
+      .orElseGet(Stream::empty);
   }
 
 
@@ -185,19 +177,23 @@ public class If extends ExprWithPos
    */
   private AbstractType typeFromIfOrElse()
   {
-    AbstractType result = Types.resolved.t_void;
+    AbstractType result = branches()
+      .reduce(
+        // void is the seed that is unioned
+        // with the types of the branches
+        Types.resolved.t_void,
+        (t,b)-> {
+          var bt = b.typeForFeatureResultTypeInferencing();
+          return bt == null ? Types.t_UNDEFINED : t.union(bt);
+        },
+        (a, b) -> b
+      );
 
-    Iterator<Expr> it = branches();
-    while (it.hasNext())
-      {
-        var t = it.next().typeForFeatureResultTypeInferencing();
-        result = t == null ? Types.t_UNDEFINED : result.union(t);
-      }
     if (result == Types.t_UNDEFINED)
       {
         new IncompatibleResultsOnBranches(pos(),
                                           "Incompatible types in branches of if statement",
-                                          branches());
+                                          branches().collect(List.collector()));
         result = Types.t_ERROR;
       }
     return result;

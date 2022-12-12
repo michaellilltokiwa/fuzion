@@ -26,10 +26,7 @@ Fuzion language implementation.  If not, see <https://www.gnu.org/licenses/>.
 
 package dev.flang.ast;
 
-import java.util.Iterator;
-
 import dev.flang.util.List;
-import dev.flang.util.SourcePosition;
 
 
 /**
@@ -146,12 +143,11 @@ public abstract class AbstractMatch extends Expr
       {
         new IncompatibleResultsOnBranches(pos(),
                                           "Incompatible types in cases of match statement",
-                                          new Iterator<Expr>()
-                                          {
-                                            Iterator<AbstractCase> it = cases().iterator();
-                                            public boolean hasNext() { return it.hasNext(); }
-                                            public Expr next() { return it.next().code(); }
-                                          });
+                                          cases()
+                                            .stream()
+                                            .map(c -> c.code())
+                                            .collect(List.collector())
+                                         );
         result = Types.t_ERROR;
       }
     return result;

@@ -1783,13 +1783,9 @@ public class Call extends AbstractCall
   {
     if (e instanceof If i)
       {
-        var it = i.branches();
-        while (it.hasNext())
+        if (i.branches().anyMatch(b -> returnsThis(b)))
           {
-            if (returnsThis(it.next()))
-              {
-                return true;
-              }
+            return true;
           }
       }
     else if (e instanceof Match m)

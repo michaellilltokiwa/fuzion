@@ -115,7 +115,7 @@ public class InlineArray extends ExprWithPos
           {
             new IncompatibleResultsOnBranches(pos(),
                                               "Incompatible types in array elements",
-                                              _elements.iterator());
+                                              _elements);
             _type = Types.t_ERROR;
           }
         if (_type == null)
