@@ -1,0 +1,16 @@
+test =>
+  nom is
+    parser ref is
+      parse unit is abstract
+
+    nom_parser : parser is
+      parse unit is
+
+    c(arg parser) is
+      arg.parse
+
+  ex : nom =>
+    c nom_parser
+
+  ex
+

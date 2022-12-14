@@ -240,6 +240,10 @@ public class DFA extends ANY
     {
       var cc0 = _fuir.accessedClazz  (cl, c, i);
       var ccs = _fuir.accessedClazzes(cl, c, i);
+      System.err.println(_fuir.clazzAsString(cl));
+      System.err.println(_fuir.clazzAsString(cc0));
+      if (CHECKS)
+        check (ccs.length > 0);
       var found = new boolean[] { false };
       var resf = new Value[] { null };
       for (var ccii = 0; ccii < ccs.length; ccii += 2)
