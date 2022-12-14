@@ -26,11 +26,8 @@ Fuzion language implementation.  If not, see <https://www.gnu.org/licenses/>.
 
 package dev.flang.ast;
 
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Iterator;
 import java.util.ListIterator;
-import java.util.Map;
 import java.util.SortedMap;
 import java.util.TreeMap;
 
@@ -499,7 +496,7 @@ public class Call extends AbstractCall
    * instance.
    *
    * @param thiz the surrounding feature. For a call c in an inherits clause ("f
-   * : c { }"), thiz is the outer feature of f.  For a expression in the
+   * : c { }"), thiz is the outer feature of f.  For an expression in the
    * contracts or implementation of a feature f, thiz is f itself.
    *
    * @return the feature of the target of this call.
@@ -553,7 +550,6 @@ public class Call extends AbstractCall
 
     FeaturesAndOuter result;
     // are we searching for features called via thiz' inheritance calls?
-    SortedMap<FeatureName, Feature> fs = EMPTY_MAP;
     if (_target != null)
       {
         res.resolveDeclarations(targetFeature);
@@ -820,6 +816,10 @@ public class Call extends AbstractCall
             _actuals = new List(oldTarget);
             _actuals.addAll(oldActuals);
           }
+        else
+          {
+            _target = oldTarget;
+          }
       }
   }
 
@@ -913,9 +913,9 @@ public class Call extends AbstractCall
 
 
   /**
-   * Check if this call when the _calledFeature would be ff needs special
-   * handling of the argument count.  This is the case for open generics, "fun
-   * a.b.f" calls and implicit calls using f() for f returning Function value.
+   * Check if this call would need special handling of the argument count
+   * in case the _calledFeature would be ff. This is the case for open generics,
+   * "fun a.b.f" calls and implicit calls using f() for f returning Function value.
    *
    * @param ff the called feature candidate.
    *
@@ -1173,6 +1173,14 @@ public class Call extends AbstractCall
 
     var declF = _calledFeature.outer();
     var heirF = targetTypeOrConstraint(res).featureOfType();
+    if (target() instanceof Call tc              &&
+        tc.calledFeature().isTypeParameter()     &&
+        heirF.isStaticTypeFeature()              &&
+        calledFeature().outer().isTypeFeature()  &&
+        calledFeature().belongsToNonStaticType()    )
+      {  // divert calls T.f with a type parameter as target to the non-static type if needed.
+        heirF = heirF.typeFeaturesNonStaticParent();
+      }
     if (declF != heirF)
       {
         var a = _calledFeature.handDown(res, new AbstractType[] { frmlT }, heirF);
@@ -1250,6 +1258,7 @@ public class Call extends AbstractCall
               }
             else
               {
+                frmlT = frmlT.replace_THIS_TYPE(target());
                 frmlT = targetTypeOrConstraint(res).actualType(frmlT);
                 frmlT = frmlT.actualType(_calledFeature, _generics);
                 frmlT = Types.intern(frmlT);
@@ -1345,7 +1354,7 @@ public class Call extends AbstractCall
    *
    * @param res the resolution instance.
    *
-   * @param t the type result type of the called feature, might be open genenric.
+   * @param t the result type of the called feature, might be open genenric.
    */
   private void resolveType(Resolution res, AbstractType t, AbstractFeature outer)
   {
@@ -1424,7 +1433,7 @@ public class Call extends AbstractCall
           }
         else
           {
-            _type = gt.featureOfType().typeFeature(res).resultTypeIfPresent(res, t.generics());
+            _type = gt.featureOfType().typeFeature(res).resultTypeIfPresent(res, _generics);
             if (_type == null)
               {
                 throw new Error("NYI (see #283): resolveTypes for .type: resultType not present at "+pos().show());
@@ -1509,7 +1518,7 @@ public class Call extends AbstractCall
           {
             missing.add(g);
             if (CHECKS) check
-              (Errors.count() > 0 || i < _generics.size());
+              (Errors.count() > 0 || g.isOpen() || i < _generics.size());
             if (i < _generics.size())
               {
                 _generics.set(i, Types.t_ERROR);
@@ -1978,7 +1987,7 @@ public class Call extends AbstractCall
             for (Expr actl : _actuals)
               {
                 var frmlT = _resolvedFormalArgumentTypes[count];
-                if (frmlT != null /* NYI: make sure this is never null */ && !frmlT.isAssignableFrom(actl))
+                if (frmlT != null /* NYI: make sure this is never null */ && !frmlT.isAssignableFrom(actl.type()))
                   {
                     AstErrors.incompatibleArgumentTypeInCall(_calledFeature, count, frmlT, actl);
                   }
@@ -2015,7 +2024,10 @@ public class Call extends AbstractCall
             if (f != null && g != null &&
                 !f.constraint().constraintAssignableFrom(g))
               {
-                AstErrors.incompatibleActualGeneric(pos(), f, g);
+                if (!f.typeParameter().isTypeFeaturesThisType())  // NYI: CLEANUP: #706: remove special handling for 'THIS_TYPE'
+                  {
+                    AstErrors.incompatibleActualGeneric(pos(), f, g);
+                  }
               }
           }
       }
