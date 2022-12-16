@@ -2078,6 +2078,32 @@ public class Call extends AbstractCall
     return result;
   }
 
+
+  public void checkBoxing(AbstractFeature outer)
+  {
+    if (!_forFun && _type != Types.t_ERROR)
+    {
+      int fsz = _resolvedFormalArgumentTypes.length;
+      if (_actuals.size() ==  fsz)
+        {
+          int count = 0;
+          ListIterator<Expr> i = _actuals.listIterator();
+          while (i.hasNext())
+            {
+              Expr actl = i.next();
+              var rft = _resolvedFormalArgumentTypes[count];
+              if (CHECKS) check
+                (rft != null,
+                 rft != Types.t_ERROR || Errors.count() > 0);
+              if(actl.needsBoxing(rft)){
+                throw new RuntimeException(pos() + name() + " " + "arg " + count +  ": " + rft  + " " + actl.type());
+              }
+              count++;
+            }
+        }
+    }
+  }
+
 }
 
 /* end of file */

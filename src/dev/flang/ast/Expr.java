@@ -386,10 +386,14 @@ public abstract class Expr extends ANY implements Stmnt, HasSourcePosition
    * Is boxing needed when we assign to frmlT?
    * @param frmlT the formal type we are assigning to.
    */
-  private boolean needsBoxing(AbstractType frmlT)
+  boolean needsBoxing(AbstractType frmlT)
   {
     var t = type();
-    if (frmlT.isGenericArgument())
+    if(this instanceof Box || t.compareTo(Types.resolved.t_void) == 0)
+      {
+        return false;
+      }
+    else if (frmlT.isGenericArgument())
       {
         return true;
       }

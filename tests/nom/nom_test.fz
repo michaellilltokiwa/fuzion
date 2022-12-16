@@ -25,7 +25,7 @@
 
 # test for nom, a parser combinator framework
 #
-nom_test : nom, nom.combinator, nom.string_parsers, nom.sequence, nom.branch, nom.multi =>
+nom_test : nom.combinator, nom.string_parsers, nom.sequence, nom.branch, nom.multi =>
 
 
   simple_parser_test is
@@ -58,7 +58,7 @@ nom_test : nom, nom.combinator, nom.string_parsers, nom.sequence, nom.branch, no
 
 
   json_parser_test is
-    say (parsers.json.parse "\{  \"employee \":  \{  \"name \":  \"sonoo\",  \"salary \": 56000,  \"married \": true } }").asString
+    say (nom.parsers.json.parse "\{  \"employee \":  \{  \"name \":  \"sonoo\",  \"salary \": 56000,  \"married \": true } }").asString
 
   simple_parser_test
   hex_parser_test

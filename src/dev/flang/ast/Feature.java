@@ -1856,6 +1856,12 @@ public class Feature extends AbstractFeature implements Stmnt
             public void  action(Impl      i, AbstractFeature outer) {        i.resolveSyntacticSugar2(res, outer); }
           });
 
+        visit(new FeatureVisitor() {
+          public void  action(AbstractAssign a, AbstractFeature outer) { a.checkBoxing(outer);           }
+          public Call  action(Call        c, AbstractFeature outer)    { c.checkBoxing(outer); return c; }
+          public Expr  action(InlineArray i, AbstractFeature outer)    { i.checkBoxing(outer); return i; }
+        });
+
         _state = State.RESOLVED_SUGAR2;
         res.scheduleForCheckTypes2(this);
       }

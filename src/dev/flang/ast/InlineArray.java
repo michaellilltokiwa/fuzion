@@ -276,7 +276,7 @@ public class InlineArray extends ExprWithPos
 
     for (var e : _elements)
       {
-        if (!elementType.isAssignableFrom(e.type()))
+        if (!elementType.isAssignableFrom(e.type()) || elementType.isRef() != e.type().isRef())
           {
             AstErrors.incompatibleTypeInArrayInitialization(e.pos(), _type, elementType, e);
           }
@@ -342,6 +342,19 @@ public class InlineArray extends ExprWithPos
   public String toString()
   {
     return _elements.toString("[", "; ", "]");
+  }
+
+
+  public void checkBoxing(AbstractFeature outer)
+  {
+    var li = _elements.listIterator();
+    while (li.hasNext())
+      {
+        var e = li.next();
+        if(e.needsBoxing(elementType())){
+          throw new RuntimeException(e.type() + " " + elementType());
+        }
+      }
   }
 
 }

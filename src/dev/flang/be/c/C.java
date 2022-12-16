@@ -822,6 +822,18 @@ public class C extends ANY
                       {
                         rv = rv.castTo(_types.clazz(rt));
                       }
+                    if(rt != rti && _fuir.clazzAsString(rt).contains("entry")){
+
+                      System.err.println(_fuir.clazzAsString(cc));
+                      System.err.println(_fuir.clazz(rt));
+                      System.err.println(_fuir.clazz(rti));
+                      System.err.println(_fuir.clazzType(rt).asString());
+                      System.err.println(_fuir.clazzType(rti).asString());
+                      System.err.println(_fuir.clazzAsString(_fuir.clazzOuterClazz(rt)));
+                      System.err.println(_fuir.clazzAsString(_fuir.clazzOuterClazz(rti)));
+                      // _fuir.isAssignableFrom(rt, rti);
+                      System.err.println("===");
+                    }
                     acc = CStmnt.seq(CStmnt.lineComment("Call calls "+ _fuir.clazzAsString(cc) + " target: " + _fuir.clazzAsString(tt) + ":"),
                                      acc,
                                      assign(res, rv, rt));

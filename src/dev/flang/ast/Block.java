@@ -326,6 +326,15 @@ public class Block extends AbstractBlock
   }
 
 
+  /**
+   * Is boxing needed when we assign to frmlT?
+   * @param frmlT the formal type we are assigning to.
+   */
+  boolean needsBoxing(AbstractType frmlT)
+  {
+    return resultExpression() != null && resultExpression().needsBoxing(frmlT);
+  }
+
 
   /**
    * Does this block produce a result that does not explicitly appear in source

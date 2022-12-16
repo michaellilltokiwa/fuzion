@@ -39,6 +39,7 @@ import dev.flang.ast.AbstractCall; // NYI: remove dependency
 import dev.flang.ast.AbstractConstant; // NYI: remove dependency
 import dev.flang.ast.AbstractFeature; // NYI: remove dependency
 import dev.flang.ast.AbstractMatch; // NYI: remove dependency
+import dev.flang.ast.AbstractType;
 import dev.flang.ast.BoolConst; // NYI: remove dependency
 import dev.flang.ast.Box; // NYI: remove dependency
 import dev.flang.ast.Call; // NYI: remove dependency
@@ -228,7 +229,7 @@ public class FUIR extends IR
   /**
    * Get Clazz that given id maps to
    */
-  private Clazz clazz(int id)
+  public Clazz clazz(int id)
   {
     return _clazzIds.get(id);
   }
@@ -2056,6 +2057,18 @@ hw25 is
       !clazzIsUnitType(cl) &&
       !clazzIsVoidType(cl) &&
       cl != clazzUniverse();
+  }
+
+
+  public AbstractType clazzType(int cl)
+  {
+    return clazz(cl)._type;
+  }
+
+
+  public boolean isAssignableFrom(int rt, int rti)
+  {
+    return clazz(rt)._type.isAssignableFrom(clazz(rti)._type);
   }
 
 

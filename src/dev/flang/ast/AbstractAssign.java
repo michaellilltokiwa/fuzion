@@ -274,6 +274,17 @@ public abstract class AbstractAssign extends ANY implements Stmnt, HasSourcePosi
     return "set " + fieldName + " := " + _value;
   }
 
+
+  public void checkBoxing(AbstractFeature outer)
+  {
+    if (_assignedField != Types.f_ERROR)
+    {
+      if(_value.needsBoxing(_assignedField.resultType())){
+        throw new RuntimeException(pos().toString() + _assignedField.resultType() + " := " + _value.type());
+      }
+    }
+  }
+
 }
 
 /* end of file */

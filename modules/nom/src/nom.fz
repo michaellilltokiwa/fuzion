@@ -28,34 +28,45 @@
 # nom is a parser combinator framework
 # for more information go to:
 # https://github.com/Geal/nom/
+
+
+
+# a parser takes an input of type I
+# and produces either an error
+# or a result of type O and a rest of type R
+parser(I, R, O type, parse I -> parse_result R O) is
+  map(OM type, mapper O -> outcome OM) parser I R OM is
+    parser I R OM (i ->
+      match parse i
+        s success =>
+          match mapper s.out
+            o OM => success s.rest o
+            e2 error => e2
+        e1 error => e1
+      )
+
+# the result of parsing, if successful
+success(R, O type, rest R, out O) is
+  redef asString => $out
+
+
+# the result of parser.parse
+parse_result(I, O type) : choice (success I O) error is
+  redef asString =>
+    match parse_result.this
+      s success => $s
+      e error => $e
+
+
+# NYI this is a workaround java.lang.Error: check-condition failed: dev.flang.me.MiddleEnd:findUsedFeatures:327
+# type feature for `map string json_value` is currently not created
+Json_Object(data (map string nom.parsers.json_value)) ref is
+  redef asString string is
+    $data
+
+
+
 nom is
-
-  # a parser takes an input of type I
-  # and produces either an error
-  # or a result of type O and a rest of type R
-  parser(I, R, O type, parse I -> parse_result R O) is
-    map(OM type, mapper O -> outcome OM) parser I R OM is
-      parser I R OM (i ->
-        match parse i
-          s success =>
-            match mapper s.out
-              o OM => success s.rest o
-              e2 error => e2
-          e1 error => e1
-        )
-
-  # the result of parsing, if successful
-  success(R, O type, rest R, out O) is
-    redef asString => $out
-
-
-  # the result of parser.parse
-  parse_result(I, O type) : choice (success I O) error is
-    redef asString =>
-      match parse_result.this
-        s success => $s
-        e error => $e
-
 
 
   # choice combinators
@@ -284,11 +295,6 @@ nom is
 
   parsers : combinator, string_parsers, sequence, branch, multi is
 
-    # NYI this is a workaround java.lang.Error: check-condition failed: dev.flang.me.MiddleEnd:findUsedFeatures:327
-    # type feature for `map string json_value` is currently not created
-    Json_Object(data (map string json_value)) ref is
-      redef asString string is
-        $data
 
     json_value : choice string i64 f64 bool nil (Sequence json_value) Json_Object is
       redef asString string is

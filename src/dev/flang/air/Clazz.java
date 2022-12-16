@@ -357,6 +357,18 @@ public class Clazz extends ANY implements Comparable<Clazz>
 
     this._dynamicBinding = null;
 
+    if (
+      this._outer != null
+      && this._outer._type.compareTo(this._type.outer() )!= 0
+      && (this._outer._type.isRef() != this._type.outer().isRef())
+      && !this._outer._type.isRef())
+      {
+        System.err.println(this._outer._type);
+        System.err.println(this._type.outer());
+        System.err.println(_isNormalized);
+        System.err.println("==??==");
+      }
+
     if(POSTCONDITIONS) ensure
       (!hasCycles());
   }
