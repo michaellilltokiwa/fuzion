@@ -35,6 +35,7 @@ import dev.flang.util.FuzionConstants;
 import dev.flang.util.HasSourcePosition;
 import dev.flang.util.List;
 import dev.flang.util.SourcePosition;
+import dev.flang.util.YesNo;
 
 
 /**
@@ -401,16 +402,23 @@ public abstract class Expr extends ANY implements Stmnt, HasSourcePosition
    */
   private boolean needsBoxing(AbstractType frmlT)
   {
+    if (PRECONDITIONS) require
+      (
+        frmlT.isAssignableFrom(type()) ||
+        frmlT.isAssignableFrom(type().asRef()),
+        type().isRef() != YesNo.dontKnow
+      );
+
     var t = type();
     if (frmlT.isGenericArgument())
       {
         return true;
       }
-    else if (t.isRef() && !isCallToOuterRef())
+    else if (t.isRef() == YesNo.yes && !isCallToOuterRef())
       {
         return false;
       }
-    else if (frmlT.isRef())
+    else if (frmlT.isRef()  == YesNo.yes)
       {
         return true;
       }

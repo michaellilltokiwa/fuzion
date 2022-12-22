@@ -69,6 +69,7 @@ import dev.flang.util.FuzionConstants;
 import dev.flang.util.List;
 import dev.flang.util.SourceFile;
 import dev.flang.util.SourcePosition;
+import dev.flang.util.YesNo;
 
 
 /**
@@ -566,17 +567,19 @@ class LibraryOut extends ANY
         if (t.isGenericArgument())
           {
             if (CHECKS) check
-              (!t.isRef());
+              (t.isRef() == YesNo.no);
             _data.writeInt(-1);
             _data.writeOffset(t.genericArgument().typeParameter());
           }
         else
           {
+            if (CHECKS) check
+              (t.isRef() != YesNo.dontKnow);
             _data.writeInt(t.generics().size());
             _data.writeOffset(t.featureOfType());
-            _data.write(t.isThisType() ? FuzionConstants.MIR_FILE_TYPE_IS_THIS :
-                        t.isRef()      ? FuzionConstants.MIR_FILE_TYPE_IS_REF
-                                       : FuzionConstants.MIR_FILE_TYPE_IS_VALUE);
+            _data.write(t.isThisType()         ? FuzionConstants.MIR_FILE_TYPE_IS_THIS :
+                        t.isRef() == YesNo.yes ? FuzionConstants.MIR_FILE_TYPE_IS_REF
+                                               : FuzionConstants.MIR_FILE_TYPE_IS_VALUE);
             for (var gt : t.generics())
               {
                 type(gt);

@@ -37,6 +37,7 @@ import dev.flang.util.FuzionConstants;
 import dev.flang.util.HasSourcePosition;
 import dev.flang.util.List;
 import dev.flang.util.SourcePosition;
+import dev.flang.util.YesNo;
 
 
 /**
@@ -443,7 +444,7 @@ public abstract class AbstractFeature extends ANY implements Comparable<Abstract
 
     if (POSTCONDITIONS) ensure
       (result != null,
-       Errors.count() > 0 || result.isRef() == isThisRef(),
+       Errors.count() > 0 || (result.isRef() == YesNo.yes)== isThisRef(),
        // does not hold if feature is declared repeatedly
        Errors.count() > 0 || result.featureOfType() == this,
        true || // this condition is very expensive to check and obviously true:
@@ -680,7 +681,7 @@ public abstract class AbstractFeature extends ANY implements Comparable<Abstract
 
     if (POSTCONDITIONS) ensure
       (result != null,
-       Errors.count() > 0 || result.isRef() == isThisRef(),
+       Errors.count() > 0 || (result.isRef() == YesNo.yes) == isThisRef(),
        // does not hold if feature is declared repeatedly
        Errors.count() > 0 || result.featureOfType() == this,
        true || // this condition is very expensive to check and obviously true:

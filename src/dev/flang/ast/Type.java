@@ -37,6 +37,7 @@ import dev.flang.util.FuzionConstants;
 import dev.flang.util.HasSourcePosition;
 import dev.flang.util.List;
 import dev.flang.util.SourcePosition;
+import dev.flang.util.YesNo;
 
 
 /**
@@ -231,9 +232,9 @@ public class Type extends AbstractType
   public Type(AbstractType t, List<AbstractType> g, AbstractType o)
   {
     this((HasSourcePosition) t, t.featureOfType().featureName().baseName(), g, o, t.featureOfType(),
-         t.isRef() == t.featureOfType().isThisRef() ? RefOrVal.LikeUnderlyingFeature :
-         t.isRef() ? RefOrVal.Ref
-                   : RefOrVal.Value);
+         t.isRef() == YesNo.dontKnow ? RefOrVal.LikeUnderlyingFeature :
+         t.isRef() == YesNo.yes      ? RefOrVal.Ref
+                                     : RefOrVal.Value);
 
     if (PRECONDITIONS) require
       ( (t.generics() instanceof FormalGenerics.AsActuals) || t.generics().size() == g.size(),
@@ -431,7 +432,7 @@ public class Type extends AbstractType
       (this == Types.intern(this));
 
     AbstractType result = this;
-    if (!isRef() && this != Types.t_ERROR)
+    if (isRef() != YesNo.yes && this != Types.t_ERROR)
       {
         result = Types.intern(new Type(this, RefOrVal.Ref));
       }
@@ -473,7 +474,7 @@ public class Type extends AbstractType
       (this == Types.intern(this));
 
     AbstractType result = this;
-    if (isRef() && this != Types.t_ERROR)
+    if (isRef() != YesNo.no && this != Types.t_ERROR)
       {
         result = Types.intern(new Type(this, RefOrVal.Value));
       }
@@ -520,14 +521,17 @@ public class Type extends AbstractType
   /**
    * isRef
    */
-  public boolean isRef()
+  public YesNo isRef()
   {
     return switch (this._refOrVal)
       {
-      case Ref                  -> true;
-      case Value                -> false;
-      case LikeUnderlyingFeature-> ((feature != null) && feature.isThisRef());
-      case ThisType             -> false;
+      case Ref                  -> YesNo.yes;
+      case Value                -> YesNo.no;
+      case LikeUnderlyingFeature->
+        feature == null
+          ? isGenericArgument() ? YesNo.no  : YesNo.dontKnow
+          : feature.isThisRef() ? YesNo.yes : YesNo.no;
+      case ThisType             -> YesNo.no;
       };
   }
 
@@ -581,7 +585,7 @@ public class Type extends AbstractType
       }
     else if (generic != null)
       {
-        result = generic.feature().qualifiedName() + "." + name + (this.isRef() ? " (boxed)" : "");
+        result = generic.feature().qualifiedName() + "." + name + (this.isRef() == YesNo.yes ? " (boxed)" : "");
       }
     else if (_outer != null)
       {

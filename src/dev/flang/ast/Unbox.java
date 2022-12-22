@@ -29,6 +29,7 @@ package dev.flang.ast;
 import java.util.Iterator;
 
 import dev.flang.util.Errors;
+import dev.flang.util.YesNo;
 
 
 /**
@@ -85,7 +86,7 @@ public abstract class Unbox extends Expr
   {
     if (PRECONDITIONS) require
       (adr != null,
-       adr.type().isRef() || adr instanceof AbstractCall c && c.calledFeature().isOuterRef(),
+       adr.type().isRef() == YesNo.yes || adr instanceof AbstractCall c && c.calledFeature().isOuterRef(),
        !type.featureOfType().isThisRef()
        );
 
@@ -108,7 +109,7 @@ public abstract class Unbox extends Expr
 
     if (PRECONDITIONS) require
       (adr != null,
-       adr.type().isRef(),
+       adr.type().isRef() == YesNo.yes,
        Errors.count() > 0 || type.featureOfType() == outer,
        !type.featureOfType().isThisRef()
        );
@@ -171,8 +172,11 @@ public abstract class Unbox extends Expr
    */
   Expr box(AbstractType frmlT)
   {
+    if(PRECONDITIONS) require
+      (frmlT.isRef() != YesNo.dontKnow);
+
     var t = type();
-    if (t.compareTo(Types.resolved.t_void) != 0 && !frmlT.isRef())
+    if (t.compareTo(Types.resolved.t_void) != 0 && frmlT.isRef() == YesNo.no)
       {
         if (t.isThisType())
           { // we need this to unbox an outer ref even if the type does not change

@@ -40,7 +40,7 @@ import dev.flang.util.Errors;
 import dev.flang.util.FatalError;
 import dev.flang.util.FuzionOptions;
 import dev.flang.util.List;
-
+import dev.flang.util.YesNo;
 import dev.flang.fuir.FUIR;
 
 import dev.flang.air.Clazz;
@@ -979,7 +979,7 @@ public class Interpreter extends ANY
     LValue valSlot = choice.at(vclazz, Layout.get(choiceClazz).choiceValOffset(tag));
     if (choiceClazz.isChoiceOfOnlyRefs())
       { // store reference only
-        if (!staticTypeOfValue.isRef())
+        if (staticTypeOfValue.isRef() == YesNo.no)
           { // the value is a stateless value type, so we store the tag as a reference.
             v = ChoiceIdAsRef.get(choiceClazz, tag);
             vclazz = Clazzes.object.get();

@@ -286,7 +286,9 @@ public abstract class AbstractType extends ANY implements Comparable<AbstractTyp
     if (PRECONDITIONS) require
       (this  .isGenericArgument() || this  .featureOfType() != null || Errors.count() > 0,
        actual.isGenericArgument() || actual.featureOfType() != null || Errors.count() > 0,
-       Errors.count() > 0 || this != Types.t_ERROR && actual != Types.t_ERROR);
+       Errors.count() > 0 || this != Types.t_ERROR && actual != Types.t_ERROR,
+       isRef() != YesNo.dontKnow,
+       actual.isRef() != YesNo.dontKnow);
 
     if (assignableTo != null)
       {
@@ -297,7 +299,7 @@ public abstract class AbstractType extends ANY implements Comparable<AbstractTyp
       actual.compareTo(Types.resolved.t_void) == 0 ||
       this   == Types.t_ERROR                      ||
       actual == Types.t_ERROR;
-    if (!result && !isGenericArgument() && isRef() && actual.isRef())
+    if (!result && !isGenericArgument() && isRef() == YesNo.yes && actual.isRef() == YesNo.yes)
       {
         if (actual.isGenericArgument())
           {
@@ -312,7 +314,7 @@ public abstract class AbstractType extends ANY implements Comparable<AbstractTyp
                 for (var p: actual.featureOfType().inherits())
                   {
                     var pt = Types.intern(actual.actualType(p.type()));
-                    if (actual.isRef())
+                    if (actual.isRef() == YesNo.yes)
                       {
                         pt = pt.asRef();
                       }
@@ -342,10 +344,13 @@ public abstract class AbstractType extends ANY implements Comparable<AbstractTyp
   private boolean isChoiceMatch(AbstractType actual)
   {
     if (PRECONDITIONS) require
-      (!isGenericArgument() && featureOfType() != null || Errors.count() > 0);
+      (!isGenericArgument() && featureOfType() != null || Errors.count() > 0,
+      isRef() != YesNo.dontKnow,
+      actual.isRef() != YesNo.dontKnow
+      );
 
     boolean result = false;
-    if (!isGenericArgument() && !isRef())
+    if (!isGenericArgument() && isRef() == YesNo.no)
       {
         var g = featureOfType().choiceGenerics();
         if (g != null)
@@ -746,10 +751,13 @@ public abstract class AbstractType extends ANY implements Comparable<AbstractTyp
    */
   void checkChoice(SourcePosition pos)
   {
+    if(PRECONDITIONS) require
+      (isRef() != YesNo.dontKnow);
+
     var g = choiceGenerics();
     if (g != null)
       {
-        if (isRef())
+        if (isRef() == YesNo.yes)
           {
             AstErrors.refToChoice(pos);
           }
@@ -913,9 +921,16 @@ public abstract class AbstractType extends ANY implements Comparable<AbstractTyp
           }
         if (result == 0)
           {
-            if (isRef() ^ other.isRef())
+             result =
+                isRef() == YesNo.dontKnow
+                  ? -1
+                  : other.isRef() == YesNo.dontKnow ? 1 : 0;
+          }
+        if (result == 0)
+          {
+            if (isRef() == YesNo.yes ^ other.isRef() == YesNo.yes)
               {
-                result = isRef() ? -1 : 1;
+                result = isRef() == YesNo.yes ? -1 : 1;
               }
           }
         if (result == 0)
@@ -1057,7 +1072,7 @@ public abstract class AbstractType extends ANY implements Comparable<AbstractTyp
   public abstract AbstractFeature featureOfType();
   public abstract AbstractType asRef();
   public abstract AbstractType asValue();
-  public abstract boolean isRef();
+  public abstract YesNo isRef();
   public abstract AbstractType asThis();
   public abstract boolean isThisType();
   public abstract SourcePosition pos();
@@ -1084,14 +1099,14 @@ public abstract class AbstractType extends ANY implements Comparable<AbstractTyp
     if (isGenericArgument())
       {
         var ga = genericArgument();
-        result = ga.feature().qualifiedName() + "." + ga.name() + (this.isRef() ? " (boxed)" : "");
+        result = ga.feature().qualifiedName() + "." + ga.name() + (this.isRef() == YesNo.yes ? " (boxed)" : "");
       }
     else
       {
         var o = outer();
         String outer = o != null && !o.featureOfType().isUniverse() ? o.asString() + "." : "";
         result = outer
-              + (isRef() != featureOfType().isThisRef() ? (isRef() ? "ref " : "value ") : "" )
+              + (isRef() == YesNo.yes != featureOfType().isThisRef() ? (isRef() == YesNo.yes ? "ref " : "value ") : "" )
               + featureOfType().featureName().baseName();
         for (var g : generics())
           {

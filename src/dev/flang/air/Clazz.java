@@ -683,7 +683,7 @@ public class Clazz extends ANY implements Comparable<Clazz>
    */
   public boolean isRef()
   {
-    return this._type.isRef();
+    return this._type.isRef() == YesNo.yes;
   }
 
 
@@ -2041,7 +2041,7 @@ public class Clazz extends ANY implements Comparable<Clazz>
                 var res = innerBase == null || t == Types.t_UNDEFINED || t == Types.t_ERROR
                   ? Clazzes.create(t, null)
                   : innerBase.lookup(t.featureOfType(), t.generics(), null);
-                if (t.isRef())
+                if (t.isRef() == YesNo.yes)
                   {
                     res = res.asRef();
                   }

@@ -27,26 +27,19 @@ Fuzion language implementation.  If not, see <https://www.gnu.org/licenses/>.
 package dev.flang.ast;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.ListIterator;
-import java.util.Map;
 import java.util.Set;
-import java.util.SortedMap;
 import java.util.Stack;
-import java.util.TreeMap;
 import java.util.TreeSet;
-import java.util.stream.Collector;
 import java.util.stream.Collectors;
 
-import dev.flang.util.ANY;
 import dev.flang.util.Errors;
 import dev.flang.util.FuzionConstants;
 import dev.flang.util.List;
-import dev.flang.util.SourceFile;
 import dev.flang.util.SourcePosition;
+import dev.flang.util.YesNo;
 
 
 /**
@@ -1566,8 +1559,9 @@ public class Feature extends AbstractFeature implements Stmnt
     for (var t : choiceGenerics())
       {
         if (CHECKS) check
-          (Errors.count() > 0 || t != null);
-        if (t != null && !t.isRef())
+          (Errors.count() > 0 || t != null && t.isRef() != YesNo.dontKnow);
+
+        if (t != null && t.isRef() == YesNo.no)
           {
             if (t == thisType())
               {

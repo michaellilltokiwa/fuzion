@@ -58,6 +58,7 @@ import dev.flang.util.FuzionOptions;
 import dev.flang.util.HasSourcePosition;
 import dev.flang.util.List;
 import dev.flang.util.SourcePosition;
+import dev.flang.util.YesNo;
 
 
 /**
@@ -864,7 +865,7 @@ public class Clazzes extends ANY
         .stream()
         .forEach(ag ->
           {
-            if (!ag.isRef())
+            if (ag.isRef() == YesNo.no)
               {
                 // Even though choice element ag
                 // might never actually be instantiated

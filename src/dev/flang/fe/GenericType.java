@@ -37,7 +37,7 @@ import dev.flang.ast.Types;
 
 import dev.flang.util.Errors;
 import dev.flang.util.List;
-
+import dev.flang.util.YesNo;
 import dev.flang.util.HasSourcePosition;
 
 
@@ -145,13 +145,13 @@ public class GenericType extends LibraryType
    * A parametric type is not considered a ref type even it the actual type
    * might very well be a ref.
    */
-  public boolean isRef()
+  public YesNo isRef()
   {
     return switch (_refOrVal)
       {
-      case Ref -> true;
-      case Value -> false;
-      case LikeUnderlyingFeature -> false;
+      case Ref -> YesNo.yes;
+      case Value -> YesNo.no;
+      case LikeUnderlyingFeature -> YesNo.no;
       case ThisType -> throw new Error("dev.flang.fe.GenericType.isRef: unexpeted ThisType for GenericType '"+this+"'");
       };
   }
@@ -195,7 +195,7 @@ public class GenericType extends LibraryType
 
   public String toString()
   {
-    return genericArgument().feature().qualifiedName() + "." + genericArgument().name() + (this.isRef() ? " (boxed)" : "");
+    return genericArgument().feature().qualifiedName() + "." + genericArgument().name() + (this.isRef() == YesNo.yes ? " (boxed)" : "");
   }
 
 }
