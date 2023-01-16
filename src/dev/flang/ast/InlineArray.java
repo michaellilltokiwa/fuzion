@@ -64,7 +64,7 @@ public class InlineArray extends ExprWithPos
   /**
    * The type of this array.
    */
-  private AbstractType type_;
+  private AbstractType _type;
 
 
   /**
@@ -94,19 +94,20 @@ public class InlineArray extends ExprWithPos
 
 
   /**
-   * type returns the type of this expression or Types.t_ERROR if the type is
-   * still unknown, i.e., before or during type resolution.
+   * typeIfKnown returns the type of this expression or null if the type is
+   * still unknown, i.e., before or during type resolution.  This is redefined
+   * by sub-classes of Expr to provide type information.
    *
-   * @return this Expr's type or t_ERROR in case it is not known yet.
+   * @return this Expr's type or null if not known.
    */
-  public AbstractType type()
+  AbstractType typeIfKnown()
   {
-    if (type_ == null)
+    if (_type == null)
       {
         AbstractType t = Types.resolved.t_void;
         for (var e : _elements)
           {
-            var et = e.typeForFeatureResultTypeInferencing();
+            var et = e.typeIfKnown();
             t =
               t  == null ? null :
               et == null ? null : t.union(et);
@@ -116,11 +117,11 @@ public class InlineArray extends ExprWithPos
             new IncompatibleResultsOnBranches(pos(),
                                               "Incompatible types in array elements",
                                               _elements.iterator());
-            type_ = Types.t_ERROR;
+            _type = Types.t_ERROR;
           }
-        if (type_ == null)
+        if (_type == null)
           {
-            type_ =
+            _type =
               t == null ? Types.t_ERROR :
               Types.intern(new Type(pos(),
                                   "array",
@@ -130,7 +131,7 @@ public class InlineArray extends ExprWithPos
                                   Type.RefOrVal.LikeUnderlyingFeature));
           }
       }
-    return type_;
+    return _type;
   }
 
 
@@ -153,7 +154,7 @@ public class InlineArray extends ExprWithPos
    */
   public Expr propagateExpectedType(Resolution res, AbstractFeature outer, AbstractType t)
   {
-    if (type_ == null)
+    if (_type == null)
       {
         var elementType = elementType(t);
         if (elementType != Types.t_ERROR)
@@ -162,7 +163,7 @@ public class InlineArray extends ExprWithPos
               {
                 e.propagateExpectedType(res, outer, elementType);
               }
-            type_ = t;
+            _type = t;
           }
       }
     return this;
@@ -267,7 +268,7 @@ public class InlineArray extends ExprWithPos
   public void checkTypes()
   {
     if (PRECONDITIONS) require
-      (type_ != null);
+      (Errors.count() > 0 || _type != null);
 
     var elementType = elementType();
 
@@ -276,9 +277,9 @@ public class InlineArray extends ExprWithPos
 
     for (var e : _elements)
       {
-        if (!elementType.isAssignableFrom(e))
+        if (!elementType.isAssignableFrom(e.type()))
           {
-            AstErrors.incompatibleTypeInArrayInitialization(e.pos(), type_, elementType, e);
+            AstErrors.incompatibleTypeInArrayInitialization(e.pos(), _type, elementType, e);
           }
       }
   }
@@ -298,16 +299,18 @@ public class InlineArray extends ExprWithPos
     Expr result = this;
     if (true)  // NYI: This syntactic sugar should not be resolved if this array is a compile-time constant
       {
-        var eT           = new List<AbstractType>(elementType());
-        var lengthArgs   = new List<Expr>(new NumLiteral(_elements.size()));
+        var et           = elementType();
+        var eT           = new List<AbstractType>(et);
+        var args         = new List<Actual>(new Actual(et, Expr.NO_VALUE),
+                                            new Actual(null, new NumLiteral(_elements.size())));
         var fuzion       = new Call(pos(), null, "fuzion"                     ).resolveTypes(res, outer);
         var sys          = new Call(pos(), fuzion, "sys"                      ).resolveTypes(res, outer);
-        var sysArrayCall = new Call(pos(), sys , "array", eT, null, lengthArgs).resolveTypes(res, outer);
+        var sysArrayCall = new Call(pos(), sys , "internal_array", args).resolveTypes(res, outer);
         var fuzionT      = new Type(pos(), "fuzion", Type.NONE, null);
         var sysT         = new Type(pos(), "sys"   , Type.NONE, fuzionT);
-        var sysArrayT    = new Type(pos(), "array", eT, sysT);
+        var sysArrayT    = new Type(pos(), "internal_array", eT, sysT);
         var sysArrayName = FuzionConstants.INLINE_SYS_ARRAY_PREFIX + (_id_++);
-        var sysArrayVar  = new Feature(pos(), Consts.VISIBILITY_LOCAL, sysArrayT, sysArrayName, null, outer);
+        var sysArrayVar  = new Feature(pos(), Visi.LOCAL, sysArrayT, sysArrayName, null, outer);
         res._module.findDeclarations(sysArrayVar, outer);
         res.resolveDeclarations(sysArrayVar);
         res.resolveTypes();
@@ -316,17 +319,24 @@ public class InlineArray extends ExprWithPos
         for (var i = 0; i < _elements.size(); i++)
           {
             var e = _elements.get(i);
-            var setArgs         = new List<Expr>(new NumLiteral(i), e);
-            var readSysArrayVar = new Call(e.pos(), null           , sysArrayName          ).resolveTypes(res, outer);
-            var setElement      = new Call(e.pos(), readSysArrayVar, "index [ ] =", setArgs).resolveTypes(res, outer);
+            var setArgs         = new List<Actual>(new Actual(null, new NumLiteral(i)),
+                                                   new Actual(null, e));
+            var readSysArrayVar = new Call(e.pos(), null           , sysArrayName     ).resolveTypes(res, outer);
+            var setElement      = new Call(e.pos(), readSysArrayVar,
+                                           FuzionConstants.FEATURE_NAME_INDEX_ASSIGN,
+                                           setArgs                                    ).resolveTypes(res, outer);
             stmnts.add(setElement);
           }
         var readSysArrayVar = new Call(pos(), null, sysArrayName                      ).resolveTypes(res, outer);
         var unit1           = new Call(pos(), null, "unit"                            ).resolveTypes(res, outer);
         var unit2           = new Call(pos(), null, "unit"                            ).resolveTypes(res, outer);
         var unit3           = new Call(pos(), null, "unit"                            ).resolveTypes(res, outer);
-        var sysArrArgs      = new List<Expr>(readSysArrayVar,unit1,unit2, unit3);
-        var arrayCall       = new Call(pos(), null, "array"     , eT, null, sysArrArgs).resolveTypes(res, outer);
+        var sysArrArgs      = new List<Actual>(new Actual(et, Expr.NO_VALUE),
+                                               new Actual(null, readSysArrayVar),
+                                               new Actual(null, unit1),
+                                               new Actual(null, unit2),
+                                               new Actual(null, unit3));
+        var arrayCall       = new Call(pos(), null, "array"     , sysArrArgs).resolveTypes(res, outer);
         stmnts.add(arrayCall);
         result = new Block(pos(), stmnts);
       }

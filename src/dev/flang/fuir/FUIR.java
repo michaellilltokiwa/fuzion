@@ -26,15 +26,15 @@ Fuzion language implementation.  If not, see <https://www.gnu.org/licenses/>.
 
 package dev.flang.fuir;
 
+import java.nio.charset.StandardCharsets;
+
 import java.util.BitSet;
 import java.util.TreeMap;
-import java.util.stream.Stream;
 
 import dev.flang.air.Clazz;
 import dev.flang.air.Clazzes;
 
 import dev.flang.ast.AbstractAssign; // NYI: remove dependency
-import dev.flang.ast.AbstractBlock; // NYI: remove dependency
 import dev.flang.ast.AbstractCall; // NYI: remove dependency
 import dev.flang.ast.AbstractConstant; // NYI: remove dependency
 import dev.flang.ast.AbstractFeature; // NYI: remove dependency
@@ -42,7 +42,6 @@ import dev.flang.ast.AbstractMatch; // NYI: remove dependency
 import dev.flang.ast.BoolConst; // NYI: remove dependency
 import dev.flang.ast.Box; // NYI: remove dependency
 import dev.flang.ast.Call; // NYI: remove dependency
-import dev.flang.ast.Current; // NYI: remove dependency
 import dev.flang.ast.Env; // NYI: remove dependency
 import dev.flang.ast.Expr; // NYI: remove dependency
 import dev.flang.ast.If; // NYI: remove dependency
@@ -55,12 +54,10 @@ import dev.flang.ast.Unbox; // NYI: remove dependency
 
 import dev.flang.ir.IR;
 
-import dev.flang.util.ANY;
 import dev.flang.util.Errors;
 import dev.flang.util.List;
 import dev.flang.util.Map2Int;
 import dev.flang.util.MapComparable2Int;
-import dev.flang.util.SourcePosition;
 
 
 /**
@@ -193,7 +190,7 @@ public class FUIR extends IR
   public FUIR(Clazz main)
   {
     _main = main;
-    _clazzIds = new MapComparable2Int(CLAZZ_BASE);
+    _clazzIds = new MapComparable2Int<>(CLAZZ_BASE);
     _clazzCode = new TreeMap<>();
     _clazzContract = new TreeMap<>();
     Clazzes.findAllClasses(main());
@@ -247,7 +244,7 @@ public class FUIR extends IR
 
 
   /**
-   * Add cl to the set of clazzes in this FUIR and assign an id to to.
+   * Add cl to the set of clazzes in this FUIR and assign an id to cl.
    */
   private void add(Clazz cl)
   {
@@ -266,8 +263,21 @@ public class FUIR extends IR
       {
         for (var cl : Clazzes.all())
           {
-            if (cl._type != Types.t_ADDRESS     // NYI: would be better to not create this dummy clazz in the first place
-                )
+            if (CHECKS) check
+              (Errors.count() > 0 || cl._type != Types.t_ERROR);
+
+            if (cl._type == Types.t_ERROR)
+              {
+                if (CHECKS) check
+                  (Errors.count() > 0);
+
+                if (Errors.count() == 0)
+                  {
+                    Errors.error("Found error clazz in set of clazzes in the IR even though no earlier errors " +
+                                 "were reported.  This can only be the result of a severe bug.");
+                  }
+              }
+            else if (cl._type != Types.t_ADDRESS)     // NYI: would be better to not create this dummy clazz in the first place
               {
                 add(cl);
               }
@@ -452,6 +462,21 @@ public class FUIR extends IR
   }
 
 
+  /**
+   * For a clazz that represents a Fuzion type such as 'i32.type', return the
+   * corresponding name of the type such as 'i32'.
+   *
+   * @param cl a clazz id of a type clazz
+   *
+   * @return the name of the type represented by instances of cl, using UTF8 encoding.
+   */
+  public byte[] clazzTypeName(int cl)
+  {
+    var cc = clazz(cl);
+    return cc.typeName().getBytes(StandardCharsets.UTF_8);
+  }
+
+
   public FeatureKind clazzKind(int cl)
   {
     return clazzKind(clazz(cl));
@@ -613,7 +638,7 @@ public class FUIR extends IR
    * @param valuecl a clazz id of a static clazz of a value that is stored in an
    * instance of cl.
    *
-   * @return id of the valuecl, correspods to the value to be stored in the tag.
+   * @return id of the valuecl, corresponds to the value to be stored in the tag.
    */
   public int clazzChoiceTag(int cl, int valuecl)
   {
@@ -891,7 +916,7 @@ hw25 is
             toStack(code, a);
             code.add(ExprKind.Current);
             // Field clazz means assign value to that field
-            code.add((Clazz) cc.getRuntimeData(p.parentCallArgFieldIds_ + i));
+            code.add((Clazz) cc.getRuntimeData(p._parentCallArgFieldIds + i));
           }
         addCode(cc, code, p.calledFeature());
       }
@@ -1022,7 +1047,13 @@ hw25 is
         var result = switch (clazzKind(cc))
           {
           case Abstract, Choice -> false;
-          case Intrinsic, Routine, Field -> (cc.isInstantiated() || cc.feature().isOuterRef()) && cc != Clazzes.conststring.getIfCreated() && !cc.isAbsurd();
+          case Intrinsic, Routine, Field ->
+            (cc.isInstantiated() || cc.feature().isOuterRef() || cc.feature().isTypeFeature())
+            && cc != Clazzes.conststring.getIfCreated()
+            && !cc.isAbsurd()
+            // NYI: this should not depend on string comparison!
+            && !(cc.feature().qualifiedName().equals("void.absurd"))
+            ;
           };
         (result ? _needsCode : _doesNotNeedCode).set(cl - CLAZZ_BASE);
         return result;
@@ -1296,8 +1327,8 @@ hw25 is
     var outerClazz = clazz(cl);
     var s = _codeIds.get(c).get(ix);
     Clazz innerClazz =
-      (s instanceof AbstractCall   call) ? (Clazz) outerClazz.getRuntimeData(call.sid_ + 0) :
-      (s instanceof AbstractAssign a   ) ? (Clazz) outerClazz.getRuntimeData(a   .tid_ + 1) :
+      (s instanceof AbstractCall   call) ? (Clazz) outerClazz.getRuntimeData(call._sid + 0) :
+      (s instanceof AbstractAssign a   ) ? (Clazz) outerClazz.getRuntimeData(a   ._tid + 1) :
       (s instanceof Clazz          fld ) ? fld :
       (Clazz) (Object) new Object() { { if (true) throw new Error("acccessedClazz found unexpected Stmnt."); } } /* Java is ugly... */;
 
@@ -1335,12 +1366,12 @@ hw25 is
     if (s instanceof AbstractCall call)
       {
         f = call.calledFeature();
-        tclazz     = (Clazz) outerClazz.getRuntimeData(call.sid_ + 1);
+        tclazz     = (Clazz) outerClazz.getRuntimeData(call._sid + 1);
       }
     else if (s instanceof AbstractAssign ass)
       {
-        var assignedField = (Clazz) outerClazz.getRuntimeData(ass.tid_+ 1);
-        tclazz = (Clazz) outerClazz.getRuntimeData(ass.tid_);  // NYI: This should be the same as assignedField._outer
+        var assignedField = (Clazz) outerClazz.getRuntimeData(ass._tid+ 1);
+        tclazz = (Clazz) outerClazz.getRuntimeData(ass._tid);  // NYI: This should be the same as assignedField._outer
         f = assignedField.feature();
       }
     else if (s instanceof Clazz fld)
@@ -1417,7 +1448,7 @@ hw25 is
    *
    * @param c code block containing the access
    *
-   * @param ix index of the acces
+   * @param ix index of the access
    *
    * @return true iff the assignment or call requires dynamic binding depending
    * on the actual target type.
@@ -1433,10 +1464,10 @@ hw25 is
     var outerClazz = clazz(cl);
     var s = _codeIds.get(c).get(ix);
     var res =
-      (s instanceof AbstractAssign ass ) ? ((Clazz) outerClazz.getRuntimeData(ass.tid_)).isRef() : // NYI: This should be the same as assignedField._outer
+      (s instanceof AbstractAssign ass ) ? ((Clazz) outerClazz.getRuntimeData(ass._tid)).isRef() : // NYI: This should be the same as assignedField._outer
       (s instanceof Clazz          arg ) ? outerClazz.isRef() && !arg.feature().isOuterRef() : // assignment to arg field in inherits call (dynamic if outerlClazz is ref)
                                                                                        // or to outer ref field (not dynamic)
-      (s instanceof AbstractCall   call) ? call.isDynamic() && ((Clazz) outerClazz.getRuntimeData(call.sid_ + 1)).isRef() :
+      (s instanceof AbstractCall   call) ? call.isDynamic() && ((Clazz) outerClazz.getRuntimeData(call._sid + 1)).isRef() :
       new Object() { { if (true) throw new Error("acccessIsDynamic found unexpected Stmnt."); } } == null /* Java is ugly... */;
 
     return res;
@@ -1468,7 +1499,6 @@ hw25 is
        withinCode(c, ix),
        codeAt(c, ix) == ExprKind.Call);
 
-    var outerClazz = clazz(cl);
     var call = (AbstractCall) _codeIds.get(c).get(ix);
     return call.isInheritanceCall();
   }
@@ -1496,9 +1526,9 @@ hw25 is
     var outerClazz = clazz(cl);
     var s = _codeIds.get(c).get(ix);
     var tclazz =
-      (s instanceof AbstractAssign ass ) ? (Clazz) outerClazz.getRuntimeData(ass.tid_) : // NYI: This should be the same as assignedField._outer
+      (s instanceof AbstractAssign ass ) ? (Clazz) outerClazz.getRuntimeData(ass._tid) : // NYI: This should be the same as assignedField._outer
       (s instanceof Clazz          arg ) ? outerClazz : // assignment to arg field in inherits call, so outer clazz is current instance
-      (s instanceof AbstractCall   call) ? (Clazz) outerClazz.getRuntimeData(call.sid_ + 1) :
+      (s instanceof AbstractCall   call) ? (Clazz) outerClazz.getRuntimeData(call._sid + 1) :
       (Clazz) (Object) new Object() { { if (true) throw new Error("acccessTargetClazz found unexpected Stmnt."); } } /* Java is ugly... */;
 
     return id(tclazz);
@@ -1590,8 +1620,8 @@ hw25 is
     var cc = clazz(cl);
     var s = _codeIds.get(c).get(ix);
     Clazz ss = s instanceof If
-      ? cc.getRuntimeClazz(((If)            s).runtimeClazzId_)
-      : cc.getRuntimeClazz(((AbstractMatch) s).runtimeClazzId_);
+      ? cc.getRuntimeClazz(((If)            s)._runtimeClazzId)
+      : cc.getRuntimeClazz(((AbstractMatch) s)._runtimeClazzId);
     return id(ss);
   }
 
@@ -1625,7 +1655,7 @@ hw25 is
       {
         var mc = m.cases().get(cix);
         var f = mc.field();
-        var fc = f != null && Clazzes.isUsed(f, cc) ? cc.getRuntimeClazz(mc.runtimeClazzId_) : null;
+        var fc = f != null && Clazzes.isUsed(f, cc) ? cc.getRuntimeClazz(mc._runtimeClazzId) : null;
         result = fc != null ? id(fc) : -1;
       }
     return result;
@@ -1674,7 +1704,7 @@ hw25 is
             for (int tix = 0; tix < nt; tix++)
               {
                 var t = f != null ? f.resultType() : ts.get(tix);
-                if (t.isAssignableFrom(cg))
+                if (t.isDirectlyAssignableFrom(cg))
                   {
                     resultL.add(tag);
                   }
@@ -1718,17 +1748,17 @@ hw25 is
 
 
   /**
-   * For a clazz that is a heir of 'Function', find the corresponding inner
+   * For a clazz that is an heir of 'Function', find the corresponding inner
    * clazz for 'call'.  This is used for code generation of intrinsic
    * 'abortable' that has to create code to call 'call'.
    *
-   * @param cl index of a clazz that is a heir of 'Function'.
+   * @param cl index of a clazz that is an heir of 'Function'.
    */
   public int lookupCall(int cl)
   {
     var cc = clazz(cl);
     var call = Types.resolved.f_function_call;
-    var ic = cc.lookup(call, Call.NO_GENERICS, Clazzes.isUsedAt(call));
+    var ic = cc.lookup(call);
     return id(ic);
   }
 
@@ -1777,7 +1807,7 @@ hw25 is
       {
       case AdrOf   -> "AdrOf";
       case Assign  -> "Assign to " + clazzAsString(accessedClazz(cl, c, ix));
-      case Box     -> "Box";
+      case Box     -> "Box " + clazzAsString(boxValueClazz(cl, c, ix)) + " => " + clazzAsString(boxResultClazz(cl, c, ix));
       case Unbox   -> "Unbox";
       case Call    -> "Call to " + clazzAsString(accessedClazz(cl, c, ix));
       case Current -> "Current";
@@ -2021,6 +2051,31 @@ hw25 is
 
     var or = clazzOuterRef(cl);
     return clazzResultClazz(or);
+  }
+
+
+  /**
+   * Test is a given clazz is not -1 and stores data.
+   *
+   * @param cl the clazz defining a type, may be -1
+   *
+   * @return true if cl != -1 and not unit or void type.
+   */
+  public boolean hasData(int cl)
+  {
+    return cl != -1 &&
+      !clazzIsUnitType(cl) &&
+      !clazzIsVoidType(cl) &&
+      cl != clazzUniverse();
+  }
+
+
+  /**
+   * Does this clazzes contract include any preconditions?
+   */
+  public boolean hasPrecondition(int cl)
+  {
+    return clazzContract(cl, FUIR.ContractKind.Pre, 0) != -1;
   }
 
 

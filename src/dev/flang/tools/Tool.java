@@ -26,6 +26,8 @@ Fuzion language implementation.  If not, see <https://www.gnu.org/licenses/>.
 
 package dev.flang.tools;
 
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.nio.file.Path;
 
 import java.util.TreeSet;
@@ -46,6 +48,7 @@ import dev.flang.opt.Optimizer;
 
 import dev.flang.util.ANY;
 import dev.flang.util.Errors;
+import dev.flang.util.FatalError;
 import dev.flang.util.List;
 import dev.flang.util.Profiler;
 
@@ -148,16 +151,7 @@ public abstract class Tool extends ANY
    */
   protected void run()
   {
-    try
-      {
-        parseArgs(_args).run();
-        Errors.showAndExit(true);
-      }
-    catch(Throwable e)
-      {
-        e.printStackTrace();
-        System.exit(1);
-      }
+    Errors.runAndExit(() -> parseArgs(_args).run());
   }
 
 
@@ -316,7 +310,7 @@ public abstract class Tool extends ANY
   protected int parsePositiveIntArg(String a, int defawlt)
   {
     if (PRECONDITIONS) require
-      (a.split("=").length == 2);
+      (a.split("=").length == 1 || a.split("=").length == 2);
 
     int result = defawlt;
     var s = a.split("=");

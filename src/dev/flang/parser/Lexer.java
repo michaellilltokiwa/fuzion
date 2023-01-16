@@ -160,6 +160,7 @@ public class Lexer extends SourceFile
     t_for("for"),
     t_in("in"),
     t_do("do"),
+    t_fixed("fixed"),
     t_loop("loop"),
     t_while("while"),
     t_until("until"),
@@ -173,11 +174,11 @@ public class Lexer extends SourceFile
     t_value("value"),
     t_ref("ref"),
     t_lazy("lazy"),
-    t_synchronized("synchronized"),
+    t_synchronized("synchronized"),   // unused
     t_redef("redef"),
     t_redefine("redefine"),
-    t_const("const"),
-    t_leaf("leaf"),
+    t_const("const"),                 // unused
+    t_leaf("leaf"),                   // unused
     t_infix("infix"),
     t_prefix("prefix"),
     t_postfix("postfix"),
@@ -1751,7 +1752,7 @@ HEX_TAIL    : "." HEX_DIGITS
       var v =
         ('0' <= d && d <= '9') ? d - (int) '0' :
         ('a' <= d && d <= 'z') ? d - (int) 'a' + 10 :
-        ('A' <= d && d <= 'Z') ? d - (int) 'Z' + 10 : Integer.MAX_VALUE;
+        ('A' <= d && d <= 'Z') ? d - (int) 'A' + 10 : Integer.MAX_VALUE;
       if (v >= _base._base)
         {
           Errors.error(sourcePos(),

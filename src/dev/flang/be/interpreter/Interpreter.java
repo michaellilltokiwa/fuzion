@@ -33,14 +33,11 @@ import java.nio.charset.StandardCharsets;
 
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.Map;
-import java.util.Stack;
-import java.util.TreeMap;
 
 import dev.flang.util.ANY;
 import dev.flang.util.Errors;
-import dev.flang.util.FuzionConstants;
+import dev.flang.util.FatalError;
 import dev.flang.util.FuzionOptions;
 import dev.flang.util.List;
 
@@ -62,7 +59,6 @@ import dev.flang.ast.Check; // NYI: remove dependency! Use dev.flang.fuir instea
 import dev.flang.ast.Env; // NYI: remove dependency! Use dev.flang.fuir instead.
 import dev.flang.ast.Expr; // NYI: remove dependency! Use dev.flang.fuir instead.
 import dev.flang.ast.If; // NYI: remove dependency! Use dev.flang.fuir instead.
-import dev.flang.ast.Impl; // NYI: remove dependency! Use dev.flang.fuir instead.
 import dev.flang.ast.InlineArray; // NYI: remove dependency! Use dev.flang.fuir instead.
 import dev.flang.ast.Nop; // NYI: remove dependency! Use dev.flang.fuir instead.
 import dev.flang.ast.Stmnt; // NYI: remove dependency! Use dev.flang.fuir instead.
@@ -230,14 +226,18 @@ public class Interpreter extends ANY
           {
             callable(false, _fuir.main(), Clazzes.universe.get()).call(mainargs);
           }
+        catch (FatalError e)
+          {
+            throw e;
+          }
+        catch (StackOverflowError e)
+          {
+            Errors.fatal("*** " + e + "\n" + callStack());
+          }
         catch (RuntimeException | Error e)
           {
-            if (!(e instanceof StackOverflowError))
-              {
-                Errors.error("*** " + e + "\n" + callStack());
-                throw e;
-              }
-            Errors.fatal("*** " + e + "\n" + callStack());
+            Errors.error("*** " + e + "\n" + callStack());
+            throw e;
           }
         if (CHECKS) check
           (Errors.count() == 0);
@@ -291,22 +291,22 @@ public class Interpreter extends ANY
       {
         if (PRECONDITIONS) require
           (!c.isInheritanceCall(),  // inheritance calls are handled in Fature.callOnInstance
-           c.sid_ >= 0);
+           c._sid >= 0);
 
         ArrayList<Value> args = executeArgs(c, staticClazz, cur);
         FuzionThread.current()._callStack.push(c);
 
-        var d = staticClazz.getRuntimeData(c.sid_ + 0);
+        var d = staticClazz.getRuntimeData(c._sid + 0);
         if (d instanceof Clazz innerClazz)
           {
-            var tclazz = (Clazz) staticClazz.getRuntimeData(c.sid_ + 1);
+            var tclazz = (Clazz) staticClazz.getRuntimeData(c._sid + 1);
             var dyn = (tclazz.isRef() || c.target().isCallToOuterRef() && tclazz.isUsedAsDynamicOuterRef()) && c.isDynamic();
             d = callable(dyn, innerClazz, tclazz);
             if (d == null)
               {
                 d = "dyn"; // anything else, null would also do, but could be confused with 'not initialized'
               }
-            staticClazz.setRuntimeData(c.sid_ + 0, d);  // cache callable
+            staticClazz.setRuntimeData(c._sid + 0, d);  // cache callable
           }
         Callable ca;
         if (d instanceof Callable dca)
@@ -317,7 +317,8 @@ public class Interpreter extends ANY
           {
             var v = (ValueWithClazz) args.get(0);
             Clazz cl = v.clazz();
-            ca = (Callable) ((DynamicBinding)cl._dynamicBinding).callable(c.calledFeature());
+            var db = (DynamicBinding) cl._dynamicBinding;
+            ca = (Callable) db.callable(c.calledFeature());
           }
         result = ca.call(args);
         FuzionThread.current()._callStack.pop();
@@ -332,7 +333,7 @@ public class Interpreter extends ANY
       {
         Value v    = execute(a._value , staticClazz, cur);
         Value thiz = execute(a._target, staticClazz, cur);
-        Clazz sClazz = staticClazz.getRuntimeClazz(a.tid_ + 0);
+        Clazz sClazz = staticClazz.getRuntimeClazz(a._tid + 0);
         setField(a._assignedField, -1, sClazz, thiz, v);
         result = Value.NO_VALUE;
       }
@@ -364,7 +365,7 @@ public class Interpreter extends ANY
     else if (s instanceof AbstractBlock b)
       {
         result = Value.NO_VALUE;
-        for (Stmnt stmnt : b.statements_)
+        for (Stmnt stmnt : b._statements)
           {
             result = execute(stmnt, staticClazz, cur);
           }
@@ -394,7 +395,7 @@ public class Interpreter extends ANY
     else if (s instanceof AbstractMatch m)
       {
         result = null;
-        Clazz staticSubjectClazz = staticClazz.getRuntimeClazz(m.runtimeClazzId_);
+        Clazz staticSubjectClazz = staticClazz.getRuntimeClazz(m._runtimeClazzId);
         staticSubjectClazz = staticSubjectClazz.asValue(); /* asValue since subject in , e.g., 'match (bool.this)' may be 'ref bool'
                                                             * NYI: might be better to store asValue directly at getRuntimeClazz(m.runtimeClazzId_)
                                                             */
@@ -427,8 +428,8 @@ public class Interpreter extends ANY
 
             if (c.field() != null && Clazzes.isUsed(c.field(), staticClazz))
               {
-                Clazz fieldClazz = staticClazz.getRuntimeClazz(c.runtimeClazzId_).resultClazz();
-                if (fieldClazz.isAssignableFrom(subjectClazz))
+                Clazz fieldClazz = staticClazz.getRuntimeClazz(c._runtimeClazzId).resultClazz();
+                if (fieldClazz.isDirectlyAssignableFrom(subjectClazz))
                   {
                     Value v = tag < 0 ? refVal
                                       : getChoiceVal(sf, staticSubjectClazz, sub, tag);
@@ -441,8 +442,8 @@ public class Interpreter extends ANY
                 var nt = c.field() != null ? 1 : c.types().size();
                 for (int i = 0; !matches && i < nt; i++)
                   {
-                    Clazz caseClazz = staticClazz.getRuntimeClazz(c.runtimeClazzId_ + i);
-                    matches = caseClazz.isAssignableFrom(subjectClazz);
+                    Clazz caseClazz = staticClazz.getRuntimeClazz(c._runtimeClazzId + i);
+                    matches = caseClazz.isDirectlyAssignableFrom(subjectClazz);
                   }
               }
             if (matches)
@@ -459,13 +460,13 @@ public class Interpreter extends ANY
               {
                 if (c.field() != null)
                   {
-                    permitted.add(staticClazz.getRuntimeClazz(c.runtimeClazzId_).resultClazz());
+                    permitted.add(staticClazz.getRuntimeClazz(c._runtimeClazzId).resultClazz());
                   }
                 else
                   {
                     for (int i = 0; i < c.types().size(); i++)
                       {
-                        permitted.add(staticClazz.getRuntimeClazz(c.runtimeClazzId_ + i));
+                        permitted.add(staticClazz.getRuntimeClazz(c._runtimeClazzId + i));
                       }
                   }
               }
@@ -483,7 +484,7 @@ public class Interpreter extends ANY
       {
         // This is a NOP here since values of reference type and value type are
         // treated the same way by the interpreter.
-        result = execute(u.adr_, staticClazz, cur);
+        result = execute(u._adr, staticClazz, cur);
       }
 
     else if (s instanceof Universe)
@@ -511,7 +512,7 @@ public class Interpreter extends ANY
             // followed by several instances of Assign that copy the fields.
             var ri = new Instance(rc);
             result = ri;
-            for (var f : vc.clazzForField_.keySet())
+            for (var f : vc._clazzForField.keySet())
               {
                 // Fields select()ed from fields of open generic type have type t_unit
                 // if the actual clazz does not have the number of actual open generic
@@ -519,7 +520,7 @@ public class Interpreter extends ANY
                 if (vc.actualType(f.resultType()).compareTo(Types.resolved.t_unit) != 0)
                   {
                     // see tests/redef_args and issue #86 for a case where this lookup is needed:
-                    f = vc.lookup(f, dev.flang.ast.Call.NO_GENERICS, Clazzes.isUsedAt(f)).feature();
+                    f = vc.lookup(f, b).feature();
                     if (Clazzes.isUsed(f, vc))
                       {
                         Value v = getField(f, vc, val, true /* allow for uninitialized ref field */);
@@ -806,15 +807,10 @@ public class Interpreter extends ANY
             {
               result = (args) -> {
                 var rc = innerClazz.resultClazz();
-                var r = new Instance(rc);
-                var or = rc.feature().outerRef();
-                if (or != null && Clazzes.isUsedAtAll(or))
-                  {
-                    setOuter(rc.feature(), rc, r, new Instance(rc._outer));
-                  }
-                var name = rc.lookup(Types.resolved.f_Type_name, dev.flang.ast.Call.NO_GENERICS, Clazzes.isUsedAt(rc.feature()));
-                setField(name.feature(), -1,  rc, r, value(innerClazz.typeParameterActualType()._type.asString()));
-                return r;
+                if (CHECKS) check  // check that outer ref, if exists, is unused:
+                  (true || // NYI: This check is currently disabled, outer ref of types are not properly removed yet and not properly initialized here
+                   rc.feature().outerRef() == null || !Clazzes.isUsedAtAll(rc.feature().outerRef()));
+                return new Instance(rc);
               };
               break;
             }
@@ -870,7 +866,7 @@ public class Interpreter extends ANY
         else
           {
             // field might have been redefined, see https://github.com/tokiwa-software/fuzion/issues/165
-            a = staticClazz.lookup(a, dev.flang.ast.Call.NO_GENERICS, Clazzes.isUsedAt(a)).feature();
+            a = staticClazz.lookup(a).feature();
             setField(a,
                      -1,
                      staticClazz,
@@ -1331,8 +1327,7 @@ public class Interpreter extends ANY
       }
 
     if (POSTCONDITIONS) ensure
-      (   thiz.isChoice()                         // null is used e.g. in Option<T>: choice<T,Null>.
-       || result != null                          // otherwise, there must not be any null
+      (   result != null                          // there must not be any null
        || allowUninitializedRefField              // unless we explicitly allowed uninitialized data
       );
 

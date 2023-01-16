@@ -33,6 +33,7 @@ import java.nio.channels.Channels;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
+import java.util.ArrayList;
 import java.util.TreeMap;
 import java.util.TreeSet;
 
@@ -82,6 +83,8 @@ class Fuzion extends Tool
   static String  _binaryName_ = null;
   static boolean _useBoehmGC_ = false;
   static boolean _xdfa_ = true;
+  static String _cCompiler_ = null;
+  static String _cFlags_ = null;
 
 
   /**
@@ -91,16 +94,21 @@ class Fuzion extends Tool
   {
     interpreter("-interpreter")
     {
+      boolean takesApplicationArgs()
+      {
+        return true;
+      }
       void process(FuzionOptions options, FUIR fuir)
       {
         new Interpreter(options, fuir).run();
       }
     },
+
     c          ("-c")
     {
       String usage()
       {
-        return "[-o=<file>] [-useGC] [-Xdfa=(on|off)] ";
+        return "[-o=<file>] [-useGC] [-Xdfa=(on|off)] [-CC=<c compiler>] [-CFlags=\"list of c compiler flags\"] ";
       }
       boolean handleOption(Fuzion f, String o)
       {
@@ -120,16 +128,30 @@ class Fuzion extends Tool
             _xdfa_ = parseOnOffArg(o);
             result = true;
           }
+        else if (o.startsWith("-CC="))
+          {
+            _cCompiler_ = o.substring(4);
+            result = true;
+          }
+        else if (o.startsWith("-CFlags="))
+          {
+            _cFlags_ = o.substring(8);
+            result = true;
+          }
         return result;
       }
       void process(FuzionOptions options, FUIR fuir)
       {
-        new C(new COptions(options, _binaryName_, _useBoehmGC_, _xdfa_), fuir).compile();
+        new C(new COptions(options, _binaryName_, _useBoehmGC_, _xdfa_, _cCompiler_, _cFlags_), fuir).compile();
       }
     },
+
     java       ("-java"),
+
     classes    ("-classes"),
+
     llvm       ("-llvm"),
+
     dfa        ("-dfa")
     {
       void process(FuzionOptions options, FUIR fuir)
@@ -137,6 +159,21 @@ class Fuzion extends Tool
         new DFA(options, fuir).dfa();
       }
     },
+
+    /**
+     * backend to dump the IR of the main clazz to stdout
+     *
+     * NYI: make this dump all clazzes or give some way to control what clazzes should be dumped.
+     */
+    dumpFUIR   ("-XdumpFUIR")
+    {
+      boolean runsCode() { return false; }
+      void process(FuzionOptions options, FUIR fuir)
+      {
+        fuir.dumpCode(fuir.mainClazzId());
+      }
+    },
+
     effects    ("-effects")
     {
       String usage()
@@ -148,8 +185,10 @@ class Fuzion extends Tool
         new Effects(fuir).find();
       }
     },
+
     checkIntrinsics("-XXcheckIntrinsics")
     {
+      boolean runsCode() { return false; }
       boolean needsSources()
       {
         return false;
@@ -163,8 +202,10 @@ class Fuzion extends Tool
         new CheckIntrinsics(fe);
       }
     },
-    saveLib("-saveLib=")
+
+    saveLib("-saveLib=<file>")
     {
+      boolean runsCode() { return false; }
       void parseBackendArg(Fuzion f, String a)
       {
         f._saveLib  = parsePath(a);
@@ -222,6 +263,7 @@ class Fuzion extends Tool
           }
       }
     },
+
     undefined;
 
     /**
@@ -273,6 +315,15 @@ class Fuzion extends Tool
     }
 
     /**
+     * Does this backend run or abstractly interpret the code. If so, it
+     * provides options stetting flags like -debug.
+     */
+    boolean runsCode()
+    {
+      return true;
+    }
+
+    /**
      * Usage string for the specific options handled by this backend. "" if
      * none.  Must end with " " otherwise.
      */
@@ -298,12 +349,20 @@ class Fuzion extends Tool
     }
 
     /**
+     * Does this backend process arguments that are passed to the Fuzion application?
+     */
+    boolean takesApplicationArgs()
+    {
+      return false;
+    }
+
+    /**
      * If this backend processes the front end data directly, this method will
      * do that and return true.
      */
     void processFrontEnd(Fuzion f, FrontEnd fe)
     {
-      var mir = fe.createMIR();                                                       f.timer("createeMIR");
+      var mir = fe.createMIR();                                                       f.timer("createMIR");
       var air = new MiddleEnd(fe._options, mir, fe.module() /* NYI: remove */).air(); f.timer("me");
       var fuir = new Optimizer(fe._options, air).fuir();                              f.timer("ir");
       process(fe._options, fuir);
@@ -324,16 +383,9 @@ class Fuzion extends Tool
 
 
   /**
-   * Value of property with name FUZION_HOME_PROPERTY.  Used only to initialize
-   * _fuzionHome.
-   */
-  private String _fuzionHomeProperty = System.getProperty(FUZION_HOME_PROPERTY);
-
-
-  /**
    * Home directory of the Fuzion installation.
    */
-  Path _fuzionHome = _fuzionHomeProperty != null ? Path.of(_fuzionHomeProperty) : null;
+  Path _fuzionHome = (new FuzionHome())._fuzionHome;
 
 
   /**
@@ -375,13 +427,19 @@ class Fuzion extends Tool
 
 
   /**
+   * List of module directories added using '-moduleDirs'.
+   */
+  List<String> _moduleDirs = new List<>();
+
+
+  /**
    * List of modules added using '-XdumpModules'.
    */
   List<String> _dumpModules = new List<>();
 
 
   /**
-   * List of source directories added using '-sourceDir'.
+   * List of source directories added using '-sourceDirs'.
    */
   List<String> _sourceDirs = null;
 
@@ -462,37 +520,42 @@ class Fuzion extends Tool
   protected String USAGE(boolean xtra)
   {
     var std = STANDARD_OPTIONS(xtra);
-    var stdBe = "[-modules={<m>,..} [-debug[=<n>]] [-safety=(on|off)] [-unsafeIntrinsics=(on|off)] [-sourceDirs={<path>,..}] " +
-      (xtra ? "[-XdumpModules={<name>,..}] " : "") +
-      "(<main> | <srcfile>.fz | -) ";
-    var aba = new StringBuilder();
-    var abe = new StringBuilder();
-    for (var ab : _allBackends_.entrySet())
+    var stdRun = "[-debug[=<n>]] [-safety=(on|off)] [-unsafeIntrinsics=(on|off)] ";
+    var stdBe = "[-modules={<m>,..}] [-moduleDirs={<path>,..}] [-sourceDirs={<path>,..}] " +
+      (xtra ? "[-XdumpModules={<name>,..}] " : "");
+    if (_backend == Backend.undefined)
       {
-        var b = ab.getValue();
-        var ba = b._arg;
-        var bu = b.usage();
-        if (bu == "")
+        var aba = new StringBuilder();
+        var abe = new StringBuilder();
+        for (var ab : _allBackends_.entrySet())
           {
+            var b = ab.getValue();
+            var ba = b._arg;
+            var bu = b.usage();
             if (!ba.startsWith("-X") || xtra)
               {
                 aba.append(aba.length() == 0 ? "" : "|").append(ba);
               }
           }
-        else
-          {
-            if (CHECKS) check
-              (bu.endsWith(" "));
-
-            abe.append("       " + _cmd + " " + ba + " " + bu + std + stdBe + " --or--\n");
-          }
+        return
+          "Usage: " + _cmd + " [-h|--help|-version]  --or--\n" +
+          "       " + _cmd + " [" + aba + "] [-h|--help|-version] [<backend specific options>]  --or--\n" +
+          "       " + _cmd + " -pretty " + std + " ({<file>} | -)  --or--\n" +
+          "       " + _cmd + " -latex " + std + "  --or--\n" +
+          "       " + _cmd + " -acemode " + std + "  --or--\n";
       }
-    return
-      "Usage: " + _cmd + " [-h|--help|-version] [" + aba + "] " + std + " --or--\n" +
-      abe +
-      "       " + _cmd + " -pretty " + std + " ({<file>} | -)\n" +
-      "       " + _cmd + " -latex " + std + "\n" +
-      "       " + _cmd + " -acemode " + std + "\n";
+    else
+      {
+        var b = _backend;
+        var ba = b._arg;
+        var bu = b.usage();
+        return "Usage: " + _cmd + " " + ba + " " + bu +
+                           (b.runsCode() ? stdRun : "") +
+                           stdBe + std +
+                           (b.takesApplicationArgs() ? "[--] " : "") +
+                           "(<main> | <srcfile>.fz | -) " +
+                           (b.takesApplicationArgs() ? "[<list of arbitrary arguments for envir.args effect>] " : "");
+      }
   }
 
 
@@ -647,9 +710,16 @@ class Fuzion extends Tool
    */
   private Runnable parseArgsForBackend(String[] args)
   {
+    ArrayList<String> applicationArgs = new ArrayList<>();
+    boolean getApplicationArgs = false;
+
     for (var a : args)
       {
-        if (!parseGenericArg(a))
+        if (getApplicationArgs)
+          {
+            applicationArgs.add(a);
+          }
+        else if (!parseGenericArg(a))
           {
             var arg = a;
             if (arg.indexOf("=") >= 0)
@@ -659,6 +729,12 @@ class Fuzion extends Tool
             if (a.equals("-"))
               {
                 _readStdin = true;
+                getApplicationArgs = _backend.takesApplicationArgs() || _backend == Backend.undefined;
+              }
+            else if ((_backend.takesApplicationArgs() || _backend == Backend.undefined) && a.equals("--"))
+              {
+                /* stop argument parsing */
+                getApplicationArgs = true;
               }
             else if (_allBackends_.containsKey(arg))
               {
@@ -673,10 +749,11 @@ class Fuzion extends Tool
             else if (a.startsWith("-XloadBaseLib="           )) { _loadBaseLib             = parseOnOffArg(a);          }
             else if (a.startsWith("-modules="                )) { _modules.addAll(parseStringListArg(a));               }
             else if (a.startsWith("-XdumpModules="           )) { _dumpModules             = parseStringListArg(a);     }
-            else if (a.matches("-debug(=\\d+|)"              )) { _debugLevel              = parsePositiveIntArg(a, 1); }
-            else if (a.startsWith("-safety="                 )) { _safety                  = parseOnOffArg(a);          }
-            else if (a.startsWith("-unsafeIntrinsics="       )) { _enableUnsafeIntrinsics  = parseOnOffArg(a);          }
             else if (a.startsWith("-sourceDirs="             )) { _sourceDirs = new List<>(); _sourceDirs.addAll(parseStringListArg(a)); }
+            else if (a.startsWith("-moduleDirs="             )) {                             _moduleDirs.addAll(parseStringListArg(a)); }
+            else if (_backend.runsCode() && a.matches("-debug(=\\d+|)"       )) { _debugLevel              = parsePositiveIntArg(a, 1); }
+            else if (_backend.runsCode() && a.startsWith("-safety="          )) { _safety                  = parseOnOffArg(a);          }
+            else if (_backend.runsCode() && a.startsWith("-unsafeIntrinsics=")) { _enableUnsafeIntrinsics  = parseOnOffArg(a);          }
             else if (_backend.handleOption(this, a))
               {
               }
@@ -691,6 +768,7 @@ class Fuzion extends Tool
             else
               {
                 _main = a;
+                getApplicationArgs = _backend.takesApplicationArgs() || _backend == Backend.undefined;
               }
           }
       }
@@ -698,9 +776,18 @@ class Fuzion extends Tool
       {
         _backend = Backend.interpreter;
       }
-    if (_main == null && !_readStdin && _backend.needsMain())
+    if (_backend.needsMain() && _main == null && !_readStdin)
       {
-        fatal("missing main feature name in command line args");
+        if (applicationArgs.size() >= 1)
+          {
+            String mainOrStdin = applicationArgs.remove(0);
+            _readStdin = mainOrStdin.equals("-");
+            _main = _readStdin ? null : mainOrStdin;
+          }
+        else
+          {
+            fatal("missing main feature name in command line args");
+          }
       }
     if (!_backend.needsMain() && _main != null)
       {
@@ -725,6 +812,7 @@ class Fuzion extends Tool
                                           _loadBaseLib,
                                           _eraseInternalNamesInLib,
                                           _modules,
+                                          _moduleDirs,
                                           _dumpModules,
                                           _debugLevel,
                                           _safety,
@@ -737,6 +825,7 @@ class Fuzion extends Tool
           {
             options.setTailRec();
           }
+        options.setBackendArgs(applicationArgs);
         timer("prep");
         var fe = new FrontEnd(options);
         timer("fe");

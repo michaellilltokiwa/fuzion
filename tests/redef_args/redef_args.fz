@@ -27,7 +27,7 @@ redef_args is
 
   exitCode := 0
 
-  chck(b bool, msg string) =>
+  chck(b bool, msg String) =>
     s := if (b)
       "PASSED: "
     else
@@ -73,4 +73,4 @@ redef_args is
     chck (a = 2) "redefined field as in #165"
 
 
-  fuzion.std.exit exitCode
+  exit exitCode

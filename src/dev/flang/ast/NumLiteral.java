@@ -206,7 +206,7 @@ public class NumLiteral extends Constant
    * The type of this constant.  This can be set by the user of this type
    * depending on what this is assigned to.
    */
-  private AbstractType type_;
+  private AbstractType _type;
 
 
   /*--------------------------  constructors  ---------------------------*/
@@ -350,31 +350,32 @@ public class NumLiteral extends Constant
   }
 
   /**
-   * type returns the type of this expression or Types.t_ERROR if the type is
-   * still unknown, i.e., before or during type resolution.
+   * typeIfKnown returns the type of this expression or null if the type is
+   * still unknown, i.e., before or during type resolution.  This is redefined
+   * by sub-classes of Expr to provide type information.
    *
-   * @return this Expr's type or t_ERROR in case it is not known yet.
+   * @return this Expr's type or null if not known.
    */
-  public AbstractType type()
+  AbstractType typeIfKnown()
   {
-    if (type_ == null)
+    if (_type == null)
       {
         var i = hasDot() ? null : intValue(ConstantType.ct_i32);
         if (i == null)
           {
-            type_ = Types.resolved.t_f64;
+            _type = Types.resolved.t_f64;
           }
         else if (ConstantType.ct_i32.canHold(i))
           {
-            type_ = Types.resolved.t_i32;
+            _type = Types.resolved.t_i32;
           }
         else
           {
-            type_ = Types.resolved.t_i64;
+            _type = Types.resolved.t_i64;
           }
         checkRange();
       }
-    return type_;
+    return _type;
   }
 
 
@@ -436,7 +437,7 @@ public class NumLiteral extends Constant
    */
   private byte[] floatBits()
   {
-    ConstantType ct = findConstantType(type_);
+    ConstantType ct = findConstantType(_type);
 
     if (CHECKS) check
       (ct._isFloat);
@@ -500,7 +501,7 @@ public class NumLiteral extends Constant
             var maxH = "0x1P" + (eBias + ct._mBits - 1);
             AstErrors.floatConstantTooLarge(pos(),
                                            _originalString,
-                                           type_,
+                                           _type,
                                            max, maxH);
             e2 = eSpecial; // +/- infinity
             m = B0;
@@ -520,7 +521,7 @@ public class NumLiteral extends Constant
                 var minH = "0x1P" + minE2;
                 AstErrors.floatConstantTooSmall(pos(),
                                                _originalString,
-                                               type_,
+                                               _type,
                                                min, minH);
               }
           }
@@ -572,7 +573,7 @@ public class NumLiteral extends Constant
         var result = v.add(roundingBit).shiftRight(-sh);
         if (_exponent5 == 0 && !result.shiftLeft(-sh).equals(v))
           {
-            AstErrors.lossOfPrecision(pos(), _originalString, _base, type_);
+            AstErrors.lossOfPrecision(pos(), _originalString, _base, _type);
           }
         return result;
       }
@@ -612,9 +613,9 @@ public class NumLiteral extends Constant
   void checkRange()
   {
     if (PRECONDITIONS) require
-      (findConstantType(type_) != null);
+      (findConstantType(_type) != null);
 
-    ConstantType ct = findConstantType(type_);
+    ConstantType ct = findConstantType(_type);
     if (ct._isFloat)
       {
         floatBits();
@@ -626,13 +627,13 @@ public class NumLiteral extends Constant
           {
             AstErrors.nonWholeNumberUsedAsIntegerConstant(pos(),
                                                          _originalString,
-                                                         type_);
+                                                         _type);
           }
         else if (!ct.canHold(i))
           {
             AstErrors.integerConstantOutOfLegalRange(pos(),
                                                     _originalString,
-                                                    type_,
+                                                    _type,
                                                     toString(ct._min),
                                                     toString(ct._max));
           }
@@ -712,9 +713,9 @@ public class NumLiteral extends Constant
    */
   public Expr propagateExpectedType(Resolution res, AbstractFeature outer, AbstractType t)
   {
-    if (type_ == null && findConstantType(t) != null)
+    if (_type == null && findConstantType(t) != null)
       {
-        type_ = t;
+        _type = t;
         checkRange();
       }
     return this;
@@ -746,7 +747,7 @@ public class NumLiteral extends Constant
    */
   public byte[] data()
   {
-    var ct = findConstantType(type_);
+    var ct = findConstantType(_type);
     if (ct._isFloat)
       {
         return floatBits();

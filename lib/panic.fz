@@ -28,7 +28,7 @@
 panic (
 
   # the provider this effect uses to panic
-  p panicProvider,
+  p Panic_Provider,
 
   redef r effectMode.val
   ) : effect r
@@ -36,7 +36,7 @@ is
 
   # panic with the given message
   #
-  panic(msg string) => p.panic msg
+  panic(msg String) => p.panic msg
 
 
 # panic with no argument returns panic.env, the currently installed
@@ -50,16 +50,16 @@ panic =>
 # panic with a msg argument calls panic.panic msg, i.e., it uses the
 # current panic efffect to panic with the given message.
 #
-panic(msg string) => panic.panic msg
+panic(msg String) => panic.panic msg
 
 
-# panicProvider -- abstract panic
+# Panic_Provider -- abstract panic
 #
-panicProvider ref is
+Panic_Provider ref is
 
   # panic with the given message
   #
-  panic(msg string) void is abstract
+  panic(msg String) void is abstract
 
 
 # type related to panic declaring features not requiring an instance of panic
@@ -72,10 +72,10 @@ panic_type is
 
   # default panic provider using io.err and exit with return code 1
   #
-  defaultPanicProvider : panicProvider is
+  defaultPanicProvider : Panic_Provider is
 
     # panic with the given message and exit with return code 1
     #
-    panic(msg string) =>
+    panic(msg String) =>
       io.err.println "*** panic: $msg"
       exit 1

@@ -46,7 +46,7 @@ public abstract class AbstractCurrent extends Expr
   /**
    * The type of this, set during resolveTypes.
    */
-  private AbstractType type_ = null;
+  private AbstractType _type = null;
 
 
   /*--------------------------  constructors  ---------------------------*/
@@ -62,7 +62,7 @@ public abstract class AbstractCurrent extends Expr
     if (PRECONDITIONS) require
       (t != null);
 
-    this.type_ = t;
+    this._type = t;
   }
 
 
@@ -70,14 +70,15 @@ public abstract class AbstractCurrent extends Expr
 
 
   /**
-   * type returns the type of this expression or Types.t_ERROR if the type is
-   * still unknown, i.e., before or during type resolution.
+   * typeIfKnown returns the type of this expression or null if the type is
+   * still unknown, i.e., before or during type resolution.  This is redefined
+   * by sub-classes of Expr to provide type information.
    *
-   * @return this Expr's type or t_ERROR in case it is not known yet.
+   * @return this Expr's type or null if not known.
    */
-  public AbstractType type()
+  AbstractType typeIfKnown()
   {
-    return type_;
+    return _type;
   }
 
 
@@ -93,7 +94,7 @@ public abstract class AbstractCurrent extends Expr
    */
   public AbstractCurrent visit(FeatureVisitor v, AbstractFeature outer)
   {
-    type_ = type_ instanceof Type tt ? tt.visit(v, outer) : type_;
+    _type = _type instanceof Type tt ? tt.visit(v, outer) : _type;
     return this;
   }
 
@@ -105,7 +106,7 @@ public abstract class AbstractCurrent extends Expr
    */
   public String toString()
   {
-    return type_.featureOfType().featureName().baseName() + ".this";
+    return _type.featureOfType().featureName().baseName() + ".this";
   }
 
 }

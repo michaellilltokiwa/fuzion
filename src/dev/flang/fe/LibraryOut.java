@@ -45,6 +45,7 @@ import dev.flang.ast.Box;
 import dev.flang.ast.Call;
 import dev.flang.ast.Check;
 import dev.flang.ast.Constant;
+import dev.flang.ast.Consts;
 import dev.flang.ast.Env;
 import dev.flang.ast.Expr;
 import dev.flang.ast.Feature;
@@ -124,18 +125,20 @@ class LibraryOut extends ANY
    *   +        +--------+---------------+-----------------------------------------------+
    *   |        | 1      | u128          | module version                                |
    *   +        +--------+---------------+-----------------------------------------------+
-   *   |        | 1      | int           | number modules this module depends on n       |
+   *   |        | 1      | int           | number of modules this module depends on n    |
    *   +        +--------+---------------+-----------------------------------------------+
    *   |        | n      | ModuleRef     | reference to another module                   |
    *   +        +--------+---------------+-----------------------------------------------+
-   *   |        | 1      | InnerFeatures | inner Features                                |
+   *   |        | 1      | int           | number of DeclFeatures entries m              |
+   *   +        +--------+---------------+-----------------------------------------------+
+   *   |        | m      | DeclFeatures  | features declared in this module              |
    *   +        +--------+---------------+-----------------------------------------------+
    *   |        | 1      | SourceFiles   | source code files                             |
    *   +--------+--------+---------------+-----------------------------------------------+
    */
 
     // first, write features just to collect referenced modules
-    innerFeatures(sm._universe);
+    allDeclFeatures(sm);
     var rm = _data.referencedModules();
     _data = null;
 
@@ -152,7 +155,7 @@ class LibraryOut extends ANY
           {
             moduleRef(m);
           }
-        innerFeatures(sm._universe);
+        allDeclFeatures(sm);
         sourceFiles();
         _data.fixUps(this);
         sm._options.verbosePrintln(2, "" +
@@ -217,6 +220,65 @@ class LibraryOut extends ANY
   {
     _data.writeName(m.name());
     _data.write(m.version());
+  }
+
+
+  /**
+   * Write all features declared in given source module into DeclFeatures
+   * sections of a library file.  This include the features declared in the
+   * 'universe' as well as all features declared within outer features that come
+   * from other module files.
+   *
+   * @param sm the source module we are compiling
+   */
+  void allDeclFeatures(SourceModule sm)
+  {
+    _data.writeInt(1 + sm._outerWithDeclarations.size());
+    declFeatures(sm._universe);
+    for (var o : sm._outerWithDeclarations)
+      {
+        declFeatures(o);
+      }
+  }
+
+
+  /**
+   * Collect the binary data for features declared within given outer feature.
+   *
+   * Data format for declFeatures:
+   *
+   *   +---------------------------------------------------------------------------------+
+   *   | DeclFeatures                                                                    |
+   *   +--------+--------+---------------+-----------------------------------------------+
+   *   | cond.  | repeat | type          | what                                          |
+   *   +--------+--------+---------------+-----------------------------------------------+
+   *   | true   | 1      | int           | outer feature index, 0 for outer()==universe  |
+   *   |        +--------+---------------+-----------------------------------------------+
+   *   |        | 1      | InnerFeatures | inner Features                                |
+   *   +--------+--------+---------------+-----------------------------------------------+
+   */
+  void declFeatures(AbstractFeature outer)
+  {
+    featureIndexOrZeroForUniverse(outer);
+    innerFeatures(outer);
+  }
+
+
+  /**
+   * Write index of given feature f or '0' if 'f' is the universe.
+   *
+   * @param f a feature whose index is to be written.
+   */
+  void featureIndexOrZeroForUniverse(AbstractFeature f)
+  {
+    if (f.isUniverse())
+      {
+        _data.writeInt(0);
+      }
+    else
+      {
+        _data.writeOffset(f);
+      }
   }
 
 
@@ -332,9 +394,10 @@ class LibraryOut extends ANY
    *   +--------+--------+---------------+-----------------------------------------------+
    *   | cond.  | repeat | type          | what                                          |
    *   +--------+--------+---------------+-----------------------------------------------+
-   *   | true   | 1      | byte          | 0YCYkkkk  k = kind                            |
+   *   | true   | 1      | byte          | 0FCYkkkk  k = kind                            |
    *   |        |        |               |           Y = has Type feature (i.e. 'f.type')|
    *   |        |        |               |           C = is intrinsic constructor        |
+   *   |        |        |               |           F = has 'fixed' modifier            |
    *   |        |        +---------------+-----------------------------------------------+
    *   |        |        | Name          | name                                          |
    *   |        |        +---------------+-----------------------------------------------+
@@ -395,6 +458,10 @@ class LibraryOut extends ANY
       {
         k = k | FuzionConstants.MIR_FILE_KIND_HAS_TYPE_FEATURE;
       }
+    if ((f.modifiers() & Consts.MODIFIER_FIXED) != 0)
+      {
+        k = k | FuzionConstants.MIR_FILE_KIND_IS_FIXED;
+      }
     var n = f.featureName();
     _data.write(k);
     var bn = n.baseName();
@@ -406,14 +473,7 @@ class LibraryOut extends ANY
     _data.writeInt (n.argCount());  // NYI: use better integer encoding
     _data.writeInt (n._id);         // NYI: id /= 0 only if argCount = 0, so join these two values.
     pos(f.pos());
-    if (!f.outer().isUniverse())
-      {
-        _data.writeOffset(f.outer());
-      }
-    else
-      {
-        _data.writeInt(0);
-      }
+    featureIndexOrZeroForUniverse(f.outer());
     if ((k & FuzionConstants.MIR_FILE_KIND_HAS_TYPE_FEATURE) != 0)
       {
         _data.writeOffset(f.typeFeature());
@@ -477,7 +537,7 @@ class LibraryOut extends ANY
    *   +--------+--------+---------------+-----------------------------------------------+
    *   | tk>=0  | 1      | int           | index of feature of type                      |
    *   |        +--------+---------------+-----------------------------------------------+
-   *   |        | 1      | bool          | isRef                                         |
+   *   |        | 1      | byte          | 0: isValue, 1: isRef, 2: isThisType           |
    *   |        +--------+---------------+-----------------------------------------------+
    *   |        | tk     | Type          | actual generics                               |
    *   |        +--------+---------------+-----------------------------------------------+
@@ -512,13 +572,11 @@ class LibraryOut extends ANY
           }
         else
           {
-            boolean makeRef = t.isRef() && !t.featureOfType().isThisRef();
-            // there is no explicit value type at this phase:
-            if (CHECKS) check
-              (makeRef || t.isRef() == t.featureOfType().isThisRef());
             _data.writeInt(t.generics().size());
             _data.writeOffset(t.featureOfType());
-            _data.writeBool(makeRef);
+            _data.write(t.isThisType() ? FuzionConstants.MIR_FILE_TYPE_IS_THIS :
+                        t.isRef()      ? FuzionConstants.MIR_FILE_TYPE_IS_REF
+                                       : FuzionConstants.MIR_FILE_TYPE_IS_VALUE);
             for (var gt : t.generics())
               {
                 type(gt);
@@ -633,7 +691,7 @@ class LibraryOut extends ANY
       }
     else if (s instanceof Unbox u)
       {
-        lastPos = expressions(u.adr_, lastPos);
+        lastPos = expressions(u._adr, lastPos);
         lastPos = exprKindAndPos(IR.ExprKind.Unbox, lastPos, s.pos());
   /*
    *   +---------------------------------------------------------------------------------+
@@ -657,10 +715,10 @@ class LibraryOut extends ANY
     else if (s instanceof AbstractBlock b)
       {
         int i = 0;
-        for (var st : b.statements_)
+        for (var st : b._statements)
           {
             i++;
-            if (i < b.statements_.size())
+            if (i < b._statements.size())
               {
                 lastPos = expressions(st, true, lastPos);
               }
@@ -725,7 +783,7 @@ class LibraryOut extends ANY
       }
     else if (s instanceof Call c)
       {
-        lastPos = expressions(c.target, lastPos);
+        lastPos = expressions(c.target(), lastPos);
         for (var a : c._actuals)
           {
             lastPos = expressions(a, lastPos);

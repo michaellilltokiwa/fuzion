@@ -53,6 +53,8 @@ f64(val f64) : float f64, f64s is
   redef infix >  (other f64) bool is intrinsic
   redef infix >= (other f64) bool is intrinsic
 
+  fixed type.equality(a, b f64) bool is intrinsic
+
 
   # conversion
 
@@ -449,7 +451,7 @@ f64(val f64) : float f64, f64s is
 
   # convert this to a string.
   #
-  redef asString string is
+  redef asString String is
     // Double.toString semantics requires using scientific notation if and only if outside this range.
     scientific_notation := !((val >= (10.0 ** -3.0)) && (val < (10.0 ** 7.0)))
     ryu.as_string scientific_notation

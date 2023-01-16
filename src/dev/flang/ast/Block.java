@@ -28,7 +28,6 @@ package dev.flang.ast;
 
 import java.util.ListIterator;
 
-import dev.flang.util.Errors;
 import dev.flang.util.List;
 import dev.flang.util.SourcePosition;
 
@@ -51,7 +50,7 @@ public class Block extends AbstractBlock
   private final SourcePosition _pos;
 
 
-  SourcePosition closingBracePos_;
+  SourcePosition _closingBracePos;
 
   boolean _newScope;
 
@@ -89,7 +88,7 @@ public class Block extends AbstractBlock
   {
     super(s);
     this._pos = pos;
-    this.closingBracePos_ = closingBracePos;
+    this._closingBracePos = closingBracePos;
     this._newScope = newScope;
   }
 
@@ -220,7 +219,7 @@ public class Block extends AbstractBlock
   public Block visit(FeatureVisitor v, AbstractFeature outer)
   {
     v.actionBefore(this, outer);
-    ListIterator<Stmnt> i = statements_.listIterator();
+    ListIterator<Stmnt> i = _statements.listIterator();
     while (i.hasNext())
       {
         Stmnt s = i.next();
@@ -232,20 +231,18 @@ public class Block extends AbstractBlock
 
 
   /**
-   * type returns the type of this expression or Types.t_ERROR if the type is
-   * still unknown, i.e., before or during type resolution.
+   * typeIfKnown returns the type of this expression or null if the type is
+   * still unknown, i.e., before or during type resolution.  This is redefined
+   * by sub-classes of Expr to provide type information.
    *
-   * @return this Expr's type or t_ERROR in case it is not known yet.
+   * @return this Expr's type or null if not known.
    */
-  public AbstractType type()
+  AbstractType typeIfKnown()
   {
-    AbstractType result = Types.resolved.t_unit;
     Expr resExpr = resultExpression();
-    if (resExpr != null)
-      {
-        result = resExpr.typeForFeatureResultTypeInferencing();
-      }
-    return result;
+    return resExpr == null
+      ? Types.resolved.t_unit
+      : resExpr.typeIfKnown();
   }
 
 
@@ -281,7 +278,7 @@ public class Block extends AbstractBlock
    */
   SourcePosition posOfLast()
   {
-    SourcePosition result = closingBracePos_;
+    SourcePosition result = _closingBracePos;
     Expr resExpr = resultExpression();
     if (resExpr != null)
       {
@@ -302,7 +299,7 @@ public class Block extends AbstractBlock
   {
     var i = resultExpressionIndex();
     return i >= 0
-      ? (Expr) statements_.remove(i)
+      ? (Expr) _statements.remove(i)
       : null;
   }
 
@@ -320,7 +317,7 @@ public class Block extends AbstractBlock
     var r = removeResultExpression();
     if (r != null)
       {
-        statements_.add(r.box(frmlT));
+        _statements.add(r.box(frmlT));
       }
     return this;
   }
@@ -360,11 +357,11 @@ public class Block extends AbstractBlock
     Expr resExpr = removeResultExpression();
     if (resExpr != null)
       {
-        statements_.add(resExpr.assignToField(res, outer, r));
+        _statements.add(resExpr.assignToField(res, outer, r));
       }
     else if (r.resultType().compareTo(Types.resolved.t_unit) != 0)
       {
-        AstErrors.blockMustEndWithExpression(closingBracePos_, r.resultType());
+        AstErrors.blockMustEndWithExpression(_closingBracePos, r.resultType());
       }
     return this;
   }
@@ -392,12 +389,12 @@ public class Block extends AbstractBlock
     if (type.compareTo(Types.resolved.t_unit) == 0 && hasImplicitResult())
       { // return unit if this is expected even if we would implicitly return
         // something else:
-        statements_.add(new Block(pos(), new List<>()));
+        _statements.add(new Block(pos(), new List<>()));
       }
     Expr resExpr = removeResultExpression();
     if (resExpr != null)
       {
-        statements_.add(resExpr.propagateExpectedType(res, outer, type));
+        _statements.add(resExpr.propagateExpectedType(res, outer, type));
       }
     return this;
   }
@@ -405,8 +402,7 @@ public class Block extends AbstractBlock
 
   /**
    * Some Expressions do not produce a result, e.g., a Block that is empty or
-   * whose last statement is not an expression that produces a result or an if
-   * with one branch not producing a result.
+   * whose last statement is not an expression that produces a result.
    */
   boolean producesResult()
   {

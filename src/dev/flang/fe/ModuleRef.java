@@ -75,12 +75,12 @@ public class ModuleRef extends ANY
   /**
    * Create Module for given offset, name and version
    */
-  ModuleRef(FrontEnd fe, int offset, String name, byte[] version)
+  ModuleRef(int offset, String name, byte[] version, LibraryModule m)
   {
     _offset = offset;
     _name = name;
     _version = version;
-    _module = fe._modules.get(name);
+    _module = m;
   }
 
 
@@ -88,11 +88,13 @@ public class ModuleRef extends ANY
 
 
   /**
-   * Size of the data wiritten to this madule's .tum riles.
+   * Size of the data written to this module's .fum files.
    */
   int size()
   {
-    return 1000000; // NYI
+    return _module != null
+      ? _module._data.limit()
+      : 0;
   }
 
 
