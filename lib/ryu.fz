@@ -31,107 +31,6 @@
 #
 ryū is
 
-  # NYI document
-  private pow5bits(e i64)
-  pre e >= 0
-    =>
-    ((e * 1217359) >> 19) + 1
-
-
-  # get the decimal length of this i64
-  private decimal_length(v i64) i64 is
-    if      v >= 1000000000000000000 then 19
-    else if v >= 100000000000000000  then 18
-    else if v >= 10000000000000000   then 17
-    else if v >= 1000000000000000    then 16
-    else if v >= 100000000000000     then 15
-    else if v >= 10000000000000      then 14
-    else if v >= 1000000000000       then 13
-    else if v >= 100000000000        then 12
-    else if v >= 10000000000         then 11
-    else if v >= 1000000000          then 10
-    else if v >= 100000000           then  9
-    else if v >= 10000000            then  8
-    else if v >= 1000000             then  7
-    else if v >= 100000              then  6
-    else if v >= 10000               then  5
-    else if v >= 1000                then  4
-    else if v >= 100                 then  3
-    else if v >= 10                  then  2
-    else                                   1
-
-
-  # NYI document
-  # max 3*31 = 124
-  private pow5_bitcount => i64 121
-  # max 3*31 = 124
-  private pow5_inv_bitcount => i64 122
-  private pow5_quarter_bitcount => i64 31
-  private mask => ((i64 1 << pow5_quarter_bitcount) - 1).as_uint
-
-  # 5⁰, 5¹, 5², .. , 5^325
-  private powers_of_5_cache_key(data array uint) is
-  private powers_of_5 => (cache powers_of_5_cache_key ()->(powers_of_5_cache_key (array 326 i->(uint 5 ** uint i.as_u64)))).data
-
-
-  private pow5_split_cache_key(data array2 i64) is
-  private pow5_split => (cache pow5_split_cache_key (() ->
-    pow5_split_cache_key (array2 326 4 (i,j ->
-      shift := powers_of_5[i].highest_bit.as_i64 - pow5_bitcount + (i64 3 - j.as_i64) * pow5_quarter_bitcount
-      shifted := if shift >= 0 then powers_of_5[i] >> shift.as_uint else powers_of_5[i] << (-shift).as_uint
-      (shifted & mask).as_i64
-    )))).data
-
-
-  private pow5_inv_split_cache_key(data array2 i64) is
-  private pow5_inv_split => (cache pow5_inv_split_cache_key (() ->
-    pow5_inv_split_cache_key (array2 291 4 (i,k ->
-      j := powers_of_5[i].highest_bit.as_i64 - 1 + pow5_inv_bitcount
-      inve := (uint 1 << j.as_uint) / powers_of_5[i] + uint 1
-
-      tmp := inve >> ((3-k).as_i64 * pow5_quarter_bitcount).as_uint
-      (if k = 0 then tmp else tmp & mask).as_i64
-    )))).data
-
-
-  # NYI document
-  private actual_shift(j i64) =>
-    j - 114
-
-
-  # NYI document
-  private mul_pow5_div_pow2(m, i, j i64, table array2 i64) =>
-    m_high := m >> 31
-    m_low := m & 0x7fffffff
-    bits13 := m_high * table[i.as_i32, 0]
-    bits03 := m_low  * table[i.as_i32, 0]
-    bits12 := m_high * table[i.as_i32, 1]
-    bits02 := m_low  * table[i.as_i32, 1]
-    bits11 := m_high * table[i.as_i32, 2]
-    bits01 := m_low  * table[i.as_i32, 2]
-    bits10 := m_high * table[i.as_i32, 3]
-    bits00 := m_low  * table[i.as_i32, 3]
-
-    ((((((
-        ((bits00 >> 31) + bits01 + bits10) >> 31)
-                        + bits02 + bits11) >> 31)
-                        + bits03 + bits12) >> 21)
-                        + (bits13 << 10)) >> (actual_shift j)
-
-
-  # NYI document
-  private mul_pow5_div_pow2(m, i, j i64)
-  pre (actual_shift j) >= 0
-    =>
-    mul_pow5_div_pow2 m i j pow5_split
-
-
-  # NYI document
-  private mul_pow5_inv_div_pow2(m, i, j i64) i64
-  pre (actual_shift j) >= 0
-  is
-    mul_pow5_div_pow2 m i j pow5_inv_split
-
 
   # convert f64 to string
   as_string(val f64, scientific_notation bool, rounding_mode rounding_mode) String is
@@ -145,37 +44,39 @@ ryū is
       as_string_none_trivial val scientific_notation rounding_mode
 
 
+
   # convert f64 to string for none trivial case
   private as_string_none_trivial(val f64, scientific_notation bool, rounding_mode rounding_mode) String is
     (exponent, mantissa, biased_exponent, mantissa_bits) := step_1 val
 
     (mv, mp, mm, mm_shift, even) := step_2 mantissa mantissa_bits biased_exponent
 
-    (dv, dp, dm, dm_is_trailing_zeros, dv_is_trailing_zeros, e10) := step_3 exponent-2 mv mp mm mm_shift even
+    (dv, dp, dm, dm_is_trailing_zeros, dv_is_trailing_zeros, e10) := step_3 exponent-2 mv mp mm mm_shift even rounding_mode
 
-    (output, output_length, exp) := step_4 dv dp dm dm_is_trailing_zeros dv_is_trailing_zeros e10 even scientific_notation
+    (output, output_length, exponent) := step_4 dv dp dm dm_is_trailing_zeros dv_is_trailing_zeros e10 even scientific_notation rounding_mode
 
-    step_5 output output_length exp (val < 0.0) scientific_notation
+    step_5 output output_length exponent (val < 0.0) scientific_notation
 
 
 
+  # step 1: extract exponent, mantissa, etc.
   private step_1(val f64) tuple i64 i64 i64 i64 is
     bits := val.castTo_u64
 
     # NYI move to / merge with f64
     biased_exponent := ((bits >> (f64s.significandBits.as_u64 - 1)) & f64.type.exponent_mask).as_i64
-    ieee_mantissa := (bits & f64.type.mantissa_mask).as_i64
+    mantissa := (bits & f64.type.mantissa_mask).as_i64
     mantissa_bits := f64s.significandBits.as_i64 - 1
 
     # denormal number
     if (biased_exponent = 0)
       (i64 1 - f64.type.exponent_bias.as_i64 - mantissa_bits,
-       ieee_mantissa,
+       mantissa,
        biased_exponent,
        mantissa_bits)
     else
       (biased_exponent - f64.type.exponent_bias.as_i64 - mantissa_bits,
-       ieee_mantissa | (i64 1 << mantissa_bits),
+       mantissa | (i64 1 << mantissa_bits),
        biased_exponent,
        mantissa_bits)
 
@@ -190,7 +91,85 @@ ryū is
 
 
   # step 3: convert to decimal power base
-  private step_3(exponent, mv, mp, mm, mm_shift i64, even bool) tuple i64 i64 i64 bool bool i64 is
+  private step_3(exponent, mv, mp, mm, mm_shift i64, even bool, rounding_mode rounding_mode ) tuple i64 i64 i64 bool bool i64 is
+
+    # NYI document
+    private pow5bits(e i64)
+    pre e >= 0
+      =>
+      ((e * 1217359) >> 19) + 1
+
+
+    # NYI document
+    # max 3*31 = 124
+    private pow5_bitcount => i64 121
+    # max 3*31 = 124
+    private pow5_inv_bitcount => i64 122
+    private pow5_quarter_bitcount => i64 31
+    private mask => ((i64 1 << pow5_quarter_bitcount) - 1).as_uint
+
+    # 5⁰, 5¹, 5², .. , 5^325
+    private powers_of_5_cache_key(data array uint) is
+    private powers_of_5 => (cache powers_of_5_cache_key ()->(powers_of_5_cache_key (array 326 i->(uint 5 ** uint i.as_u64)))).data
+
+
+    private pow5_split_cache_key(data array2 i64) is
+    private pow5_split => (cache pow5_split_cache_key (() ->
+      pow5_split_cache_key (array2 326 4 (i,j ->
+        shift := powers_of_5[i].highest_bit.as_i64 - pow5_bitcount + (i64 3 - j.as_i64) * pow5_quarter_bitcount
+        shifted := if shift >= 0 then powers_of_5[i] >> shift.as_uint else powers_of_5[i] << (-shift).as_uint
+        (shifted & mask).as_i64
+      )))).data
+
+
+    private pow5_inv_split_cache_key(data array2 i64) is
+    private pow5_inv_split => (cache pow5_inv_split_cache_key (() ->
+      pow5_inv_split_cache_key (array2 291 4 (i,k ->
+        j := powers_of_5[i].highest_bit.as_i64 - 1 + pow5_inv_bitcount
+        inve := (uint 1 << j.as_uint) / powers_of_5[i] + uint 1
+
+        tmp := inve >> ((3-k).as_i64 * pow5_quarter_bitcount).as_uint
+        (if k = 0 then tmp else tmp & mask).as_i64
+      )))).data
+
+
+    # NYI document
+    private actual_shift(j i64) =>
+      j - 114
+
+
+    # NYI document
+    private mul_pow5_div_pow2(m, i, j i64, table array2 i64) =>
+      m_high := m >> 31
+      m_low := m & 0x7fffffff
+      bits13 := m_high * table[i.as_i32, 0]
+      bits03 := m_low  * table[i.as_i32, 0]
+      bits12 := m_high * table[i.as_i32, 1]
+      bits02 := m_low  * table[i.as_i32, 1]
+      bits11 := m_high * table[i.as_i32, 2]
+      bits01 := m_low  * table[i.as_i32, 2]
+      bits10 := m_high * table[i.as_i32, 3]
+      bits00 := m_low  * table[i.as_i32, 3]
+
+      ((((((
+          ((bits00 >> 31) + bits01 + bits10) >> 31)
+                          + bits02 + bits11) >> 31)
+                          + bits03 + bits12) >> 21)
+                          + (bits13 << 10)) >> (actual_shift j)
+
+
+    # NYI document
+    private mul_pow5_div_pow2(m, i, j i64)
+    pre (actual_shift j) >= 0
+      =>
+      mul_pow5_div_pow2 m i j pow5_split
+
+
+    # NYI document
+    private mul_pow5_inv_div_pow2(m, i, j i64) i64
+    pre (actual_shift j) >= 0
+    is
+      mul_pow5_div_pow2 m i j pow5_inv_split
 
 
     # NYI document
@@ -246,13 +225,37 @@ ryū is
 
 
   # step 4: shortest decimal representation
-  private step_4(dv, dp, dm i64, dm_is_trailing_zeros, dv_is_trailing_zeros bool, e10 i64, even, scientific_notation bool) tuple i64 i64 i64 is
+  private step_4(dv, dp, dm i64, dm_is_trailing_zeros, dv_is_trailing_zeros bool, e10 i64, even, scientific_notation bool, rounding_mode rounding_mode ) tuple i64 i64 i64 is
+
+
+    # get the decimal length of this i64
+    private decimal_length(v i64) i64 is
+      if      v >= 1000000000000000000 then 19
+      else if v >= 100000000000000000  then 18
+      else if v >= 10000000000000000   then 17
+      else if v >= 1000000000000000    then 16
+      else if v >= 100000000000000     then 15
+      else if v >= 10000000000000      then 14
+      else if v >= 1000000000000       then 13
+      else if v >= 100000000000        then 12
+      else if v >= 10000000000         then 11
+      else if v >= 1000000000          then 10
+      else if v >= 100000000           then  9
+      else if v >= 10000000            then  8
+      else if v >= 1000000             then  7
+      else if v >= 100000              then  6
+      else if v >= 10000               then  5
+      else if v >= 1000                then  4
+      else if v >= 100                 then  3
+      else if v >= 10                  then  2
+      else                                   1
+
 
     # NYI document
     require_more_digits(d i64) => !(d<100 && scientific_notation)
 
     vplength := decimal_length dp
-    exp := e10 + vplength - 1;
+    exponent := e10 + vplength - 1;
 
     if (dm_is_trailing_zeros || dv_is_trailing_zeros)
       for dp := dp, dp / 10
@@ -278,9 +281,11 @@ ryū is
           round_up => dv == dm && !(dm_is_trailing_zeros && rounding_mode.accept_lower_bound even)
           must_add_one => !(dv_is_trailing_zeros && (last_removed_digit == 5) && (dv % 2 == 0)) || last_removed_digit >= 5
 
+          # output
           (dv + (if round_up || must_add_one then 1 else 0),
+          # output length
            vplength - removed,
-           exp)
+           exponent)
 
     else
       for dp := dp, dp / 10
@@ -290,9 +295,11 @@ ryū is
           removed := i64 0, removed+1
       while ((dp / 10 > dm / 10) && require_more_digits dp)
       else
+        # output
         (dv + (if dv == dm || (last_removed_digit >= 5) then 1 else 0),
+        # output length
          vplength - removed,
-         exp)
+         exponent)
 
 
 
