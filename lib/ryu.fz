@@ -1,0 +1,365 @@
+# This file is part of the Fuzion language implementation.
+#
+# The Fuzion language implementation is free software: you can redistribute it
+# and/or modify it under the terms of the GNU General Public License as published
+# by the Free Software Foundation, version 3 of the License.
+#
+# The Fuzion language implementation is distributed in the hope that it will be
+# useful, but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public
+# License for more details.
+#
+# You should have received a copy of the GNU General Public License along with The
+# Fuzion language implementation.  If not, see <https://www.gnu.org/licenses/>.
+
+
+# -----------------------------------------------------------------------
+#
+#  Tokiwa Software GmbH, Germany
+#
+#  Source code of Fuzion standard library feature Ryū
+#
+#  Author: Michael Lill (michael.lill@tokiwa.software)
+#
+# -----------------------------------------------------------------------
+
+
+#
+# An implementation of Ryū, a fast float to string conversion algorithm invented by Ulf Adams.
+# For more information see the original repository: https://github.com/ulfjack/ryu
+# or the paper: https://dl.acm.org/citation.cfm?doid=3296979.3192369
+#
+ryū is
+
+  # NYI document
+  private pow5bits(e i64)
+  pre e >= 0
+    =>
+    ((e * 1217359) >> 19) + 1
+
+
+  # get the decimal length of this i64
+  private decimal_length(v i64) i64 is
+    if      v >= 1000000000000000000 then 19
+    else if v >= 100000000000000000  then 18
+    else if v >= 10000000000000000   then 17
+    else if v >= 1000000000000000    then 16
+    else if v >= 100000000000000     then 15
+    else if v >= 10000000000000      then 14
+    else if v >= 1000000000000       then 13
+    else if v >= 100000000000        then 12
+    else if v >= 10000000000         then 11
+    else if v >= 1000000000          then 10
+    else if v >= 100000000           then  9
+    else if v >= 10000000            then  8
+    else if v >= 1000000             then  7
+    else if v >= 100000              then  6
+    else if v >= 10000               then  5
+    else if v >= 1000                then  4
+    else if v >= 100                 then  3
+    else if v >= 10                  then  2
+    else                                   1
+
+
+  # NYI document
+  # max 3*31 = 124
+  private pow5_bitcount => i64 121
+  # max 3*31 = 124
+  private pow5_inv_bitcount => i64 122
+  private pow5_quarter_bitcount => i64 31
+  private mask => ((i64 1 << pow5_quarter_bitcount) - 1).as_uint
+
+  # 5⁰, 5¹, 5², .. , 5^325
+  private powers_of_5_cache_key(data array uint) is
+  private powers_of_5 => (cache powers_of_5_cache_key ()->(powers_of_5_cache_key (array 326 i->(uint 5 ** uint i.as_u64)))).data
+
+
+  private pow5_split_cache_key(data array2 i64) is
+  private pow5_split => (cache pow5_split_cache_key (() ->
+    pow5_split_cache_key (array2 326 4 (i,j ->
+      shift := powers_of_5[i].highest_bit.as_i64 - pow5_bitcount + (i64 3 - j.as_i64) * pow5_quarter_bitcount
+      shifted := if shift >= 0 then powers_of_5[i] >> shift.as_uint else powers_of_5[i] << (-shift).as_uint
+      (shifted & mask).as_i64
+    )))).data
+
+
+  private pow5_inv_split_cache_key(data array2 i64) is
+  private pow5_inv_split => (cache pow5_inv_split_cache_key (() ->
+    pow5_inv_split_cache_key (array2 291 4 (i,k ->
+      j := powers_of_5[i].highest_bit.as_i64 - 1 + pow5_inv_bitcount
+      inve := (uint 1 << j.as_uint) / powers_of_5[i] + uint 1
+
+      tmp := inve >> ((3-k).as_i64 * pow5_quarter_bitcount).as_uint
+      (if k = 0 then tmp else tmp & mask).as_i64
+    )))).data
+
+
+  # NYI document
+  private actual_shift(j i64) =>
+    j - 114
+
+
+  # NYI document
+  private mul_pow5_div_pow2(m, i, j i64, table array2 i64) =>
+    m_high := m >> 31
+    m_low := m & 0x7fffffff
+    bits13 := m_high * table[i.as_i32, 0]
+    bits03 := m_low  * table[i.as_i32, 0]
+    bits12 := m_high * table[i.as_i32, 1]
+    bits02 := m_low  * table[i.as_i32, 1]
+    bits11 := m_high * table[i.as_i32, 2]
+    bits01 := m_low  * table[i.as_i32, 2]
+    bits10 := m_high * table[i.as_i32, 3]
+    bits00 := m_low  * table[i.as_i32, 3]
+
+    ((((((
+        ((bits00 >> 31) + bits01 + bits10) >> 31)
+                        + bits02 + bits11) >> 31)
+                        + bits03 + bits12) >> 21)
+                        + (bits13 << 10)) >> (actual_shift j)
+
+
+  # NYI document
+  private mul_pow5_div_pow2(m, i, j i64)
+  pre (actual_shift j) >= 0
+    =>
+    mul_pow5_div_pow2 m i j pow5_split
+
+
+  # NYI document
+  private mul_pow5_inv_div_pow2(m, i, j i64) i64
+  pre (actual_shift j) >= 0
+  is
+    mul_pow5_div_pow2 m i j pow5_inv_split
+
+
+  # convert f64 to string
+  as_string(val f64, scientific_notation bool, rounding_mode rounding_mode) String is
+    # trivial cases first
+    if (f64s.isNaN val) then "NaN"
+    else if (val = f64s.positiveInfinity) then "Infinity"
+    else if (val = f64s.negativeInfinity) then "-Infinity"
+    else if (val = 0.0)
+      if val.is_sign_bit_set then "-0.0" else "0.0"
+    else
+      as_string_none_trivial val scientific_notation rounding_mode
+
+
+  # convert f64 to string for none trivial case
+  private as_string_none_trivial(val f64, scientific_notation bool, rounding_mode rounding_mode) String is
+    (exponent, mantissa, biased_exponent, mantissa_bits) := step_1 val
+
+    (mv, mp, mm, mm_shift, even) := step_2 mantissa mantissa_bits biased_exponent
+
+    (dv, dp, dm, dm_is_trailing_zeros, dv_is_trailing_zeros, e10) := step_3 exponent-2 mv mp mm mm_shift even
+
+    (output, output_length, exp) := step_4 dv dp dm dm_is_trailing_zeros dv_is_trailing_zeros e10 even scientific_notation
+
+    step_5 output output_length exp (val < 0.0) scientific_notation
+
+
+
+  private step_1(val f64) tuple i64 i64 i64 i64 is
+    bits := val.castTo_u64
+
+    # NYI move to / merge with f64
+    biased_exponent := ((bits >> (f64s.significandBits.as_u64 - 1)) & f64.type.exponent_mask).as_i64
+    ieee_mantissa := (bits & f64.type.mantissa_mask).as_i64
+    mantissa_bits := f64s.significandBits.as_i64 - 1
+
+    # denormal number
+    if (biased_exponent = 0)
+      (i64 1 - f64.type.exponent_bias.as_i64 - mantissa_bits,
+       ieee_mantissa,
+       biased_exponent,
+       mantissa_bits)
+    else
+      (biased_exponent - f64.type.exponent_bias.as_i64 - mantissa_bits,
+       ieee_mantissa | (i64 1 << mantissa_bits),
+       biased_exponent,
+       mantissa_bits)
+
+
+
+  # step 2: get the interval of legal decimal representations
+  private step_2(mantissa, mantissa_bits, biased_exponent i64) tuple i64 i64 i64 i64 bool is
+    mv := i64 4 * mantissa
+    mm_shift := if (mantissa != (i64 1 << mantissa_bits)) || (biased_exponent <= 1) then i64 1 else i64 0
+    (mv, mv + 2, mv - 1 - mm_shift, mm_shift, (mantissa & 1) = 0)
+
+
+
+  # step 3: convert to decimal power base
+  private step_3(e3, mv, mp, mm, mm_shift i64, even bool) tuple i64 i64 i64 bool bool i64 is
+
+
+    # find the largest power of 5 that divides value.
+    multiple_of_power_of_5(val i64, q i64) =>
+      pow5_factor :=
+        (if     (val % 5)                != 0 then i64 0
+        else if (val % 25)               != 0 then i64 1
+        else if (val % 125)              != 0 then i64 2
+        else if (val % 625)              != 0 then i64 3
+        else if (val % 3125)             != 0 then i64 4
+        else if (val % 15625)            != 0 then i64 5
+        else if (val % 78125)            != 0 then i64 6
+        else if (val % 390625)           != 0 then i64 7
+        else if (val % 1953125)          != 0 then i64 8
+        else if (val % 9765625)          != 0 then i64 9
+        else if (val % 48828125)         != 0 then i64 10
+        else if (val % 244140625)        != 0 then i64 11
+        else if (val % 1220703125)       != 0 then i64 12
+        else if (val % 6103515625)       != 0 then i64 13
+        else if (val % 30517578125)      != 0 then i64 14
+        else if (val % 152587890625)     != 0 then i64 15
+        else if (val % 762939453125)     != 0 then i64 16
+        else if (val % 3814697265625)    != 0 then i64 17
+        else if (val % 19073486328125)   != 0 then i64 18
+        else if (val % 95367431640625)   != 0 then i64 19
+        else if (val % 476837158203125)  != 0 then i64 20
+        else if (val % 2384185791015625) != 0 then i64 21
+        else
+          panic "too large"
+          )
+      (pow5_factor) >= q
+
+    if (e3 >= 0)
+
+      q := (i64 0).max (((e3 * 78913) >> 18) - 1)
+      # k = constant + floor(log_2(5^q))
+      k := pow5_inv_bitcount + pow5bits q - 1
+      i := -e3 + q + k
+
+      dv := mul_pow5_inv_div_pow2 mv q i
+      dp := mul_pow5_inv_div_pow2 mp q i
+      dm := mul_pow5_inv_div_pow2 mm q i
+      e10 := q
+
+      if q <= 21
+        if mv % 5 == 0
+          (dv, dp, dm, false, (multiple_of_power_of_5 mv q), e10)
+        else if rounding_mode.accept_upper_bound even
+          (dv, dp, dm, (multiple_of_power_of_5 mm q), false,  e10)
+        else if multiple_of_power_of_5 mp q
+          (dv, dp-1, dm, false, false, e10)
+        else
+          (dv, dp, dm, false, false, e10)
+      else
+        (dv, dp, dm, false, false, e10)
+    else
+      q := (i64 0).max (((-e3 * 732923) >> 20) - 1)
+      i := -e3 - q
+      k := pow5bits i - pow5_bitcount
+      j := q - k
+
+      dv := mul_pow5_div_pow2 mv i j
+      dp := mul_pow5_div_pow2 mp i j
+      dm := mul_pow5_div_pow2 mm i j
+      e10 := q + e3
+
+      if q <= 1
+        if rounding_mode.accept_upper_bound even
+          (dv, dp, dm, mm_shift = 1, true, e10)
+        else
+          (dv, dp -  1, dm, false, true, e10)
+      else if q < 63
+        (dv, dp, dm, false, (mv & (((i64 1) << (q - 1)) - 1)) == 0, e10)
+      else
+        (dv, dp, dm, false, false, e10)
+
+
+
+  # step 4: shortest decimal representation
+  private step_4(dv, dp, dm i64, dm_is_trailing_zeros, dv_is_trailing_zeros bool, e10 i64, even, scientific_notation bool) tuple i64 i64 i64 is
+
+    # NYI document
+    require_more_digits(d i64) => !(d<100 && scientific_notation)
+
+    vplength := decimal_length dp
+    exp := e10 + vplength - 1;
+
+    if (dm_is_trailing_zeros || dv_is_trailing_zeros)
+      for dp := dp, dp / 10
+          dv := dv, dv / 10
+          dm := dm, dm / 10
+          last_removed_digit := dv % 10, dv % 10
+          dm_is_trailing_zeros := dm_is_trailing_zeros, dm_is_trailing_zeros & (dm % 10 == 0)
+          dv_is_trailing_zeros := dv_is_trailing_zeros, dv_is_trailing_zeros & (last_removed_digit == 0)
+          removed := i64 0, removed+1
+      while ((dp / 10 > dm / 10) && require_more_digits dp)
+      else
+        t := dm_is_trailing_zeros && rounding_mode.accept_lower_bound even
+
+        for dp := dp, dp / 10
+            dv := dv, dv / 10
+            dm := dm, dm / 10
+            removed := removed, removed+1
+            dv_is_trailing_zeros := dv_is_trailing_zeros, dv_is_trailing_zeros & last_removed_digit == 0
+            last_removed_digit := dv % 10
+        while t && ((dm % 10 == 0) && require_more_digits dp)
+        else
+
+          must_add_one := !(dv_is_trailing_zeros && (last_removed_digit == 5) && (dv % 2 == 0)) || last_removed_digit >= 5
+
+          zero_or_one i64 :=
+            if (dv == dm && !(dm_is_trailing_zeros && rounding_mode.accept_lower_bound even)) || must_add_one
+              1
+            else
+              0
+          output := dv + zero_or_one
+          output_length := vplength - removed
+          (output, output_length, exp)
+
+    else
+      for dp := dp, dp / 10
+          dv := dv, dv / 10
+          dm := dm, dm / 10
+          last_removed_digit := i64 0, dv % 10
+          removed := i64 0, removed+1
+      while ((dp / 10 > dm / 10) && require_more_digits dp)
+      else
+        output := dv + (if dv == dm || (last_removed_digit >= 5) then 1 else 0)
+        output_length := vplength - removed
+        (output, output_length, exp)
+
+
+
+  # step 5: construct the string
+  private step_5(output, output_length, exp i64, is_negative, scientific_notation bool) String is
+    # convert output to string
+    output_as_string(output i64, output_length i64) String is
+      for _ in (i64 1)..(output_length)
+          o := output, o / 10
+          s := "{o % 10}", "{o % 10}$s"
+      do
+      else
+        s
+
+    # this float as a scientific string i.e. 3.2E2
+    scientific =>
+      "NYI"
+
+    # the float as a decimal string
+    full =>
+      if exp < 0
+        "0.{"0" * -exp.as_i32}{output_as_string output output_length}"
+      else if exp + 1 >= output_length
+        "{output_as_string output output_length}{"0" * (exp+1-output_length).as_i32}.0"
+      else
+        for idx in i64 1 .. output_length
+            output := output, output / 10
+            str := "", (if output_length - idx - 1 == exp then "." else "") + "{output % 10}" + str
+        else
+          str
+
+    (if is_negative then "-" else "")
+      + (if scientific_notation then scientific else full)
+
+
+
+# NYI
+rounding_mode is
+  accept_upper_bound(b bool) bool is
+    false
+  accept_lower_bound(b bool) bool is
+    false
