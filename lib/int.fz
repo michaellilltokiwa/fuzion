@@ -165,6 +165,32 @@ is
     s.asString + n.asString
 
 
+  # the highest 1 bit in this integer, sign is irrelevant
+  # example: uint 0 => 0
+  # example: uint 1 => 1
+  # example: uint 8 => 4
+  #
+  highest_bit int
+  is
+    n.highest_bit.as_int
+
+
+
+  # this int as an u64
+  as_u64 u64
+  pre s.is_plus
+  is
+    n.as_u64
+
+
+  # this int as an uint
+  as_uint uint
+  pre s.is_plus
+  is
+    n
+
+
+
 int (val i64) int is
   ints.from_i64 val
 
@@ -208,6 +234,12 @@ minus is
 # this can be plus or minus
 #
 sign : choice plus minus, has_equality, hasEquals sign is
+
+  is_plus =>
+    match sign.this
+      plus => true
+      minus => false
+
   infix = (o sign) bool is
     match sign.this
       plus =>

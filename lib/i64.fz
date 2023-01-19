@@ -142,8 +142,18 @@ i64(val i64) : wrapping_integer i64, hasInterval i64, i64s is
       analysis:  result.as_i64 == thiz
     is
       u128 0 castTo_u64
+
+
+  # this i64 as an int
   as_int int is
     int val
+
+
+  # this i64 as an uint
+  as_uint uint
+  pre val >= 0
+  is
+    uint val.as_u64
 
 
   # casting bit representation to unsigned

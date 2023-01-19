@@ -60,9 +60,8 @@ is
     if other = zero
       thiz
     else if other >= uint 32
-      (uint (data
-        .reverse
-        .drop (other.as_i32 / 32)) unit) >> (other % (uint 32))
+      discard := other.as_i32 / 32
+      (uint (data.take data.count-discard) unit) >> (other % (uint 32))
     else
       shift := other.as_u32
       (l,_) := data
@@ -317,6 +316,18 @@ is
       .reduce (u64 0) (r, t ->
         (idx, b) := t
         r + (b << (idx.as_u64 * 32)))
+
+
+  # this uint as a i64
+  as_i64 i64
+  is
+    as_u64.as_i64
+
+
+  # this uint as an int
+  as_int int
+  is
+    int plus (uint b unit)
 
 
 
