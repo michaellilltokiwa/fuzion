@@ -190,72 +190,48 @@ ryū is
 
 
   # step 3: convert to decimal power base
-  private step_3(e3, mv, mp, mm, mm_shift i64, even bool) tuple i64 i64 i64 bool bool i64 is
+  private step_3(exponent, mv, mp, mm, mm_shift i64, even bool) tuple i64 i64 i64 bool bool i64 is
 
 
-    # find the largest power of 5 that divides value.
+    # NYI document
     multiple_of_power_of_5(val i64, q i64) =>
-      pow5_factor :=
-        (if     (val % 5)                != 0 then i64 0
-        else if (val % 25)               != 0 then i64 1
-        else if (val % 125)              != 0 then i64 2
-        else if (val % 625)              != 0 then i64 3
-        else if (val % 3125)             != 0 then i64 4
-        else if (val % 15625)            != 0 then i64 5
-        else if (val % 78125)            != 0 then i64 6
-        else if (val % 390625)           != 0 then i64 7
-        else if (val % 1953125)          != 0 then i64 8
-        else if (val % 9765625)          != 0 then i64 9
-        else if (val % 48828125)         != 0 then i64 10
-        else if (val % 244140625)        != 0 then i64 11
-        else if (val % 1220703125)       != 0 then i64 12
-        else if (val % 6103515625)       != 0 then i64 13
-        else if (val % 30517578125)      != 0 then i64 14
-        else if (val % 152587890625)     != 0 then i64 15
-        else if (val % 762939453125)     != 0 then i64 16
-        else if (val % 3814697265625)    != 0 then i64 17
-        else if (val % 19073486328125)   != 0 then i64 18
-        else if (val % 95367431640625)   != 0 then i64 19
-        else if (val % 476837158203125)  != 0 then i64 20
-        else if (val % 2384185791015625) != 0 then i64 21
-        else
-          panic "too large"
-          )
-      (pow5_factor) >= q
+      for pow5_factor := i64 0, pow5_factor+1
+          mod := i64 5, mod*5
+      while val % mod != 0
+      else
+        pow5_factor >= q
 
-    if (e3 >= 0)
 
-      q := (i64 0).max (((e3 * 78913) >> 18) - 1)
-      # k = constant + floor(log_2(5^q))
+    if (exponent >= 0)
+      q := (i64 0).max (exponent*78913 >> 18)-1
       k := pow5_inv_bitcount + pow5bits q - 1
-      i := -e3 + q + k
+      i := -exponent + q + k
 
       dv := mul_pow5_inv_div_pow2 mv q i
       dp := mul_pow5_inv_div_pow2 mp q i
       dm := mul_pow5_inv_div_pow2 mm q i
-      e10 := q
 
       if q <= 21
         if mv % 5 == 0
-          (dv, dp, dm, false, (multiple_of_power_of_5 mv q), e10)
+          (dv, dp, dm, false, (multiple_of_power_of_5 mv q), q)
         else if rounding_mode.accept_upper_bound even
-          (dv, dp, dm, (multiple_of_power_of_5 mm q), false,  e10)
+          (dv, dp, dm, (multiple_of_power_of_5 mm q), false,  q)
         else if multiple_of_power_of_5 mp q
-          (dv, dp-1, dm, false, false, e10)
+          (dv, dp-1, dm, false, false, q)
         else
-          (dv, dp, dm, false, false, e10)
+          (dv, dp, dm, false, false, q)
       else
-        (dv, dp, dm, false, false, e10)
+        (dv, dp, dm, false, false, q)
     else
-      q := (i64 0).max (((-e3 * 732923) >> 20) - 1)
-      i := -e3 - q
+      q := (i64 0).max (-exponent*732923 >> 20)-1
+      i := -exponent - q
       k := pow5bits i - pow5_bitcount
       j := q - k
 
       dv := mul_pow5_div_pow2 mv i j
       dp := mul_pow5_div_pow2 mp i j
       dm := mul_pow5_div_pow2 mm i j
-      e10 := q + e3
+      e10 := q + exponent
 
       if q <= 1
         if rounding_mode.accept_upper_bound even
@@ -299,16 +275,12 @@ ryū is
         while t && ((dm % 10 == 0) && require_more_digits dp)
         else
 
-          must_add_one := !(dv_is_trailing_zeros && (last_removed_digit == 5) && (dv % 2 == 0)) || last_removed_digit >= 5
+          round_up => dv == dm && !(dm_is_trailing_zeros && rounding_mode.accept_lower_bound even)
+          must_add_one => !(dv_is_trailing_zeros && (last_removed_digit == 5) && (dv % 2 == 0)) || last_removed_digit >= 5
 
-          zero_or_one i64 :=
-            if (dv == dm && !(dm_is_trailing_zeros && rounding_mode.accept_lower_bound even)) || must_add_one
-              1
-            else
-              0
-          output := dv + zero_or_one
-          output_length := vplength - removed
-          (output, output_length, exp)
+          (dv + (if round_up || must_add_one then 1 else 0),
+           vplength - removed,
+           exp)
 
     else
       for dp := dp, dp / 10
@@ -318,9 +290,9 @@ ryū is
           removed := i64 0, removed+1
       while ((dp / 10 > dm / 10) && require_more_digits dp)
       else
-        output := dv + (if dv == dm || (last_removed_digit >= 5) then 1 else 0)
-        output_length := vplength - removed
-        (output, output_length, exp)
+        (dv + (if dv == dm || (last_removed_digit >= 5) then 1 else 0),
+         vplength - removed,
+         exp)
 
 
 
