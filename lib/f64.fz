@@ -122,7 +122,7 @@ f64(val f64) : float f64, f64s is
 
   # convert this to a string.
   #
-  redef asString String is
+  redef as_string String is
     # NYI
     # scientific_notation := val < 1.0E-3 || val >= 1.0E7
     # ryu.as_string f64.this scientific_notation rounding_mode

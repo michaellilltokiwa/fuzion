@@ -43,8 +43,24 @@ array(redef T type,
 
   length => internalArray.length
 
+
+  # is this sequence known to be finite?  For infinite sequences, features like
+  # count diverge.
+  #
+  redef finite => true
+
+
+  # a sequence of all valid indices to access this array. Useful e.g., for
+  # `for`-loops:
+  #
+  #   for i in arr.indices do
+  #     say arr[i]
+  #
   indices => 0..length-1
 
+
+  # get the contents of this array at the given index
+  #
   redef index [ ] (i i32) T
     pre
       safety: 0 <= i < length
@@ -81,7 +97,7 @@ array(redef T type,
 
   # create a stream from this array
   #
-  redef asStream ref : stream T is
+  redef as_stream ref : stream T is
 
     # NYI: we create heap allocated instance of array explicitly, needed while
     # issue #30 is not fixed.  Once issue is fixed, array.this can be used instead.
@@ -90,7 +106,7 @@ array(redef T type,
     array_this ref array T := array.this
 
     x := 0
-    redef hasNext => x < array_this.length
+    redef has_next => x < array_this.length
     redef next => set x := x + 1; array_this[x-1]
 
   redef for_each (f T -> unit) unit is
@@ -100,12 +116,12 @@ array(redef T type,
 
   # create a list from this array
   #
-  redef asList => asList 0
+  redef as_list => as_list 0
 
 
   # create a list from this array starting at the given index
   #
-  asList(i i32) list T
+  as_list(i i32) list T
     pre
       debug: i >= 0
   is
@@ -123,7 +139,7 @@ array(redef T type,
       debug: 0 <= i < length
   is
     head => array.this[i]
-    tail => asList i+1
+    tail => as_list i+1
 
 
   # create a slice from this array's elements at index 'from' (included)
@@ -217,7 +233,7 @@ array(redef T type,
 
   # collect the contents of this Sequence into an array
   #
-  redef asArray array T is
+  redef as_array array T is
     array T internalArray unit unit unit
 
 
