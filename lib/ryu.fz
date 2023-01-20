@@ -32,6 +32,17 @@
 ryū is
 
 
+  # NYI document
+  rounding_mode(accept_upper_bound, accept_lower_bound bool -> bool) is
+
+  rounding_conservative := (rounding_mode (is_even)->false (is_even)->false)
+
+  rounding_even := (rounding_mode (is_even)->is_even (is_even)->is_even)
+
+  # the amount of bits that are used to encode the mantissa
+  private mantissa_bits := f64s.significandBits.as_i64 - 1
+
+
   # convert f64 to string
   as_string(val f64, scientific_notation bool, rounding_mode rounding_mode) String is
     # trivial cases first
@@ -47,51 +58,52 @@ ryū is
 
   # convert f64 to string for none trivial case
   private as_string_none_trivial(val f64, scientific_notation bool, rounding_mode rounding_mode) String is
-    (exponent, mantissa, biased_exponent, mantissa_bits) := step_1 val
+    (exponent, mantissa, biased_exponent) := step_1 val
 
-    (mv, mp, mm, mm_shift, even) := step_2 mantissa mantissa_bits biased_exponent
+    (mv, mp, mm, mm_shift, is_even) := step_2 mantissa biased_exponent
 
-    (dv, dp, dm, dm_is_trailing_zeros, dv_is_trailing_zeros, e10) := step_3 exponent-2 mv mp mm mm_shift even rounding_mode
+    (dv, dp, dm, dm_is_trailing_zeros, dv_is_trailing_zeros, e10) := step_3 exponent-2 mv mp mm mm_shift is_even rounding_mode
 
-    (output, output_length, exponent) := step_4 dv dp dm dm_is_trailing_zeros dv_is_trailing_zeros e10 even scientific_notation rounding_mode
+    # say "$dv $dp $dm $dm_is_trailing_zeros $dv_is_trailing_zeros $e10"
 
-    step_5 output output_length exponent (val < 0.0) scientific_notation
+    (output, output_length, exponent_decimal) := step_4 dv dp dm dm_is_trailing_zeros dv_is_trailing_zeros e10 is_even scientific_notation rounding_mode
+
+    # say "$output, $output_length, $exponent_decimal"
+
+    step_5 output output_length exponent_decimal (val < 0.0) scientific_notation
 
 
 
   # step 1: extract exponent, mantissa, etc.
-  private step_1(val f64) tuple i64 i64 i64 i64 is
+  private step_1(val f64) tuple i64 i64 i64 is
     bits := val.castTo_u64
 
     # NYI move to / merge with f64
     biased_exponent := ((bits >> (f64s.significandBits.as_u64 - 1)) & f64.type.exponent_mask).as_i64
     mantissa := (bits & f64.type.mantissa_mask).as_i64
-    mantissa_bits := f64s.significandBits.as_i64 - 1
 
     # denormal number
     if (biased_exponent = 0)
       (i64 1 - f64.type.exponent_bias.as_i64 - mantissa_bits,
        mantissa,
-       biased_exponent,
-       mantissa_bits)
+       biased_exponent)
     else
       (biased_exponent - f64.type.exponent_bias.as_i64 - mantissa_bits,
        mantissa | (i64 1 << mantissa_bits),
-       biased_exponent,
-       mantissa_bits)
+       biased_exponent)
 
 
 
   # step 2: get the interval of legal decimal representations
-  private step_2(mantissa, mantissa_bits, biased_exponent i64) tuple i64 i64 i64 i64 bool is
-    mv := i64 4 * mantissa
-    mm_shift := if (mantissa != (i64 1 << mantissa_bits)) || (biased_exponent <= 1) then i64 1 else i64 0
+  private step_2(mantissa, biased_exponent i64) tuple i64 i64 i64 i64 bool is
+    mv := mantissa * 4
+    mm_shift i64 := if (mantissa != (i64 1 << mantissa_bits)) || (biased_exponent <= 1) then 1 else 0
     (mv, mv + 2, mv - 1 - mm_shift, mm_shift, (mantissa & 1) = 0)
 
 
 
   # step 3: convert to decimal power base
-  private step_3(exponent, mv, mp, mm, mm_shift i64, even bool, rounding_mode rounding_mode ) tuple i64 i64 i64 bool bool i64 is
+  private step_3(exponent, mv, mp, mm, mm_shift i64, is_even bool, rounding_mode rounding_mode ) tuple i64 i64 i64 bool bool i64 is
 
     # NYI document
     private pow5bits(e i64)
@@ -193,7 +205,7 @@ ryū is
       if q <= 21
         if mv % 5 == 0
           (dv, dp, dm, false, (multiple_of_power_of_5 mv q), q)
-        else if rounding_mode.accept_upper_bound even
+        else if rounding_mode.accept_upper_bound is_even
           (dv, dp, dm, (multiple_of_power_of_5 mm q), false,  q)
         else if multiple_of_power_of_5 mp q
           (dv, dp-1, dm, false, false, q)
@@ -213,7 +225,7 @@ ryū is
       e10 := q + exponent
 
       if q <= 1
-        if rounding_mode.accept_upper_bound even
+        if rounding_mode.accept_upper_bound is_even
           (dv, dp, dm, mm_shift = 1, true, e10)
         else
           (dv, dp -  1, dm, false, true, e10)
@@ -225,7 +237,7 @@ ryū is
 
 
   # step 4: shortest decimal representation
-  private step_4(dv, dp, dm i64, dm_is_trailing_zeros, dv_is_trailing_zeros bool, e10 i64, even, scientific_notation bool, rounding_mode rounding_mode ) tuple i64 i64 i64 is
+  private step_4(dv, dp, dm i64, dm_is_trailing_zeros, dv_is_trailing_zeros bool, e10 i64, even, scientific_notation bool, rounding_mode rounding_mode) tuple i64 i64 i64 is
 
 
     # get the decimal length of this i64
@@ -258,31 +270,33 @@ ryū is
     exponent := e10 + vplength - 1;
 
     if (dm_is_trailing_zeros || dv_is_trailing_zeros)
-      for dp := dp, dp / 10
+      for last_removed_digit := i64 0, dv % 10
+          dm_is_trailing_zeros := dm_is_trailing_zeros, dm_is_trailing_zeros & (dm % 10 = 0)
+          dv_is_trailing_zeros := dv_is_trailing_zeros, dv_is_trailing_zeros & (last_removed_digit = 0)
+          dp := dp, dp / 10
           dv := dv, dv / 10
           dm := dm, dm / 10
-          last_removed_digit := dv % 10, dv % 10
-          dm_is_trailing_zeros := dm_is_trailing_zeros, dm_is_trailing_zeros & (dm % 10 == 0)
-          dv_is_trailing_zeros := dv_is_trailing_zeros, dv_is_trailing_zeros & (last_removed_digit == 0)
           removed := i64 0, removed+1
       while ((dp / 10 > dm / 10) && require_more_digits dp)
       else
         t := dm_is_trailing_zeros && rounding_mode.accept_lower_bound even
 
-        for dp := dp, dp / 10
+        for dv_is_trailing_zeros := dv_is_trailing_zeros, dv_is_trailing_zeros & last_removed_digit == 0
+            last_removed_digit := last_removed_digit, dv % 10
+            dp := dp, dp / 10
             dv := dv, dv / 10
             dm := dm, dm / 10
             removed := removed, removed+1
-            dv_is_trailing_zeros := dv_is_trailing_zeros, dv_is_trailing_zeros & last_removed_digit == 0
-            last_removed_digit := dv % 10
-        while t && ((dm % 10 == 0) && require_more_digits dp)
+        while t && (dm % 10 == 0) && require_more_digits dp
         else
 
-          round_up => dv == dm && !(dm_is_trailing_zeros && rounding_mode.accept_lower_bound even)
-          must_add_one => !(dv_is_trailing_zeros && (last_removed_digit == 5) && (dv % 2 == 0)) || last_removed_digit >= 5
+          outside_bounds => dv = dm && !(dm_is_trailing_zeros && rounding_mode.accept_lower_bound even)
+
+          is_not_point_five_exactly := !(dv_is_trailing_zeros && last_removed_digit = 5 && dv % 2 = 0)
+          must_round_up => (is_not_point_five_exactly && last_removed_digit >= 5)
 
           # output
-          (dv + (if round_up || must_add_one then 1 else 0),
+          (dv + (if outside_bounds || must_round_up then 1 else 0),
           # output length
            vplength - removed,
            exponent)
@@ -305,6 +319,8 @@ ryū is
 
   # step 5: construct the string
   private step_5(output, output_length, exp i64, is_negative, scientific_notation bool) String is
+
+
     # convert output to string
     output_as_string(output i64, output_length i64) String is
       for _ in (i64 1)..(output_length)
@@ -321,7 +337,7 @@ ryū is
     # the float as a decimal string
     full =>
       if exp < 0
-        "0.{"0" * -exp.as_i32}{output_as_string output output_length}"
+        "0.{"0" * -(exp+1).as_i32}{output_as_string output output_length}"
       else if exp + 1 >= output_length
         "{output_as_string output output_length}{"0" * (exp+1-output_length).as_i32}.0"
       else
@@ -336,9 +352,3 @@ ryū is
 
 
 
-# NYI
-rounding_mode is
-  accept_upper_bound(b bool) bool is
-    false
-  accept_lower_bound(b bool) bool is
-    false
