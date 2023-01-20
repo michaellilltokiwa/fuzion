@@ -207,19 +207,6 @@ is
 
 
 
-  # this int as an u64
-  as_u64 u64
-  pre s.is_plus
-  is
-    n.as_u64
-
-
-  # this int as an uint
-  as_uint uint
-  pre s.is_plus
-  is
-    n
-
 
 
 int (val i64) int is

@@ -154,10 +154,6 @@ u32(val u32) : wrapping_integer u32, hasInterval u32, u32s is
   as_uint  => uint as_u64
 
 
-  # this u32 as an uint
-  as_uint  => uint as_u64
-
-
   low8bits  u8  is intrinsic
   low16bits u16 is intrinsic
   castTo_i32 i32 is intrinsic

@@ -327,29 +327,6 @@ is
     int plus (uint b unit)
 
 
-  # this uint as a u64
-  as_u64 u64
-  pre data.count <= 2
-  is
-    data
-      .reverse
-      .map b->b.as_u64
-      .indexed
-      .reduce (u64 0) (r, t ->
-        (idx, b) := t
-        r + (b << (idx.as_u64 * 32)))
-
-
-  # this uint as a i64
-  as_i64 i64
-  is
-    as_u64.as_i64
-
-
-  # this uint as an int
-  as_int int
-  is
-    int plus (uint b unit)
 
 
 
