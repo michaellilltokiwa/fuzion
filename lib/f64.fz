@@ -126,7 +126,7 @@ f64(val f64) : float f64, f64s is
     # NYI
     # scientific_notation := val < 1.0E-3 || val >= 1.0E7
     # ryu.as_string f64.this scientific_notation rounding_mode
-    ryū.as_string val false ryū.rounding_conservative
+    ryū.as_string val true ryū.rounding_conservative
 
 
 

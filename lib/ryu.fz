@@ -332,7 +332,11 @@ ryū is
 
     # this float as a scientific string i.e. 3.2E2
     scientific =>
-      "NYI"
+      for idx in i64 1 .. output_length
+          output := output, output / 10
+          str := "{output % 10}", "{output % 10}" + (if idx = output_length then "." else "") + str
+      else
+        "{str}E{exp}"
 
     # the float as a decimal string
     full =>
@@ -341,9 +345,10 @@ ryū is
       else if exp + 1 >= output_length
         "{output_as_string output output_length}{"0" * (exp+1-output_length).as_i32}.0"
       else
-        for idx in i64 1 .. output_length
-            output := output, output / 10
-            str := "", (if output_length - idx - 1 == exp then "." else "") + "{output % 10}" + str
+        for idx in i64 0 .. output_length
+            is_dot_pos := false, output_length - idx - 1 == exp
+            output := output, if is_dot_pos then output else output / 10
+            str := "{output % 10}", (if is_dot_pos then "." else "{output % 10}") + str
         else
           str
 
