@@ -30,6 +30,7 @@ import java.util.LinkedList;
 
 import dev.flang.util.ANY;
 import dev.flang.util.Errors;
+import dev.flang.util.List;
 import dev.flang.util.FuzionOptions;
 
 
@@ -368,6 +369,9 @@ public class Resolution extends ANY
           }
 
         Feature f = forType.removeFirst();
+
+        resolveActuals(f, this);
+
         f.internalResolveTypes(this);
       }
     else if (!moreThanTypes)
@@ -416,6 +420,31 @@ public class Resolution extends ANY
         result = false;
       }
     return result;
+  }
+
+
+
+  /**
+   * special case for code like this:
+   * `a tuple i8 u8 f32 f64 := (1, 2, 3, 4)`
+   * @param f
+   * @param res
+   */
+  private void resolveActuals(Feature f, Resolution res)
+  {
+    f.visit(new FeatureVisitor() {
+      public Stmnt action(Feature f, AbstractFeature outer)
+      {
+        if (f.initialValue() instanceof Call c
+          && c.typeIfKnown() == null
+          && f.resultTypeIfPresent(res, new List<>()) != null
+          )
+          {
+            c.propagateExpectedType2(res, outer, f.resultTypeIfPresent(res, new List<>()));
+          }
+        return f;
+      }
+    });
   }
 
 

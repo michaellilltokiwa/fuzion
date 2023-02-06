@@ -161,6 +161,33 @@ public class Actual extends Expr
 
 
   /**
+   * During type inference: Inform this expression that it is used in an
+   * environment that expects the given type.  In particular, if this
+   * expression's result is assigned to a field, this will be called with the
+   * type of the field.
+   *
+   * @param res this is called during type inference, res gives the resolution
+   * instance.
+   *
+   * @param outer the feature that contains this expression
+   *
+   * @param t the expected type.
+   *
+   * @return either this or a new Expr that replaces thiz and produces the
+   * result. In particular, if the result is assigned to a temporary field, this
+   * will be replaced by the statement that reads the field.
+   */
+  public Expr propagateExpectedType(Resolution res, AbstractFeature outer, AbstractType t)
+  {
+    if (PRECONDITIONS) require
+      (_type == null);
+
+    _expr.propagateExpectedType(res, outer, t);
+    return this;
+  }
+
+
+  /**
    * toString
    *
    * @return

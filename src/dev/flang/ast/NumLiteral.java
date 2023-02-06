@@ -27,11 +27,13 @@ Fuzion language implementation.  If not, see <https://www.gnu.org/licenses/>.
 package dev.flang.ast;
 
 import dev.flang.util.SourcePosition;
+import dev.flang.util.List;
 
 import java.math.BigInteger;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.util.stream.Collectors;
 
 /**
  * NumLiteral <description>
@@ -718,12 +720,60 @@ public class NumLiteral extends Constant
    */
   public Expr propagateExpectedType(Resolution res, AbstractFeature outer, AbstractType t)
   {
-    if (_type == null && findConstantType(t) != null)
+    // if (PRECONDITIONS)
+    //   require(_type != null);
+    if (_type != null)
+      {
+        return this;
+      }
+
+    if (t.isChoice())
+      {
+        var types = hasDot() ? FloatTypes() : IntegerTypes();
+        var possibleTypes = types
+          .stream()
+          .filter(nt -> t.isAssignableFrom(nt))
+          .collect(Collectors.toList());
+        if (possibleTypes.size() == 1)
+          {
+            _type = possibleTypes.get(0);
+            checkRange();
+            return box(t);
+          }
+        else
+          {
+            // NYI
+          }
+      }
+    else if (findConstantType(t) != null)
       {
         _type = t;
         checkRange();
       }
+    else
+      {
+        System.out.println("type does not match?");
+      }
+
     return this;
+  }
+
+
+  private List<AbstractType> IntegerTypes()
+  {
+    return new List<>(Types.resolved.t_i8,
+                      Types.resolved.t_i16,
+                      Types.resolved.t_i32,
+                      Types.resolved.t_i64,
+                      Types.resolved.t_u8 ,
+                      Types.resolved.t_u16,
+                      Types.resolved.t_u32,
+                      Types.resolved.t_u64);
+  }
+
+  private List<AbstractType> FloatTypes()
+  {
+    return new List<>(Types.resolved.t_f32, Types.resolved.t_f64);
   }
 
 

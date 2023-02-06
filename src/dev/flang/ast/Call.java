@@ -30,6 +30,7 @@ import java.util.Arrays;
 import java.util.ListIterator;
 import java.util.SortedMap;
 import java.util.TreeMap;
+import java.util.stream.Collector;
 
 import dev.flang.util.Errors;
 import dev.flang.util.FuzionConstants;
@@ -1972,6 +1973,33 @@ public class Call extends AbstractCall
     return result;
   }
 
+
+  public Expr propagateExpectedType2(Resolution res, AbstractFeature outer, AbstractType t)
+  {
+    _type = t;
+    if (t.isChoice())
+      {
+        // what to do in this case?
+      }
+    else
+      {
+        _resolvedFormalArgumentTypes = t.generics().toArray(new AbstractType[t.generics().size()]);
+
+        var count = 0;
+        ListIterator<Expr> i = _actuals.listIterator();
+        while (i.hasNext())
+          {
+            Expr actl = i.next();
+            var frmlT = _resolvedFormalArgumentTypes[count];
+            if (CHECKS)
+              check(frmlT != null,
+                frmlT != Types.t_ERROR || Errors.count() > 0);
+            i.set(actl.propagateExpectedType(res, outer, frmlT));
+            count++;
+          }
+      }
+    return this;
+  }
 
   /**
    * During type inference: Inform this expression that it is used in an
