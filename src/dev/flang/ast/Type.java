@@ -589,16 +589,29 @@ public class Type extends AbstractType
   }
 
 
+
+  private boolean changedRefOrVal = false;
+
   /**
    * isRef
    */
   public boolean isRef()
   {
+    if (this._refOrVal == RefOrVal.LikeUnderlyingFeature && feature == null)
+      {
+        this.changedRefOrVal = true;
+        this._refOrVal = RefOrVal.Value;
+      }
+
     return switch (this._refOrVal)
       {
       case Ref                  -> true;
-      case Value                -> false;
-      case LikeUnderlyingFeature-> ((feature != null) && feature.isThisRef());
+      case Value                -> {
+        if (CHECKS) check
+          (!changedRefOrVal || feature == null || !feature.isThisRef());
+        yield false;
+      }
+      case LikeUnderlyingFeature-> feature.isThisRef();
       case ThisType             -> false;
       };
   }
