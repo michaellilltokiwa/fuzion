@@ -82,10 +82,10 @@ for test in $TESTS; do
       echo "$test: skipped" >>"$BUILD_DIR"/run_tests.results
     else
       if make "$TARGET" -e -C "$test" >"$test"/out.txt 2>"$test"/stderr.txt; then
-        echo -n "."
+        echo -n "✓"
         echo "$test: ok"     >>"$BUILD_DIR"/run_tests.results
       else
-        echo -n "#"
+        echo -n "❌"
         echo "$test: failed" >>"$BUILD_DIR"/run_tests.results
         cat "$test"/out.txt "$test"/stderr.txt >>"$BUILD_DIR"/run_tests.failures
       fi
