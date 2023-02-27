@@ -124,12 +124,12 @@ array(redef T type,
   # create a slice from this array's elements at index 'from' (included)
   # up to 'to' (excluded).
   #
-  redef slice(from, to i32) list T
+  redef slice(from, to i32) array T
     pre
       from ≥ 0,
       to ≥ from
   is
-    (array (internalArray.slice from to) unit unit unit).as_list
+    array (internalArray.slice from to) unit unit unit
 
 
   # map the array to a new array applying function f to all elements

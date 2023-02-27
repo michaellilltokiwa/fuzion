@@ -195,7 +195,8 @@ Sequence(T type) ref is
   # create a slice from this Sequence that consists of the elements starting at index
   # from (including) up to index to (excluding).
   #
-  slice(from, to i32) => drop(from).take to-from
+  slice(from, to i32) array T is
+    (drop(from).take to-from).as_array
 
 
   # create a tuple of two Sequences by splitting this at the given index, i.e.,
