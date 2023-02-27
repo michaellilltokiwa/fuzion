@@ -441,8 +441,8 @@ public class CFG extends ANY
     put("Any.hashCode"                   , (cfg, cl) -> { } );
     put("Any.as_string"                  , (cfg, cl) -> { } );
     put("fuzion.sys.internal_array.alloc", (cfg, cl) -> { } );
-    put("fuzion.sys.internal_array.setel", (cfg, cl) -> { } );
-    put("fuzion.sys.internal_array.get"  , (cfg, cl) -> { } );
+    put("fuzion.sys.Internal_Array.setel", (cfg, cl) -> { } );
+    put("fuzion.sys.Internal_Array.get"  , (cfg, cl) -> { } );
     put("fuzion.sys.env_vars.has0"       , (cfg, cl) -> { } );
     put("fuzion.sys.env_vars.get0"       , (cfg, cl) -> { } );
     put("fuzion.sys.env_vars.set0"       , (cfg, cl) -> { } );

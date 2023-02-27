@@ -761,13 +761,13 @@ public class Intrinsics extends ANY
           return fuzionSysArrayAlloc(/* size */ args.get(1).i32Value(),
                                      /* type */ innerClazz._outer);
         });
-    put("fuzion.sys.internal_array.get", (interpreter, innerClazz) -> args ->
+    put("fuzion.sys.Internal_Array.get", (interpreter, innerClazz) -> args ->
         {
           return fuzionSysArrayGet(/* data  */ ((ArrayData)args.get(1)),
                                    /* index */ args.get(2).i32Value(),
                                    /* type  */ innerClazz._outer);
         });
-    put("fuzion.sys.internal_array.setel", (interpreter, innerClazz) -> args ->
+    put("fuzion.sys.Internal_Array.setel", (interpreter, innerClazz) -> args ->
         {
           fuzionSysArraySetEl(/* data  */ ((ArrayData)args.get(1)),
                               /* index */ args.get(2).i32Value(),

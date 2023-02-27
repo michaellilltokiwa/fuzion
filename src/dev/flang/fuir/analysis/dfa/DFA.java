@@ -1146,7 +1146,7 @@ public class DFA extends ANY
     put("Any.hashCode"                   , cl -> new NumericValue(cl._dfa, cl._dfa._fuir.clazzResultClazz(cl._cc)) );
     put("Any.as_string"                  , cl -> cl._dfa.newConstString(null, cl) );
     put("fuzion.sys.internal_array.alloc", cl -> { return new SysArray(cl._dfa, new byte[0]); } ); // NYI: get length from args
-    put("fuzion.sys.internal_array.setel", cl ->
+    put("fuzion.sys.Internal_Array.setel", cl ->
         {
           var array = cl._args.get(0);
           var index = cl._args.get(1);
@@ -1158,10 +1158,10 @@ public class DFA extends ANY
             }
           else
             {
-              throw new Error("intrinsic fuzion.sys.internal_array.setel: Expected class SysArray, found "+array.getClass()+" "+array);
+              throw new Error("intrinsic fuzion.sys.Internal_Array.setel: Expected class SysArray, found "+array.getClass()+" "+array);
             }
         });
-    put("fuzion.sys.internal_array.get"  , cl ->
+    put("fuzion.sys.Internal_Array.get"  , cl ->
         {
           var array = cl._args.get(0);
           var index = cl._args.get(1);

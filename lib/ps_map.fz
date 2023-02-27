@@ -54,7 +54,7 @@ ps_map
    redef V type,
 
    # the array containg the sorted arrays, see below for details
-   data fuzion.sys.internal_array (tuple PK V),
+   data fuzion.sys.Internal_Array (tuple PK V),
 
    # the number of key and value pairs in this map.
    size i32,

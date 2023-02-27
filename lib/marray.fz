@@ -36,7 +36,7 @@ marray
    length i32,
 
    # contents of the marray
-   private data fuzion.sys.internal_array T
+   private data fuzion.sys.Internal_Array T
    ) : Sequence T
 
   pre

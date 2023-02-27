@@ -34,7 +34,7 @@
 # moved to 'array.type.new' or 'arrays.new'
 #
 array(redef T type,
-      internalArray fuzion.sys.internal_array T,
+      internalArray ref fuzion.sys.Internal_Array T,
       _ unit,
       _ unit,
       _ unit) : Sequence T is
@@ -119,9 +119,6 @@ array(redef T type,
   # create a slice from this array's elements at index 'from' (included)
   # up to 'to' (excluded).
   #
-  # NYI: array.slice should better return an array containing a slice of
-  # internalArray.
-  #
   redef slice(from, to i32) list T
     pre
       debug: from ≥ 0
@@ -129,7 +126,7 @@ array(redef T type,
     if to ≤ from
       nil
     else
-      arrayCons from to
+      (array (internalArray.slice from to) unit unit unit).as_list
 
 
   # create a cons cell for a list of this array starting at the given
