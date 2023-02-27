@@ -113,7 +113,12 @@ array(redef T type,
     pre
       debug: i ≥ 0
   is
-    slice i length
+    if i ≥ internalArray.length
+      nil
+    else
+      ref : Cons T (list T)
+        head => array.this[i]
+        tail => as_list i+1
 
 
   # create a slice from this array's elements at index 'from' (included)
@@ -121,23 +126,10 @@ array(redef T type,
   #
   redef slice(from, to i32) list T
     pre
-      debug: from ≥ 0
+      from ≥ 0,
+      to ≥ from
   is
-    if to ≤ from
-      nil
-    else
-      (array (internalArray.slice from to) unit unit unit).as_list
-
-
-  # create a cons cell for a list of this array starting at the given
-  # index and up to to
-  #
-  arrayCons (i, to i32) : Cons T (list T)
-    pre
-      debug: 0 ≤ i ⩻ to ≤ length
-  is
-    head => array.this[i]
-    tail => slice i+1 to
+    (array (internalArray.slice from to) unit unit unit).as_list
 
 
   # map the array to a new array applying function f to all elements

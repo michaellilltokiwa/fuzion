@@ -62,16 +62,16 @@ Internal_Array(T type, data Any, private length i32) ref is
     setel T data i o
 
 
-  slice (from, to i32) : Internal_Array T data to-from
+  slice (from, to i32) : Internal_Array T Internal_Array.this.data to-from
   pre from >= 0,
-      to   <= slice.this.length
+      to   <= Internal_Array.this.length
   is
 
     redef index [ ] (i i32) T
       pre
         safety: 0 ≤ i ⩻ slice.this.length
     is
-      get T slice.this.data i+from
+      Internal_Array.this.get T slice.this.data i+from
 
     redef set [ ] (i i32, o T) unit
       pre
@@ -79,13 +79,13 @@ Internal_Array(T type, data Any, private length i32) ref is
     # post   NYI
       #array.this[i] == o
     is
-      setel T slice.this.data i+from o
+      Internal_Array.this.setel T slice.this.data i+from o
 
 
     # NYI workaround for performance issue in DFA #990
     private redef set_no_pre_condition (i i32, o T) unit
     is
-      setel T slice.this.data i+from o
+      Internal_Array.this.setel T slice.this.data i+from o
 
 
     # NYI slice of slice
