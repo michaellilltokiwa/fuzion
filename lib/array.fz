@@ -34,7 +34,7 @@
 # moved to 'array.type.new' or 'arrays.new'
 #
 array(redef T type,
-      internalArray ref fuzion.sys.Internal_Array T,
+      internalArray fuzion.sys.Internal_Array T,
       _ unit,
       _ unit,
       _ unit) : Sequence T is
