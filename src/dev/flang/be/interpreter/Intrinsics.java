@@ -40,12 +40,15 @@ import dev.flang.util.Errors;
 import dev.flang.util.List;
 
 import java.lang.reflect.Array;
-
-import java.io.PrintStream;
-import java.io.RandomAccessFile;
+import java.net.Socket;
+import java.net.ServerSocket;
+import java.net.InetSocketAddress;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.io.RandomAccessFile;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -89,7 +92,7 @@ public class Intrinsics extends ANY
    */
   enum SystemErrNo
   {
-    UNSPECIFIED(0), EIO(5), EACCES(13), ENOTSUP(95);
+    UNSPECIFIED(0), EIO(5), EACCES(13), ENOTSUP(95), ECONNREFUSED(111);
 
     final int errno;
 
@@ -114,16 +117,16 @@ public class Intrinsics extends ANY
   /**
    * This contains all open files/streams.
    */
-  private static OpenResources<RandomAccessFile> _openStreams_ = new OpenResources<RandomAccessFile>()
+  private static OpenResources<AutoCloseable> _openStreams_ = new OpenResources<AutoCloseable>()
   {
     @Override
-    protected boolean close(RandomAccessFile f) {
+    protected boolean close(AutoCloseable f) {
       try
       {
         f.close();
         return true;
       }
-      catch(IOException e)
+      catch(Exception e)
       {
         return false;
       }
@@ -242,18 +245,40 @@ public class Intrinsics extends ANY
           var byteArr = (byte[])args.get(2).arrayData()._array;
           try
             {
-              int bytesRead = _openStreams_.get(args.get(1).i64Value()).read(byteArr);
-
-              if (args.get(3).i32Value() != bytesRead)
+              if (_openStreams_.get(args.get(1).i64Value()) instanceof RandomAccessFile raf)
                 {
-                  if (bytesRead == -1)
-                    {
-                      // no more data to read due to end of file
-                      return new i64Value(0);
-                    }
-                }
+                  int bytesRead = raf.read(byteArr);
 
-              return new i64Value(bytesRead);
+                  if (args.get(3).i32Value() != bytesRead)
+                    {
+                      if (bytesRead == -1)
+                        {
+                          // no more data to read due to end of file
+                          return new i64Value(0);
+                        }
+                    }
+
+                  return new i64Value(bytesRead);
+                }
+              else if (_openStreams_.get(args.get(1).i64Value()) instanceof Socket socket)
+                {
+                  int bytesRead = socket.getInputStream().read(byteArr);
+
+                  if (args.get(3).i32Value() != bytesRead)
+                    {
+                      if (bytesRead == -1)
+                        {
+                          // no more data to read due to end of file
+                          return new i64Value(0);
+                        }
+                    }
+
+                  return new i64Value(bytesRead);
+                }
+              else
+                {
+                  return new i64Value(-1);
+                }
             }
           catch (Exception e)
             {
@@ -269,8 +294,20 @@ public class Intrinsics extends ANY
           byte[] fileContent = (byte[])args.get(2).arrayData()._array;
           try
             {
-              _openStreams_.get(args.get(1).i64Value()).write(fileContent);
-              return new i8Value(0);
+              if (_openStreams_.get(args.get(1).i64Value()) instanceof RandomAccessFile raf)
+                {
+                  raf.write(fileContent);
+                  return new i8Value(0);
+                }
+              else if (_openStreams_.get(args.get(1).i64Value()) instanceof Socket socket)
+                {
+                  socket.getOutputStream().write(fileContent);
+                  return new i8Value(0);
+                }
+              else
+                {
+                  return new i8Value(-1);
+                }
             }
           catch (Exception e)
             {
@@ -428,8 +465,9 @@ public class Intrinsics extends ANY
           var seekResults = (long[])args.get(3).arrayData()._array;
           try
             {
-              _openStreams_.get(fd).seek(args.get(2).i16Value());
-              seekResults[0] = _openStreams_.get(fd).getFilePointer();
+              var raf = (RandomAccessFile)_openStreams_.get(fd);
+              raf.seek(args.get(2).i16Value());
+              seekResults[0] = raf.getFilePointer();
               return Value.EMPTY_VALUE;
             }
           catch (Exception e)
@@ -449,7 +487,7 @@ public class Intrinsics extends ANY
           long[] arr = (long[])args.get(2).arrayData()._array;
           try
             {
-              arr[0] = _openStreams_.get(fd).getFilePointer();
+              arr[0] = ((RandomAccessFile)_openStreams_.get(fd)).getFilePointer();
               return Value.EMPTY_VALUE;
             }
           catch (Exception e)
@@ -742,6 +780,73 @@ public class Intrinsics extends ANY
           t.start();
           return new Instance(Clazzes.c_unit.get());
         });
+
+
+    put("fuzion.sys.net.socket"  , (interpreter, innerClazz) -> args -> {
+      var res = (long[])args.get(1).arrayData()._array;
+      res[0] = _openStreams_.add(new Socket());
+      return new boolValue(true);
+    });
+
+    put("fuzion.sys.net.bind"    , (interpreter, innerClazz) -> args -> {
+      var family = args.get(2).i32Value();
+      if (family != 2)
+        {
+          throw new RuntimeException("NYI");
+        }
+      var arr = (byte[])args.get(3).arrayData()._array;
+      var port = ((((int)arr[0])<<8) + (int)arr[1]);
+      var ipAddress = arr[2] + "." + arr[3] + "." + arr[4] + "." + arr[5];
+      try
+        {
+          var ss = new ServerSocket();
+          ss.bind(new InetSocketAddress(ipAddress, port));
+          _openStreams_.put(args.get(1).i64Value(), ss);
+          return new i32Value(0);
+        }
+      catch(IOException e)
+        {
+          return new i32Value(-1);
+        }
+    });
+
+    put("fuzion.sys.net.listen"  , (interpreter, innerClazz) -> args -> {
+      return new i32Value(0);
+    });
+
+    put("fuzion.sys.net.accept"  , (interpreter, innerClazz) -> args -> {
+      try
+        {
+          var socket = ((ServerSocket)_openStreams_.get(args.get(1).i64Value())).accept();
+          ((long[])args.get(2).arrayData()._array)[0] = _openStreams_.add(socket);
+          return new boolValue(true);
+        }
+      catch(IOException e)
+        {
+          return new boolValue(false);
+        }
+    });
+
+    put("fuzion.sys.net.connect" , (interpreter, innerClazz) -> args -> {
+      var family = args.get(2).i32Value();
+      if (family != 2)
+        {
+          throw new RuntimeException("NYI");
+        }
+      var arr = (byte[])args.get(3).arrayData()._array;
+      var port = ((((int)arr[0])<<8) + (int)arr[1]);
+      var ipAddress = arr[2] + "." + arr[3] + "." + arr[4] + "." + arr[5];
+      try
+        {
+          _openStreams_.put(args.get(1).i64Value(), new Socket(ipAddress, port));
+          return new i32Value(0);
+        }
+      catch(IOException e)
+        {
+          return new i32Value(SystemErrNo.ECONNREFUSED.errno);
+        }
+    });
+
     put("safety"                , (interpreter, innerClazz) -> args -> new boolValue(Interpreter._options_.fuzionSafety()));
     put("debug"                 , (interpreter, innerClazz) -> args -> new boolValue(Interpreter._options_.fuzionDebug()));
     put("debugLevel"            , (interpreter, innerClazz) -> args -> new i32Value(Interpreter._options_.fuzionDebugLevel()));

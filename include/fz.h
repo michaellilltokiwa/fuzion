@@ -28,9 +28,30 @@ Fuzion language implementation.  If not, see <https://www.gnu.org/licenses/>.
 #ifndef	_FUZION_H
 #define	_FUZION_H	1
 
+#include <errno.h>
+#include <stdio.h>
+#include <string.h>
+
 #include <stdlib.h>     // setenv, unsetenv
 #include <sys/stat.h>   // mkdir
 #include <sys/types.h>  // mkdir
+
+
+#if _WIN32
+#include <windows.h>
+#include <winsock2.h>
+#include <ws2tcpip.h>
+// Need to link with Ws2_32.lib, Mswsock.lib, and Advapi32.lib
+#pragma comment (lib, "Ws2_32.lib")
+#pragma comment (lib, "Mswsock.lib")
+#pragma comment (lib, "AdvApi32.lib")
+#else
+#include <sys/socket.h> // socket, bind, listen, accept, connect
+#include <sys/ioctl.h>  // ioctl, FIONREAD
+#include <netinet/in.h> // AF_INET
+#include <poll.h>       // poll
+#endif
+
 
 
 // make directory, return zero on success
@@ -65,6 +86,74 @@ int fzE_unsetenv(const char *name){
 #else
   return unsetenv(name);
 #endif
+}
+
+
+// int set_socket_none_blocking(int fd)
+// {
+//   if (fd < 0){
+//     printf("a");
+//     return -1;
+//   }
+// #ifdef _WIN32
+//    return (ioctlsocket(fd, FIONBIO, 1) == 0) ? fd : -1;
+// #else
+//    int flags = fcntl(fd, F_GETFL, 0);
+//    if (flags == -1){
+//       return -1;
+//    }
+//    printf("success");
+//    return (fcntl(fd, F_SETFL, flags & ~O_NONBLOCK) == 0) ? fd : -1;
+// #endif
+// }
+
+FILE * fzE_socket(int domain, int type, int protocol){
+  return fdopen(socket(domain, type, protocol), "r+b");
+}
+
+int fzE_bind(FILE * sockfd, int family, char * data, int data_len){
+  struct sockaddr sa;
+  memset(&sa, 0, sizeof sa);
+  sa.sa_family = family;
+  memcpy(sa.sa_data, data, data_len);
+  return (bind(fileno(sockfd), &sa, sizeof sa) == -1)
+    ? errno
+    : 0;
+}
+
+int fzE_listen(FILE * sockfd, int backlog){
+  return (listen(fileno(sockfd), backlog) == -1)
+    ? errno
+    : 0;
+}
+
+FILE * fzE_accept(FILE * sockfd){
+  return fdopen(accept(fileno(sockfd), NULL, NULL), "r+b");
+}
+
+int fzE_connect(FILE * sockfd, int family, char * data, int data_len){
+  struct sockaddr sa;
+  memset(&sa, 0, sizeof sa);
+  sa.sa_family = family;
+  memcpy(sa.sa_data, data, data_len);
+  return (connect(fileno(sockfd), &sa, sizeof sa) == -1)
+    ? errno
+    : 0;
+}
+
+
+size_t fzE_bytes_available(FILE * file, size_t buf_size)
+{
+  size_t bytes_count = 0;
+#ifdef _WIN32
+  ioctlsocket(fileno(file), FIONREAD, &bytes_count);
+#else
+  int fd = fileno(file);
+  struct pollfd pfds = {fd, POLLIN, POLLIN};
+  poll(&pfds, 1, -1);
+  ioctl(fd, FIONREAD, &bytes_count);
+#endif
+  return (bytes_count < buf_size) ?  bytes_count : buf_size;
 }
 
 
