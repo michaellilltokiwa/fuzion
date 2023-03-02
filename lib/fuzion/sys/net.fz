@@ -1,0 +1,263 @@
+# This file is part of the Fuzion language implementation.
+#
+# The Fuzion language implementation is free software: you can redistribute it
+# and/or modify it under the terms of the GNU General Public License as published
+# by the Free Software Foundation, version 3 of the License.
+#
+# The Fuzion language implementation is distributed in the hope that it will be
+# useful, but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public
+# License for more details.
+#
+# You should have received a copy of the GNU General Public License along with The
+# Fuzion language implementation.  If not, see <https://www.gnu.org/licenses/>.
+
+
+# -----------------------------------------------------------------------
+#
+#  Tokiwa Software GmbH, Germany
+#
+#  Source code of Fuzion standard library feature fuzion.sys.net
+#
+# -----------------------------------------------------------------------
+
+# groups networking related features
+net is
+
+
+  # create a new socket descriptor
+  #
+  # true  => arr_result[0] is the socket descriptor
+  # false => arr_result[0] is an error number
+  #
+  socket(arr_result Any) bool is intrinsic
+
+  # convenience wrapper for socket intrinsic
+  socket outcome i64 is
+    arr array i64 := [0]
+    if socket arr.internalArray.data then arr[0] else error "error number: {arr[0]}"
+
+
+  # bind server, zero on success
+  # array data depends on the family.
+  # - ipv4: first two bytes encode the port,
+  #         then four bytes for the ip address
+  #
+  # returns zero on success, anything else is an error.
+  #
+  bind   (sd i64, family i32, arr_data Any, length i32) i32 is intrinsic
+
+
+  # NYI wrap bind, listen, connect like this:
+  # bind   (sd i64, family i32, arr_data Any, length i32) outcome unit is
+  #   res := bind sd family arr_data length
+  #   if res = 0 then unit else error "binding failed with error: $res."
+
+
+  # activates the server socket, setting a backlog
+  # for maximum amount of connections which are kept
+  # waiting for acceptance.
+  #
+  # returns zero on success, anything else is an error.
+  #
+  listen (sd i64, backlog i32) i32 is intrinsic
+
+
+  # accept a new connection for given socket.
+  # blocks until there is a connection to accept.
+  # returns a new / different descriptor which
+  # corresponds to the accepted connection only.
+  #
+  # true  => arr_result[0] is the socket descriptor
+  # false => arr_result[0] is an error number
+  #
+  accept (sd i64, arr_result Any) bool is intrinsic
+
+  # convenience wrapper for accept intrinsic
+  accept(sd i64) outcome i64 is
+    arr array i64 := [0]
+    if accept sd arr.internalArray.data then arr[0] else error "error number: {arr[0]}"
+
+
+  # connect the socket.
+  # details depend on the used family:
+  # - ipv4: first two bytes encode the port,
+  #         then four bytes for the ip address
+  #
+  # returns zero on success, anything else is an error.
+  #
+  connect(sd i64, family i32, arr_data Any, length i32) i32 is intrinsic
+
+
+  # read bytes into arr_data
+  #
+  # true  => arr_result[0] is the number of bytes read
+  # false => arr_result[0] is an error number
+  #
+  read(sd i64, arr_data Any, length i32, arr_result Any) bool is intrinsic
+
+
+  # reads a maximum of max_bytes from descriptor
+  #
+  read(descriptor i64, max_bytes i32) outcome (array u8) is
+    buff := internal_array u8 max_bytes
+    arr array i64 := [0]
+    if net.read descriptor buff.data max_bytes arr.internalArray.data
+      # NYI there should be a way to use a slice of internalArray to init array
+      array u8 arr[0].as_i32 (idx -> buff[idx])
+    else
+      error "error: {arr[0]}"
+
+
+  # write buffer bytes on socket
+  #
+  # returns zero on success, anything else is an error.
+  #
+  write(sd i64, arr_data Any, length i32) i32 is intrinsic
+
+
+  # write data to descriptor
+  write(descriptor i64, data array u8) outcome unit is
+    res := net.write descriptor data.internalArray.data data.length
+    if res = -1 then error "error: $res" else unit
+
+
+  # close socket
+  #
+  # returns zero on success, anything else is an error.
+  #
+  close0(sd i64) i32 is intrinsic
+
+
+  # close descriptor
+  close(sd i64) outcome unit is
+    res := close0 sd
+    if res = -1 then error "error: $res" else unit
+
+
+  # NYI these numbers are system dependent
+
+  tcp is
+  udp is
+  local is
+  ipv4 is
+  ipv6 is
+  stream is
+  raw is
+
+
+  protocols : choice ipv4 tcp udp ipv6 is
+    num i32 is
+      match protocols.this
+        ipv4 => 0
+        tcp => 6
+        udp => 17
+        ipv6 => 41
+
+  family : choice local ipv4 ipv6 is
+    num i32 is
+      match family.this
+        local => 1  # pipes etc.
+        ipv4  => 2
+        ipv6  => 10
+
+  socket_type : choice net.stream raw is
+    num i32 is
+      match socket_type.this
+        stream net.stream => 2
+        raw raw => 3
+
+
+  # read buffer in bytes
+  buffer_size i32 := 10
+
+  # NYI blocking / none blocking
+  # NYI collect occured errors
+  private read_until_error(descriptor i64) list u8 is
+    (1..)
+      .reduce((list u8), (lists.empty u8), ((r,_) ->
+        match read descriptor buffer_size
+          e error => abort r
+          # blocking none blocking
+          a array u8 => if a.count < buffer_size then abort (r ++ a) else r ++ a))
+
+
+  # NYI wrap in effect
+  # NYI can we yield control so that we can abort on error?
+  # NYI should we ensure, read is only called once?
+
+  server(f family, port u16, read_write (() -> list u8, (Sequence u8) -> outcome unit) -> unit)
+    outcome unit
+  is
+
+    backlog := 10
+
+    # open socket
+    match socket
+      sd i64 =>
+        port_addr array u8:= (port.as_bytes ++ [u8 0, u8 0, u8 0, u8 0]).as_array
+        # bind to port
+        res := bind sd f.num port_addr.internalArray.data port_addr.length
+        if res != 0
+          close sd
+          error "binding server socket to port $port failed with error $res."
+        else
+          # listen
+          res := listen sd backlog
+          if res != 0
+            close sd
+            error "listening on socket failed with error $res."
+          else
+            for ar := accept sd, accept sd
+            while (
+              match ar
+                desc i64 =>
+                  read_write
+                    # reading
+                    (() -> read_until_error desc)
+                    # writing
+                    ((data) -> write desc data.as_array)
+                  close desc
+                  true
+                error => false
+            )
+            else
+              match ar
+                # NYI name desc results in error. Ambigous target
+                desc_else i64 => panic "unexpected descriptor"
+                acc_err error =>
+                  close sd
+                  acc_err
+      con_err error => con_err
+
+
+
+  client(addr Sequence u8, port u16, read_write (() -> list u8, (Sequence u8) -> outcome unit) -> unit)
+    outcome unit
+  pre  (addr.count = 32/8   # ipv4
+     || addr.count = 128/8) # ipv6
+  is
+
+    family_of(addr Sequence u8) family is
+      if addr.count = 32/8 then ipv4 else ipv6
+
+    # open socket
+    match socket
+      sd i64 =>
+        port_addr array u8 := (port.as_bytes ++ addr).as_array
+
+        # connect to addr, port
+        res := connect sd (family_of addr).num port_addr.internalArray.data port_addr.length
+        if res != 0
+          close sd
+          error "connecting client socket to addr {addr} port $port failed with error {res}."
+        else
+          (read_write
+            # reading
+            (() -> read_until_error sd)
+            # writing
+            ((data) -> write sd data.as_array))
+
+          close sd
+      con_err error =>
+        con_err

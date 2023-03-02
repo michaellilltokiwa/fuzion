@@ -28,9 +28,35 @@ Fuzion language implementation.  If not, see <https://www.gnu.org/licenses/>.
 #ifndef	_FUZION_H
 #define	_FUZION_H	1
 
+#include <errno.h>
+#include <stdio.h>
+#include <string.h>
 #include <stdlib.h>     // setenv, unsetenv
 #include <sys/stat.h>   // mkdir
 #include <sys/types.h>  // mkdir
+
+
+#if _WIN32
+
+// "For example if you want to use winsock2.h you better make sure
+// WIN32_LEAN_AND_MEAN is always defined because otherwise you will
+// get conflicting declarations between the WinSock versions."
+// https://stackoverflow.com/questions/11040133/what-does-defining-win32-lean-and-mean-exclude-exactly#comment108482188_11040230
+#define WIN32_LEAN_AND_MEAN
+
+#include <winsock2.h>
+#include <windows.h>
+#include <ws2tcpip.h>
+
+#else
+#include <sys/socket.h> // socket, bind, listen, accept, connect
+#include <sys/ioctl.h>  // ioctl, FIONREAD
+#include <netinet/in.h> // AF_INET
+#include <poll.h>       // poll
+#include <fcntl.h>      // fcntl
+#include <unistd.h>     // close
+#endif
+
 
 
 // make directory, return zero on success
@@ -64,6 +90,99 @@ int fzE_unsetenv(const char *name){
   return -1;
 #else
   return unsetenv(name);
+#endif
+}
+
+// 0 = blocking
+// 1 = none_blocking
+int fzE_set_blocking(int fd, unsigned long blocking)
+{
+#ifdef _WIN32
+  if ( ioctlsocket(fd, FIONBIO, &blocking) == -1 ) {
+    return -1;
+  }
+#else
+  int flag = blocking == 1
+    ? fcntl(fd, F_GETFL, 0) | O_NONBLOCK
+    : fcntl(fd, F_GETFL, 0) & ~O_NONBLOCK;
+
+  if ( fcntl(fd, F_SETFL, flag) == -1 ) {
+    return -1;
+  }
+#endif
+  return fd;
+}
+
+int fzE_net_error()
+{
+#ifdef _WIN32
+  return WSAGetLastError();
+#else
+  return errno;
+#endif
+}
+
+int fzE_socket(int domain, int type, int protocol){
+#ifdef _WIN32
+  WSADATA wsaData;
+  if ( WSAStartup(MAKEWORD(2,2), &wsaData) != 0 ) {
+    return -1;
+  }
+#endif
+  return socket(domain, type, protocol);
+}
+
+int fzE_bind(int sockfd, int family, char * data, int data_len){
+  struct sockaddr sa;
+  memset(&sa, 0, sizeof sa);
+  sa.sa_family = family;
+  memcpy(sa.sa_data, data, data_len);
+  return ( bind(sockfd, &sa, sizeof sa) == -1 )
+    ? fzE_net_error()
+    : 0;
+}
+
+int fzE_listen(int sockfd, int backlog){
+  return ( listen(sockfd, backlog) == -1 )
+    ? fzE_net_error()
+    : 0;
+}
+
+int fzE_accept(int sockfd){
+  return accept(sockfd, NULL, NULL);
+}
+
+int fzE_connect(int sockfd, int family, char * data, int data_len){
+  struct sockaddr sa;
+  memset(&sa, 0, sizeof sa);
+  sa.sa_family = family;
+  memcpy(sa.sa_data, data, data_len);
+  return ( connect(sockfd, &sa, sizeof sa) == -1 )
+    ? fzE_net_error()
+    : 0;
+}
+
+int fzE_read(int sockfd, void * buf, size_t count){
+  int res = recv( sockfd, buf, count, 0 );
+  return res;
+}
+
+int fzE_write(int sockfd, const void * buf, size_t count){
+return ( send( sockfd, buf, count, 0 ) == -1 )
+  ? fzE_net_error()
+  : 0;
+}
+
+int fzE_close(int sockfd)
+{
+#ifdef _WIN32
+  closesocket(sockfd);
+  WSACleanup();
+  return fzE_net_error();
+#else
+  return ( close(sockfd) == - 1 )
+    ? fzE_net_error()
+    : 0;
 #endif
 }
 

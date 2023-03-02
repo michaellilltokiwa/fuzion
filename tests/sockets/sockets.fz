@@ -1,0 +1,58 @@
+# This file is part of the Fuzion language implementation.
+#
+# The Fuzion language implementation is free software: you can redistribute it
+# and/or modify it under the terms of the GNU General Public License as published
+# by the Free Software Foundation, version 3 of the License.
+#
+# The Fuzion language implementation is distributed in the hope that it will be
+# useful, but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public
+# License for more details.
+#
+# You should have received a copy of the GNU General Public License along with The
+# Fuzion language implementation.  If not, see <https://www.gnu.org/licenses/>.
+
+
+# -----------------------------------------------------------------------
+#
+#  Tokiwa Software GmbH, Germany
+#
+#  Source code of Fuzion test sockets
+#
+# -----------------------------------------------------------------------
+
+sockets =>
+
+  localhost array u8 := [127, 0, 0, 1]
+  port u16 := 9000
+
+  # should result in connection refused
+  # since no server is running yet...
+  say (fuzion.sys.net.client localhost port ( read,write ->))
+
+  # start server
+  concur.thread.spawn ()->
+    say (fuzion.sys.net.server fuzion.sys.net.ipv4 port ( read,write ->
+
+      say "accepted connection while listening on port $port"
+
+      s := String.type.from_bytes read()
+      say "received request: $s"
+
+      write "I am a response payload".utf8
+
+      unit
+      ))
+
+  # wait for server to start
+  time.nano.sleep (time.durations.seconds 1)
+
+  # write request to server and read response
+  for i in 1..2 do
+    say (fuzion.sys.net.client localhost port ( read,write ->
+
+      write "I am a request payload".utf8
+
+      s := String.type.from_bytes read()
+      say "received response: $s"
+      ))
