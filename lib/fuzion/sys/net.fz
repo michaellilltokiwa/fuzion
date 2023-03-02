@@ -89,6 +89,52 @@ net is
   connect(sd i64, family i32, arr_data Any, length i32) i32 is intrinsic
 
 
+  # read bytes into arr_data
+  #
+  # true  => arr_result[0] is the number of bytes read
+  # false => arr_result[0] is an error number
+  #
+  read(sd i64, arr_data Any, length i32, arr_result Any) bool is intrinsic
+
+
+  # reads a maximum of max_bytes from descriptor
+  #
+  read(descriptor i64, max_bytes i32) outcome (array u8) is
+    buff := internal_array u8 max_bytes
+    arr array i64 := [0]
+    if net.read descriptor buff.data max_bytes arr.internalArray.data
+      # NYI there should be a way to use a slice of internalArray to init array
+      array u8 arr[0].as_i32 (idx -> buff[idx])
+    else
+      error "error: {arr[0]}"
+
+
+  # write buffer bytes on socket
+  #
+  # returns zero on success, anything else is an error.
+  #
+  write(sd i64, arr_data Any, length i32) i32 is intrinsic
+
+
+  # write data to descriptor
+  write(descriptor i64, data array u8) outcome unit is
+    res := net.write descriptor data.internalArray.data data.length
+    if res = -1 then error "error: $res" else unit
+
+
+  # close socket
+  #
+  # returns zero on success, anything else is an error.
+  #
+  close0(sd i64) i32 is intrinsic
+
+
+  # close descriptor
+  close(sd i64) outcome unit is
+    res := close0 sd
+    if res = -1 then error "error: $res" else unit
+
+
   # NYI these numbers are system dependent
 
   tcp is
@@ -123,33 +169,16 @@ net is
 
 
   # read buffer in bytes
-  buffer_size u64 := 1000
-
+  buffer_size i32 := 10
 
   # NYI blocking / none blocking
-  private read_from(descriptor i64) list (outcome u8) : fuzion.sys.fileio is
-    match read descriptor buffer_size
-      arr array u8 =>
-        match arr.as_list
-          nil => nil
-          c Cons u8 (list u8) =>
-            list_of_non_lazy (outcome u8) c.head c.tail.map((outcome u8), (x -> x))
-            # list_of (outcome u8) c.head (c.tail.map((outcome u8), (x -> x)).concat2 (()->read_from descriptor))
-      read_err error =>
-        list_of_non_lazy (outcome u8) read_err nil
-
-
   # NYI collect occured errors
   private read_until_error(descriptor i64) list u8 is
-    (read_from descriptor).take_while(x ->
-      match x
-        u8 => true
-        error => false
-    ).map(x ->
-      match x
-        b u8 => b
-        error => panic "should not be possible")
-
+    (1..)
+      .reduce((list u8), (lists.empty u8), ((r,_) ->
+        match read descriptor buffer_size
+          e error => abort r
+          a array u8 => r ++ a))
 
 
   # NYI wrap in effect
@@ -157,7 +186,7 @@ net is
   # NYI should we ensure, read is only called once?
 
   server(f family, port u16, read_write (() -> list u8, (Sequence u8) -> outcome unit) -> bool)
-    outcome unit : fuzion.sys.fileio
+    outcome unit
   is
 
     backlog := 10
@@ -207,7 +236,7 @@ net is
 
 
   client(addr Sequence u8, port u16, read_write (() -> list u8, (Sequence u8) -> outcome unit) -> unit)
-    outcome unit : fuzion.sys.fileio
+    outcome unit
   pre  (addr.count = 32/8   # ipv4
      || addr.count = 128/8) # ipv6
   is

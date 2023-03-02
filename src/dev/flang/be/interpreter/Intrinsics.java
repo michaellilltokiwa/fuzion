@@ -43,6 +43,7 @@ import java.lang.reflect.Array;
 import java.net.Socket;
 import java.net.ServerSocket;
 import java.net.InetSocketAddress;
+import java.net.SocketTimeoutException;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -245,40 +246,20 @@ public class Intrinsics extends ANY
           var byteArr = (byte[])args.get(2).arrayData()._array;
           try
             {
-              if (_openStreams_.get(args.get(1).i64Value()) instanceof RandomAccessFile raf)
-                {
-                  int bytesRead = raf.read(byteArr);
+              var raf = (RandomAccessFile) _openStreams_.get(args.get(1).i64Value());
+              int bytesRead = raf.read(byteArr);
 
-                  if (args.get(3).i32Value() != bytesRead)
+              if (args.get(3).i32Value() != bytesRead)
+                {
+                  if (bytesRead == -1)
                     {
-                      if (bytesRead == -1)
-                        {
-                          // no more data to read due to end of file
-                          return new i64Value(0);
-                        }
+                      // no more data to read due to end of file
+                      return new i64Value(0);
                     }
-
-                  return new i64Value(bytesRead);
                 }
-              else if (_openStreams_.get(args.get(1).i64Value()) instanceof Socket socket)
-                {
-                  int bytesRead = socket.getInputStream().read(byteArr);
 
-                  if (args.get(3).i32Value() != bytesRead)
-                    {
-                      if (bytesRead == -1)
-                        {
-                          // no more data to read due to end of file
-                          return new i64Value(0);
-                        }
-                    }
+              return new i64Value(bytesRead);
 
-                  return new i64Value(bytesRead);
-                }
-              else
-                {
-                  return new i64Value(-1);
-                }
             }
           catch (Exception e)
             {
@@ -294,20 +275,9 @@ public class Intrinsics extends ANY
           byte[] fileContent = (byte[])args.get(2).arrayData()._array;
           try
             {
-              if (_openStreams_.get(args.get(1).i64Value()) instanceof RandomAccessFile raf)
-                {
-                  raf.write(fileContent);
-                  return new i8Value(0);
-                }
-              else if (_openStreams_.get(args.get(1).i64Value()) instanceof Socket socket)
-                {
-                  socket.getOutputStream().write(fileContent);
-                  return new i8Value(0);
-                }
-              else
-                {
-                  return new i8Value(-1);
-                }
+              var raf = (RandomAccessFile) _openStreams_.get(args.get(1).i64Value());
+              raf.write(fileContent);
+              return new i8Value(0);
             }
           catch (Exception e)
             {
@@ -783,12 +753,16 @@ public class Intrinsics extends ANY
 
 
     put("fuzion.sys.net.socket"  , (interpreter, innerClazz) -> args -> {
+      checkUnsafeIntrinsics(innerClazz);
+
       var res = (long[])args.get(1).arrayData()._array;
       res[0] = _openStreams_.add(new Socket());
       return new boolValue(true);
     });
 
     put("fuzion.sys.net.bind"    , (interpreter, innerClazz) -> args -> {
+      checkUnsafeIntrinsics(innerClazz);
+
       var family = args.get(2).i32Value();
       if (family != 2)
         {
@@ -811,10 +785,14 @@ public class Intrinsics extends ANY
     });
 
     put("fuzion.sys.net.listen"  , (interpreter, innerClazz) -> args -> {
+      checkUnsafeIntrinsics(innerClazz);
+
       return new i32Value(0);
     });
 
     put("fuzion.sys.net.accept"  , (interpreter, innerClazz) -> args -> {
+      checkUnsafeIntrinsics(innerClazz);
+
       try
         {
           var socket = ((ServerSocket)_openStreams_.get(args.get(1).i64Value())).accept();
@@ -828,6 +806,8 @@ public class Intrinsics extends ANY
     });
 
     put("fuzion.sys.net.connect" , (interpreter, innerClazz) -> args -> {
+      checkUnsafeIntrinsics(innerClazz);
+
       var family = args.get(2).i32Value();
       if (family != 2)
         {
@@ -845,6 +825,52 @@ public class Intrinsics extends ANY
         {
           return new i32Value(SystemErrNo.ECONNREFUSED.errno);
         }
+    });
+
+    put("fuzion.sys.net.read" , (interpreter, innerClazz) -> args -> {
+      checkUnsafeIntrinsics(innerClazz);
+
+      try
+        {
+          byte[] buff = (byte[])args.get(2).arrayData()._array;
+          var socket = (Socket)_openStreams_.get(args.get(1).i64Value());
+          // NYI blocking / none blocking read
+          socket.setSoTimeout(500);
+          var bytesRead = socket.getInputStream().read(buff);
+          ((long[])args.get(4).arrayData()._array)[0] = bytesRead;
+          return new boolValue(bytesRead != -1);
+        }
+      catch(IOException e) //SocketTimeoutException and others
+        {
+          // unspecified error
+          ((long[])args.get(4).arrayData()._array)[0] = -1;
+          return new boolValue(false);
+        }
+    });
+
+    put("fuzion.sys.net.write" , (interpreter, innerClazz) -> args -> {
+      checkUnsafeIntrinsics(innerClazz);
+
+      try
+        {
+          var fileContent = (byte[])args.get(2).arrayData()._array;
+          var socket = (Socket)_openStreams_.get(args.get(1).i64Value());
+          socket.getOutputStream().write(fileContent);
+          return new i32Value(0);
+        }
+      catch(IOException e)
+        {
+          return new i32Value(-1);
+        }
+    });
+
+    put("fuzion.sys.net.close0" , (interpreter, innerClazz) -> args -> {
+      checkUnsafeIntrinsics(innerClazz);
+
+      long fd = args.get(1).i64Value();
+      return _openStreams_.remove(fd)
+        ? new i32Value(0)
+        : new i32Value(-1);
     });
 
     put("safety"                , (interpreter, innerClazz) -> args -> new boolValue(Interpreter._options_.fuzionSafety()));
@@ -1216,6 +1242,16 @@ public class Intrinsics extends ANY
     else if (elementType.compareTo(Types.resolved.t_u64 ) == 0) { return new u64Value (((long   [])ad._array)[x]       ); }
     else if (elementType.compareTo(Types.resolved.t_bool) == 0) { return new boolValue(((boolean[])ad._array)[x]       ); }
     else                                                        { return              ((Value   [])ad._array)[x]        ; }
+  }
+
+
+  static void checkUnsafeIntrinsics(Clazz innerClazz)
+  {
+    if (!ENABLE_UNSAFE_INTRINSICS)
+      {
+        System.err.println("*** error: unsafe feature "+innerClazz+" disabled");
+        System.exit(1);
+      }
   }
 
 }
