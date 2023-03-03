@@ -1,9 +1,16 @@
 --error: connecting client socket to addr [127,0,0,1] port 9000 failed with error 111.--
-accepted connection while listening on port 9000
-received request: I am a request payload
-received response: I am a response payload
-unit
-accepted connection while listening on port 9000
-received request: I am a request payload
-received response: I am a response payload
-unit
+--error: connecting client socket to addr [127,0,0,1] port 9000 failed with error 111.--
+--error: connecting client socket to addr [127,0,0,1] port 9000 failed with error 111.--
+
+server: is_active true
+
+server, received msg: I am a req
+server, received msg: uest payload
+client, received msg: I am a res
+client, received msg: ponse payload
+
+server, received msg: I am a req
+server, received msg: uest payload
+client, received msg: I am a res
+client, received msg: ponse payload
+

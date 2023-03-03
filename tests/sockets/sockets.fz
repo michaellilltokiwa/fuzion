@@ -23,36 +23,61 @@
 
 sockets =>
 
+  n := fuzion.sys.net
+
   localhost array u8 := [127, 0, 0, 1]
   port u16 := 9000
 
   # should result in connection refused
   # since no server is running yet...
-  say (fuzion.sys.net.client localhost port ( read,write ->))
+  n.client localhost port
+  say n.connection.last_error
 
-  # start server
+  # reading/writing from/to closed connection
+  say (n.connection.read 10)
+  say (n.connection.write "Writing on closed connection".utf8)
+
+  say
+
+
+  # start server in background
   concur.thread.spawn ()->
-    say (fuzion.sys.net.server fuzion.sys.net.ipv4 port ( read,write ->
 
-      say "accepted connection while listening on port $port"
+    # server is installed in env
+    n.server n.ipv4 port
 
-      s := String.type.from_bytes read()
-      say "received request: $s"
+    say "server: is_active {n.server.is_active}"
+    say
 
-      write "I am a response payload".utf8
+    for _ := n.server.accept, n.server.accept
+    while n.server.is_active
+    do
+      if n.connection.is_active
+        b := n.connection.read 10
+        say "server, received msg: {b.bind String (d -> String.type.from_bytes  d)}"
 
-      unit
-      ))
+        b := n.connection.read 50
+        say "server, received msg: {b.bind String (d -> String.type.from_bytes  d)}"
+
+        n.connection.write "I am a response payload".utf8
+
 
   # wait for server to start
   time.nano.sleep (time.durations.seconds 1)
 
+
   # write request to server and read response
   for i in 1..2 do
-    say (fuzion.sys.net.client localhost port ( read,write ->
+    n.client localhost port
 
-      write "I am a request payload".utf8
+    if n.connection.is_active
+      n.connection.write "I am a request payload".utf8
 
-      s := String.type.from_bytes read()
-      say "received response: $s"
-      ))
+      b := n.connection.read 10
+      say "client, received msg: {b.bind String (d -> String.type.from_bytes  d)}"
+
+      b := n.connection.read 50
+      say "client, received msg: {b.bind String (d -> String.type.from_bytes  d)}"
+    else
+      say n.connection.last_error
+    say

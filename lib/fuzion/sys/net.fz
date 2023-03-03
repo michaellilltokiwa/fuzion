@@ -35,7 +35,7 @@ net is
   # convenience wrapper for socket intrinsic
   socket outcome i64 is
     arr array i64 := [0]
-    if socket arr.internalArray.data then arr[0] else error "error number: {arr[0]}"
+    if socket arr.internalArray.data then arr[0] else error "socket open failed, error number: {arr[0]}"
 
 
   # bind server, zero on success
@@ -76,7 +76,7 @@ net is
   # convenience wrapper for accept intrinsic
   accept(sd i64) outcome i64 is
     arr array i64 := [0]
-    if accept sd arr.internalArray.data then arr[0] else error "error number: {arr[0]}"
+    if accept sd arr.internalArray.data then arr[0] else error "accept failed, error number: {arr[0]}"
 
 
   # connect the socket.
@@ -168,75 +168,81 @@ net is
         raw raw => 3
 
 
-  # read buffer in bytes
-  buffer_size i32 := 10
 
+  # NYI we probably want to hold more than one connection per thread?
+  # use type arg to identify connection effect like in mut
+  private connection(desc outcome i64, m effectMode.val) : effect m is
+
+    # get the last error that occured
+    last_error => desc.bind unit (_ -> unit)
+
+    # is this connection still active?
+    is_active => desc.ok
+
+    replace(T type, a T) T is
+      replace
+      a
+
+    # read bytes from connection
+    public read(max_bytes i32) outcome (array u8) is
+      # close connection on certain read errors?
+      replace (match desc
+        d i64 => read d max_bytes
+        e error => e)
+
+    # NYI when to stop reading?
+    public read outcome String is
+      # read buffer in bytes
+      buffer_size i32 := 10
+
+      match desc
+        d i64 =>
+          l := (1..)
+            .reduce((list u8), (lists.empty u8), ((r,_) ->
+              match read buffer_size
+                e error => abort r
+                a array u8 => r ++ a))
+          String.type.from_bytes l
+        e error =>
+          e
+
+    public write(data Sequence u8) outcome unit is
+      # close connection on certain write errors?
+      match desc
+        d i64 => replace (write d data.as_array)
+        e error => e
+
+    close is
+      match desc
+        d i64 =>
+          match close d
+            unit =>
+            e error =>
+              connection e effectMode.repl
+        * =>
+      unit
+
+
+  # short hand to get current connection
+  # NYI type parameter to identify different connections
+  connection =>
+    if !effects.exists connection
+      connection (error "not initialized") effectMode.default
+    connection.env
+
+
+
+  # establish a new connection
+  # any active connection will be closed
+  # this call may block until connection is establised.
   # NYI blocking / none blocking
-  # NYI collect occured errors
-  private read_until_error(descriptor i64) list u8 is
-    (1..)
-      .reduce((list u8), (lists.empty u8), ((r,_) ->
-        match read descriptor buffer_size
-          e error => abort r
-          # blocking none blocking
-          a array u8 => if a.count < buffer_size then abort (r ++ a) else r ++ a))
-
-
-  # NYI wrap in effect
-  # NYI can we yield control so that we can abort on error?
-  # NYI should we ensure, read is only called once?
-
-  server(f family, port u16, read_write (() -> list u8, (Sequence u8) -> outcome unit) -> unit)
-    outcome unit
-  is
-
-    backlog := 10
-
-    # open socket
-    match socket
-      sd i64 =>
-        port_addr array u8:= (port.as_bytes ++ [u8 0, u8 0, u8 0, u8 0]).as_array
-        # bind to port
-        res := bind sd f.num port_addr.internalArray.data port_addr.length
-        if res != 0
-          close sd
-          error "binding server socket to port $port failed with error $res."
-        else
-          # listen
-          res := listen sd backlog
-          if res != 0
-            close sd
-            error "listening on socket failed with error $res."
-          else
-            for ar := accept sd, accept sd
-            while (
-              match ar
-                desc i64 =>
-                  read_write
-                    # reading
-                    (() -> read_until_error desc)
-                    # writing
-                    ((data) -> write desc data.as_array)
-                  close desc
-                  true
-                error => false
-            )
-            else
-              match ar
-                # NYI name desc results in error. Ambigous target
-                desc_else i64 => panic "unexpected descriptor"
-                acc_err error =>
-                  close sd
-                  acc_err
-      con_err error => con_err
-
-
-
-  client(addr Sequence u8, port u16, read_write (() -> list u8, (Sequence u8) -> outcome unit) -> unit)
-    outcome unit
+  #
+  client(addr Sequence u8, port u16)
   pre  (addr.count = 32/8   # ipv4
      || addr.count = 128/8) # ipv6
   is
+
+    connection.close
 
     family_of(addr Sequence u8) family is
       if addr.count = 32/8 then ipv4 else ipv6
@@ -245,19 +251,101 @@ net is
     match socket
       sd i64 =>
         port_addr array u8 := (port.as_bytes ++ addr).as_array
-
         # connect to addr, port
         res := connect sd (family_of addr).num port_addr.internalArray.data port_addr.length
         if res != 0
           close sd
-          error "connecting client socket to addr {addr} port $port failed with error {res}."
+          connection (error "connecting client socket to addr {addr} port $port failed with error {res}.") effectMode.repl
         else
-          (read_write
-            # reading
-            (() -> read_until_error sd)
-            # writing
-            ((data) -> write sd data.as_array))
-
-          close sd
+          connection sd effectMode.repl
       con_err error =>
-        con_err
+        connection con_err effectMode.repl
+    unit
+
+
+  private server(
+    p Server_Provider,
+    m effectMode.val,
+    _ unit
+  ) : effect m
+  is
+
+    desc := p.initialize
+
+    # get the last error that occured
+    last_error => desc.bind unit (_ -> unit)
+
+    # is the server running?
+    is_active => desc.ok
+
+    # close server, stop listening on port
+    close is
+      match desc
+        d i64 =>
+          match close d
+            unit =>
+              server (default_server_provider (error "not initialized")) effectMode.repl unit
+            error error =>
+              server (default_server_provider error) effectMode.repl unit
+        * =>
+      unit
+
+
+    # close current connection
+    # accept new connection
+    # blocks until connection is established
+    accept is
+      connection.close
+      match desc
+        d i64 =>
+          connection (accept d) effectMode.repl
+        * =>
+      unit
+
+
+  # open new server on port
+  # closes currently installed server
+  # NYI blocking / none blocking
+  server(f family, port u16) =>
+    server.close
+    server (ip_server_provider f port) effectMode.repl unit
+
+
+  # get currently installed server from env
+  server =>
+    if !effects.exists server
+      server (default_server_provider (error "not initialized")) effectMode.default unit
+    server.env
+
+
+  Server_Provider ref is
+    initialize outcome i64 is abstract
+
+
+  ip_server_provider(f family, port u16) : Server_Provider is
+    # opens sockets, binds to port and sets socket to listening
+    initialize outcome i64 is
+      backlog := 10
+      # open socket
+      match socket
+        sd i64 =>
+          port_addr array u8:= (port.as_bytes ++ [u8 0, u8 0, u8 0, u8 0]).as_array
+          # bind to port
+          res := bind sd f.num port_addr.internalArray.data port_addr.length
+          if res != 0
+            close sd
+            error "binding server socket to port $port failed with error $res."
+          else
+            # listen
+            res := listen sd backlog
+            if res != 0
+              close sd
+              error "listening on socket failed with error $res."
+            else
+              sd
+        con_err error => con_err
+
+
+  default_server_provider(e error) : Server_Provider is
+    initialize outcome i64 is
+      e
