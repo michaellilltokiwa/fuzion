@@ -1,16 +1,14 @@
 --error: connecting client socket to addr [127,0,0,1] port 9000 failed with error 111.--
 --error: connecting client socket to addr [127,0,0,1] port 9000 failed with error 111.--
 --error: connecting client socket to addr [127,0,0,1] port 9000 failed with error 111.--
-
-server: is_active true
-
+unit
+server: is_active false
+--error: binding server socket to port 9000 failed with error 98.--
 server, received msg: I am a req
 server, received msg: uest payload
 client, received msg: I am a res
 client, received msg: ponse payload
-
 server, received msg: I am a req
 server, received msg: uest payload
 client, received msg: I am a res
 client, received msg: ponse payload
-

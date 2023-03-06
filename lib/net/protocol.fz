@@ -1,0 +1,50 @@
+# This file is part of the Fuzion language implementation.
+#
+# The Fuzion language implementation is free software: you can redistribute it
+# and/or modify it under the terms of the GNU General Public License as published
+# by the Free Software Foundation, version 3 of the License.
+#
+# The Fuzion language implementation is distributed in the hope that it will be
+# useful, but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public
+# License for more details.
+#
+# You should have received a copy of the GNU General Public License along with The
+# Fuzion language implementation.  If not, see <https://www.gnu.org/licenses/>.
+
+
+# -----------------------------------------------------------------------
+#
+#  Tokiwa Software GmbH, Germany
+#
+#  Source code of Fuzion standard library feature net.protocol
+#
+# -----------------------------------------------------------------------
+
+protocol is
+
+  tcp is
+    redef as_string => "Transmission Control Protocol"
+
+  udp is
+    redef as_string => "User Datagram Protocol"
+
+  local is
+
+  ipv4 is
+    redef as_string => "Internet Protocol Version 4"
+
+  ipv6 is
+    redef as_string => "Internet Protocol Version 6"
+
+
+  # NYI these numbers are system dependent
+  # NYI needs better name
+  protocol_choice : choice ipv4 tcp udp ipv6 is
+    as_num i32 is
+      match protocol_choice.this
+        ipv4 => 0
+        tcp => 6
+        udp => 17
+        ipv6 => 41
+

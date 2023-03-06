@@ -23,61 +23,99 @@
 
 sockets =>
 
-  n := fuzion.sys.net
-
   localhost array u8 := [127, 0, 0, 1]
   port u16 := 9000
 
   # should result in connection refused
   # since no server is running yet...
-  n.client localhost port
-  say n.connection.last_error
+  net.client localhost port
+  say (net.connection net.client).last_error
 
   # reading/writing from/to closed connection
-  say (n.connection.read 10)
-  say (n.connection.write "Writing on closed connection".utf8)
+  say ((net.connection net.client).read 10)
+  say ((net.connection net.client).write "Writing on closed connection".utf8)
 
-  say
 
 
   # start server in background
   concur.thread.spawn ()->
 
-    # server is installed in env
-    n.server n.ipv4 port
+    # install server in env
+    say (net.server net.family.ipv4 port)
 
-    say "server: is_active {n.server.is_active}"
-    say
-
-    for _ := n.server.accept, n.server.accept
-    while n.server.is_active
+    while net.server.is_active
     do
-      if n.connection.is_active
-        b := n.connection.read 10
+      net.server.accept
+      if (net.connection net.server).is_active
+        b := (net.connection net.server).read 10
         say "server, received msg: {b.bind String (d -> String.type.from_bytes  d)}"
 
-        b := n.connection.read 50
+        # read more than available
+        b := (net.connection net.server).read 100
         say "server, received msg: {b.bind String (d -> String.type.from_bytes  d)}"
 
-        n.connection.write "I am a response payload".utf8
+        (net.connection net.server).write "I am a response payload".utf8
 
 
   # wait for server to start
-  time.nano.sleep (time.durations.seconds 1)
+  time.nano.sleep (time.durations.ms 500)
+
+  say "server: is_active {net.server.is_active}"
+
+
+  # try start another server on same port in background
+  concur.thread.spawn ()->
+
+    # server is installed in env
+    say (net.server net.family.ipv4 port)
+
+    unit
+
+  # wait for server to start
+  time.nano.sleep (time.durations.ms 500)
 
 
   # write request to server and read response
-  for i in 1..2 do
-    n.client localhost port
+  for _ in 1..2 do
+    net.client localhost port
 
-    if n.connection.is_active
-      n.connection.write "I am a request payload".utf8
+    (net.connection net.client).write "I am a request payload".utf8
 
-      b := n.connection.read 10
-      say "client, received msg: {b.bind String (d -> String.type.from_bytes  d)}"
+    b := (net.connection net.client).read 10
+    say "client, received msg: {b.bind String (d -> String.type.from_bytes  d)}"
 
-      b := n.connection.read 50
-      say "client, received msg: {b.bind String (d -> String.type.from_bytes  d)}"
-    else
-      say n.connection.last_error
-    say
+    # read more than available
+    b := (net.connection net.client).read 100
+    say "client, received msg: {b.bind String (d -> String.type.from_bytes  d)}"
+
+
+  # write request to server and read response
+  for i in 1..5 do
+    concur.thread.spawn ()->
+      net.client localhost port
+
+      (net.connection net.client).write "parallel request of client".utf8
+      rr := (net.connection net.client).read 10
+
+      # wait for clients to read/write
+      time.nano.sleep (time.durations.ms 100)
+
+      say "read successful: {rr.ok}"
+
+      unit
+
+
+  # wait for clients to read/write
+  time.nano.sleep (time.durations.ms 500)
+
+
+  # write request to server and read response
+  concur.thread.spawn ()->
+
+    net.client localhost port
+    (net.connection net.client).read 10
+    say "should not be reached since read blocks indefinitely"
+
+
+  # wait for clients to read/write
+  time.nano.sleep (time.durations.ms 500)

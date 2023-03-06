@@ -1,0 +1,91 @@
+# This file is part of the Fuzion language implementation.
+#
+# The Fuzion language implementation is free software: you can redistribute it
+# and/or modify it under the terms of the GNU General Public License as published
+# by the Free Software Foundation, version 3 of the License.
+#
+# The Fuzion language implementation is distributed in the hope that it will be
+# useful, but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public
+# License for more details.
+#
+# You should have received a copy of the GNU General Public License along with The
+# Fuzion language implementation.  If not, see <https://www.gnu.org/licenses/>.
+
+
+# -----------------------------------------------------------------------
+#
+#  Tokiwa Software GmbH, Germany
+#
+#  Source code of Fuzion standard library feature net.connection
+#
+# -----------------------------------------------------------------------
+
+
+
+# NYI we probably want to hold more than one connection per thread?
+# use type arg to identify connection effect like in mut
+private connection(T type, desc outcome i64, m effectMode.val) : effect m
+# NYI does not work
+# pre !(effects.exists (connection T) && (connection T).is_active && desc.ok)
+is
+
+  # get the last error that occured
+  last_error => desc.bind unit (_ -> unit)
+
+  # is this connection still active?
+  is_active => desc.ok
+
+  replace(T type, a T) T is
+    replace
+    a
+
+  # read bytes from connection
+  public read(max_bytes i32) outcome (array u8) is
+    # close connection on certain read errors?
+    replace (match desc
+      d i64 => fuzion.sys.net.read d max_bytes
+      e error => e)
+
+  # NYI when to stop reading?
+  public read outcome String is
+    # read buffer in bytes
+    buffer_size i32 := 10
+
+    match desc
+      d i64 =>
+        l := (1..)
+          .reduce((list u8), (lists.empty u8), ((r,_) ->
+            match read buffer_size
+              e error => abort r
+              a array u8 => r ++ a))
+        String.type.from_bytes l
+      e error =>
+        e
+
+  public write(data Sequence u8) outcome unit is
+    # close connection on certain write errors?
+    match desc
+      d i64 => replace (fuzion.sys.net.write d data.as_array)
+      e error => e
+
+  close is
+    match desc
+      d i64 =>
+        match fuzion.sys.net.close d
+          unit =>
+            connection T (error "not initialized") effectMode.repl
+          e error =>
+            connection T e effectMode.repl
+      e error =>
+        connection T (error "not initialized") effectMode.repl
+    unit
+
+
+# short hand to get current connection
+# NYI type parameter to identify different connections
+connection(T type) =>
+  if !effects.exists (connection T)
+    connection T (error "not initialized") effectMode.default
+  (connection T).env
+

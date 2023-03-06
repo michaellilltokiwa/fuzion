@@ -1,0 +1,110 @@
+# This file is part of the Fuzion language implementation.
+#
+# The Fuzion language implementation is free software: you can redistribute it
+# and/or modify it under the terms of the GNU General Public License as published
+# by the Free Software Foundation, version 3 of the License.
+#
+# The Fuzion language implementation is distributed in the hope that it will be
+# useful, but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public
+# License for more details.
+#
+# You should have received a copy of the GNU General Public License along with The
+# Fuzion language implementation.  If not, see <https://www.gnu.org/licenses/>.
+
+
+# -----------------------------------------------------------------------
+#
+#  Tokiwa Software GmbH, Germany
+#
+#  Source code of Fuzion standard library feature net.server
+#
+# -----------------------------------------------------------------------
+
+
+
+private server(
+  state outcome i64,
+  m effectMode.val,
+  _ unit
+) : effect m
+is
+
+  # get the last error that occured
+  last_error => state.bind unit (_ -> unit)
+
+  # is the server running?
+  is_active =>
+    state.ok
+
+
+  # close server, stop listening on port
+  close is
+    match state
+      d i64 =>
+        match fuzion.sys.net.close d
+          unit =>
+            server (error "not initialized") effectMode.repl unit
+          error error =>
+            server error effectMode.repl unit
+      * =>
+    unit
+
+
+  # close current connection
+  # accept new connection
+  # blocks until connection is established
+  accept is
+    (connection server).close
+    match state
+      d i64 =>
+        connection server (fuzion.sys.net.accept d) effectMode.repl
+      * =>
+    unit
+
+
+# open new server on port
+# closes currently installed server
+# NYI blocking / none blocking
+server(f family.family_choice, port u16) outcome unit is
+  server.close
+  match init_ip_server f port
+    desc i64 =>
+      server desc effectMode.repl unit
+      unit
+    e error =>
+      e
+
+
+# get currently installed server from env
+server =>
+  if !effects.exists server
+    server (error "not initialized") effectMode.default unit
+  server.env
+
+
+Server_Provider ref is
+  initialize outcome i64 is abstract
+
+
+# opens sockets, binds to port and sets socket to listening
+private init_ip_server(f family.family_choice, port u16) outcome i64 is
+  backlog := 10
+  # open socket
+  match fuzion.sys.net.socket
+    sd i64 =>
+      port_addr array u8:= (port.as_bytes ++ [u8 0, u8 0, u8 0, u8 0]).as_array
+      # bind to port
+      bind_res := fuzion.sys.net.bind sd f.as_num port_addr.internalArray.data port_addr.length
+      if bind_res != 0
+        fuzion.sys.net.close sd
+        error "binding server socket to port $port failed with error $bind_res."
+      else
+        # listen
+        listen_res := fuzion.sys.net.listen sd backlog
+        if listen_res != 0
+          fuzion.sys.net.close sd
+          error "listening on socket failed with error $listen_res."
+        else
+          sd
+    con_err error => con_err

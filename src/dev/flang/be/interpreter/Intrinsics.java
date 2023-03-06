@@ -43,7 +43,7 @@ import java.lang.reflect.Array;
 import java.net.Socket;
 import java.net.ServerSocket;
 import java.net.InetSocketAddress;
-import java.net.SocketTimeoutException;
+import java.net.BindException;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -93,7 +93,7 @@ public class Intrinsics extends ANY
    */
   enum SystemErrNo
   {
-    UNSPECIFIED(0), EIO(5), EACCES(13), ENOTSUP(95), ECONNREFUSED(111);
+    UNSPECIFIED(0), EIO(5), EACCES(13), ENOTSUP(95), EADDRINUSE(98), ECONNREFUSED(111);
 
     final int errno;
 
@@ -774,6 +774,10 @@ public class Intrinsics extends ANY
           ss.bind(new InetSocketAddress(ipAddress, port));
           _openStreams_.put(args.get(1).i64Value(), ss);
           return new i32Value(0);
+        }
+      catch(BindException e)
+        {
+          return new i32Value(SystemErrNo.EADDRINUSE.errno);
         }
       catch(IOException e)
         {
