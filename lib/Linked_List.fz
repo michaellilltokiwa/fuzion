@@ -17,25 +17,43 @@
 #
 #  Tokiwa Software GmbH, Germany
 #
-#  Source code of Fuzion standard library feature conststring
-#
-#  Author: Fridtjof Siebert (siebert@tokiwa.software)
+#  Source code of Fuzion standard library feature Linked_List
 #
 # -----------------------------------------------------------------------
 
-# conststring -- feature used for string constants in Fuzion source code
+# abstract type for 'Linked_List'
 #
-# conststring cannot be called directly, instances are created implicitly by the
-# backend.
-#
-conststring (cannot_be_called void) ref : String, array u8 (fuzion.sys.internal_array_init u8 -1) unit unit unit is
+Linked_List(redef T type) ref : Sequence T is
 
-  redef utf8 Sequence u8 is conststring.this
 
-  # Resolve repeated inheritance of as_string, is_empty from string and from array.
+  # next is the following element of the linked list, or nil if there are
+  # no more elements in the list after this element.
   #
-  # NYI: Once we have a select-mechanism, we could select string.as_string over
-  # array.as_string
+  next option (Linked_List T) is abstract
+
+
+  # the data stored in this element of the list.
   #
-  redef as_string String is conststring.this
-  redef is_empty => length ≟ 0
+  data T is abstract
+
+
+  # helper feature for tail-recursive implementation of as_string.
+  #
+  private as_string0(pfx String) String is
+    match next
+      ll Linked_List T => ll.as_string0 (pfx + "{ll.data} -> ")
+      nil => pfx + "nil ]"
+
+
+  # a representation of this linked list as a string.
+  #
+  redef as_string =>
+    Linked_List.this.as_string0 "[ {data} -> "
+
+
+  # return this linked list as a list
+  #
+  redef as_list list T is
+    match next
+      ll Linked_List T => (data : ()->ll.as_list)
+      nil => (data : ()->nil)

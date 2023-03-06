@@ -17,25 +17,9 @@
 #
 #  Tokiwa Software GmbH, Germany
 #
-#  Source code of Fuzion standard library feature conststring
-#
-#  Author: Fridtjof Siebert (siebert@tokiwa.software)
+#  Source code of Fuzion test Makefile
 #
 # -----------------------------------------------------------------------
 
-# conststring -- feature used for string constants in Fuzion source code
-#
-# conststring cannot be called directly, instances are created implicitly by the
-# backend.
-#
-conststring (cannot_be_called void) ref : String, array u8 (fuzion.sys.internal_array_init u8 -1) unit unit unit is
-
-  redef utf8 Sequence u8 is conststring.this
-
-  # Resolve repeated inheritance of as_string, is_empty from string and from array.
-  #
-  # NYI: Once we have a select-mechanism, we could select string.as_string over
-  # array.as_string
-  #
-  redef as_string String is conststring.this
-  redef is_empty => length ≟ 0
+override NAME = test_mutable_linked_list
+include ../simple.mk

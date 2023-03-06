@@ -630,6 +630,7 @@ public class Clazz extends ANY implements Comparable<Clazz>
       }
 
     t = this._type.actualType(t);
+    t = t.replace_this_type_by_actual_outer(_type);
     if (this._outer != null)
       {
         t = this._outer.actualType(t);
@@ -1039,6 +1040,7 @@ public class Clazz extends ANY implements Comparable<Clazz>
   {
     if (PRECONDITIONS) require
       (f != null,
+       !f.isUniverse(),
        !this.isVoidType());
 
     return lookup(f, -1, actualGenerics, p, false);
@@ -1079,6 +1081,7 @@ public class Clazz extends ANY implements Comparable<Clazz>
   {
     if (PRECONDITIONS) require
       (f != null,
+       !f.isUniverse(),
        !this.isVoidType());
 
     Clazz innerClazz = null;
@@ -1234,11 +1237,11 @@ public class Clazz extends ANY implements Comparable<Clazz>
       (this._type == Types.t_ERROR   ||
        this._type == Types.t_ADDRESS ||
        this._outer == null              )
-      ? this._type.toString() // error, address or universe
+      ? this._type.asString() // error, address or universe
       : (""
          + ((this._outer == Clazzes.universe.get())
             ? ""
-            : this._outer.toString() + ".")
+            : this._outer.toStringWrapped() + ".")
          + (this.isRef()
             ? "ref "
             : ""
@@ -1246,7 +1249,19 @@ public class Clazz extends ANY implements Comparable<Clazz>
          + feature().featureName().baseName()
          + this._type.generics()
          .toString(" ", " ", "", t -> t.asStringWrapped())
-        );
+         );
+  }
+
+
+  /**
+   * wrap the result of toString in parentheses if necessary
+   */
+  public String toStringWrapped()
+  {
+    var s = toString();
+    return s.contains(" ")
+           ? "(" + s + ")"
+           : s;
   }
 
 
@@ -1257,7 +1272,7 @@ public class Clazz extends ANY implements Comparable<Clazz>
    */
   public String toString2()
   {
-    return "CLAZZ:" + this._type + (this._outer != null ? " in " + this._outer : "");
+    return "CLAZZ:" + this._type.asString() + (this._outer != null ? " in " + this._outer : "");
   }
 
 
@@ -2147,7 +2162,7 @@ public class Clazz extends ANY implements Comparable<Clazz>
               }
             if (t.featureOfType().outer() == null || innerBase.feature().inheritsFrom(t.featureOfType().outer()))
               {
-                var res = innerBase == null || t == Types.t_UNDEFINED || t == Types.t_ERROR
+                var res = innerBase == null || t == Types.t_UNDEFINED || t == Types.t_ERROR || t.featureOfType().outer() == null
                   ? Clazzes.create(t, null)
                   : innerBase.lookup(t.featureOfType(), t.generics(), null);
                 if (t.isRef())
@@ -2266,7 +2281,7 @@ public class Clazz extends ANY implements Comparable<Clazz>
                 // underlying type to avoid problems creating clazzes form
                 // this.types.
                 if (CHECKS) check
-                  (feature() == Types.resolved.f_Types_get);
+                  (Errors.count() > 0 || feature() == Types.resolved.f_Types_get);
 
                 gi = gi.featureOfType().isThisRef() ? gi.asRef() : gi.asValue();
               }

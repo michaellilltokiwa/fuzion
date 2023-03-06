@@ -473,7 +473,7 @@ public abstract class AbstractType extends ANY implements Comparable<AbstractTyp
     var result = genericsToReplace;
     if (f != null && !genericsToReplace.isEmpty())
       {
-        if (genericsToReplace == f.generics().asActuals())  /* shortcut for properly handling open generics list */
+        if (genericsToReplace instanceof FormalGenerics.AsActuals aa && aa.actualsOf(f))  /* shortcut for properly handling open generics list */
           {
             result = actualGenerics;
           }
@@ -678,7 +678,7 @@ public abstract class AbstractType extends ANY implements Comparable<AbstractTyp
 
 
   /**
-   * Check if type t depends on a formal generic parameter of this. If so,
+   * Check if this type depends on a formal generic parameter of f. If so,
    * replace t by the corresponding actual generic parameter from the list
    * provided.
    *
@@ -965,6 +965,48 @@ public abstract class AbstractType extends ANY implements Comparable<AbstractTyp
 
 
   /**
+   * This must be called on a call result type to replace `this.type` used in
+   * the result type by the actual type dictated by the target of the call
+   *
+   * example:
+   *
+   *   a is
+   *
+   *     l list a.this.type is [a.this].as_list
+   *
+   *   b : a is
+   *
+   *   say (type_of a.l)    # should print `list a`
+   *   say (type_of b.l)    # should print `list b`
+   *
+   * @param tf the type feature we are calling (`has_equality.type` in the example
+   * above).
+   *
+   * @param tc the target call (`T` in the example above).
+   */
+  public AbstractType replace_this_type_by_actual_outer(AbstractType tt)
+  {
+    var result = this;
+    if (isGenericArgument())
+      {
+      }
+    else if (isThisType())
+      {
+        var att = (tt.isGenericArgument() ? tt.genericArgument().constraint() : tt);
+        if (att.featureOfType().inheritsFrom(featureOfType()))
+          {
+            result = tt;
+          }
+      }
+    else
+      {
+        result = applyToGenericsAndOuter(g -> g.replace_this_type_by_actual_outer(tt));
+      }
+    return result;
+  }
+
+
+  /**
    * For a given type t, get the type of t's type feature. E.g., for t==string,
    * this will return the type of string.type.
    *
@@ -1006,7 +1048,7 @@ public abstract class AbstractType extends ANY implements Comparable<AbstractTyp
         var f = fot.isTypeFeature() ? null
               : res == null         ? fot.typeFeature()
                                     : fot.typeFeature(res);
-        if (f == null)  // NYI: This is the case for fot.isTypeFeature(), but also for some internal features linke #anonymous. Neeed to check why.
+        if (f == null)  // NYI: This is the case for fot.isTypeFeature(), but also for some internal features like #anonymous. Need to check why.
           {
             result = Types.resolved.f_Type.thisType();
           }
@@ -1122,7 +1164,7 @@ public abstract class AbstractType extends ANY implements Comparable<AbstractTyp
   /**
    * For any type parameter g used in this, in cases these are type parameters
    * of the origin of a type feature o, where o is f or an outer feature of f,
-   * replace g by the correspodinging type parameter of o.
+   * replace g by the corresponding type parameter of o.
    *
    * This is used to infer type parameter for a call to a feature declared in a
    * type feature where the actual arguments are instances of the original
@@ -1251,7 +1293,7 @@ public abstract class AbstractType extends ANY implements Comparable<AbstractTyp
     else
       {
         var o = outer();
-        String outer = o != null && !o.featureOfType().isUniverse() ? o.asString() + "." : "";
+        String outer = o != null && !o.featureOfType().isUniverse() ? o.asStringWrapped() + "." : "";
         result = outer
               + (isRef() != featureOfType().isThisRef() ? (isRef() ? "ref " : "value ") : "" )
               + featureOfType().featureName().baseName();
