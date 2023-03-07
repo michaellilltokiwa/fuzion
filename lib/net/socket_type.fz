@@ -21,7 +21,7 @@
 #
 # -----------------------------------------------------------------------
 
-socket is
+socket_type is
 
   # connection-based byte-stream
   # this must be used for TCP
@@ -39,9 +39,10 @@ socket is
 
 
   # NYI needs better name
-  socket_choice : choice socket.stream raw is
+  socket_type_choice : choice socket_type.stream datagram raw is
     # NYI these numbers are system dependent
     as_num i32 is
-      match socket_choice.this
-        stream socket.stream => 2
-        raw raw => 3
+      match socket_type_choice.this
+        socket_type.stream => 1
+        datagram => 2
+        raw => 3

@@ -17,12 +17,12 @@
 #
 #  Tokiwa Software GmbH, Germany
 #
-#  Source code of Fuzion standard library feature fuzion.sys.net
+#  Source code of Fuzion standard library feature fuzion.sys.net0
 #
 # -----------------------------------------------------------------------
 
 # groups networking related features
-net is
+net0 is
 
 
   # create a new socket descriptor
@@ -30,12 +30,12 @@ net is
   # true  => arr_result[0] is the socket descriptor
   # false => arr_result[0] is an error number
   #
-  socket(arr_result Any) bool is intrinsic
+  socket(family, socket_type i32, arr_result Any) bool is intrinsic
 
   # convenience wrapper for socket intrinsic
-  socket outcome i64 is
+  socket(family net.family.family_choice, socket_type net.socket_type.socket_type_choice) outcome i64 is
     arr array i64 := [0]
-    if socket arr.internalArray.data then arr[0] else error "socket open failed, error number: {arr[0]}"
+    if socket family.as_num socket_type.as_num arr.internalArray.data then arr[0] else error "socket open failed, error number: {arr[0]}"
 
 
   # bind server, zero on success

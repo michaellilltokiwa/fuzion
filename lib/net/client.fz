@@ -29,20 +29,18 @@
 # NYI blocking / none blocking
 #
 client(addr Sequence u8, port u16)
-pre  (addr.count = 32/8   # ipv4
-   || addr.count = 128/8) # ipv6
 is
 
   (connection client).close
 
   # open socket
-  match fuzion.sys.net.socket
+  match fuzion.sys.net0.socket (family.family_of addr) socket_type.stream
     sd i64 =>
       port_addr array u8 := (port.as_bytes ++ addr).as_array
       # connect to addr, port
-      res := fuzion.sys.net.connect sd (family.family_of addr).as_num port_addr.internalArray.data port_addr.length
+      res := fuzion.sys.net0.connect sd (family.family_of addr).as_num port_addr.internalArray.data port_addr.length
       if res != 0
-        fuzion.sys.net.close sd
+        fuzion.sys.net0.close sd
         connection client (error "connecting client socket to addr {addr} port $port failed with error {res}.") effectMode.repl
       else
         connection client sd effectMode.repl

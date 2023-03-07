@@ -450,14 +450,14 @@ public class CFG extends ANY
     put("fuzion.sys.misc.unique_id"      , (cfg, cl) -> { } );
     put("fuzion.sys.thread.spawn0"       , (cfg, cl) -> { } );
 
-    put("fuzion.sys.net.socket"          , (cfg, cl) -> { } );
-    put("fuzion.sys.net.bind"            , (cfg, cl) -> { } );
-    put("fuzion.sys.net.listen"          , (cfg, cl) -> { } );
-    put("fuzion.sys.net.accept"          , (cfg, cl) -> { } );
-    put("fuzion.sys.net.connect"         , (cfg, cl) -> { } );
-    put("fuzion.sys.net.read"            , (cfg, cl) -> { } );
-    put("fuzion.sys.net.write"           , (cfg, cl) -> { } );
-    put("fuzion.sys.net.close0"          , (cfg, cl) -> { } );
+    put("fuzion.sys.net0.socket"          , (cfg, cl) -> { } );
+    put("fuzion.sys.net0.bind"            , (cfg, cl) -> { } );
+    put("fuzion.sys.net0.listen"          , (cfg, cl) -> { } );
+    put("fuzion.sys.net0.accept"          , (cfg, cl) -> { } );
+    put("fuzion.sys.net0.connect"         , (cfg, cl) -> { } );
+    put("fuzion.sys.net0.read"            , (cfg, cl) -> { } );
+    put("fuzion.sys.net0.write"           , (cfg, cl) -> { } );
+    put("fuzion.sys.net0.close0"          , (cfg, cl) -> { } );
 
     put("fuzion.std.nano_sleep"          , (cfg, cl) -> { } );
     put("fuzion.std.nano_time"           , (cfg, cl) -> { } );

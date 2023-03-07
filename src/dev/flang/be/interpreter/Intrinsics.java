@@ -151,6 +151,13 @@ public class Intrinsics extends ANY
 
 
   private static void put(String n, IntrinsicCode c) { _intrinsics_.put(n, c); }
+  private static void putUnsafe(String n, IntrinsicCode c) { _intrinsics_.put(n, (interpreter, innerClazz) -> args -> {
+    if (!ENABLE_UNSAFE_INTRINSICS)
+      {
+        Errors.fatal("*** error: unsafe feature "+innerClazz+" disabled");
+      }
+    return c.get(interpreter, innerClazz).call(args);
+  }); }
   private static void put(String n1, String n2, IntrinsicCode c) { put(n1, c); put(n2, c); }
   private static void put(String n1, String n2, String n3, IntrinsicCode c) { put(n1, c); put(n2, c); put(n3, c); }
   private static void put(String n1, String n2, String n3, String n4, IntrinsicCode c) { put(n1, c); put(n2, c); put(n3, c); put(n4, c); }
@@ -749,17 +756,14 @@ public class Intrinsics extends ANY
         });
 
 
-    put("fuzion.sys.net.socket"  , (interpreter, innerClazz) -> args -> {
-      checkUnsafeIntrinsics(innerClazz);
-
-      var res = (long[])args.get(1).arrayData()._array;
+    putUnsafe("fuzion.sys.net0.socket"  , (interpreter, innerClazz) -> args -> {
+      // NYI DatagramSocket etc.
+      var res = (long[])args.get(3).arrayData()._array;
       res[0] = _openStreams_.add(new Socket());
       return new boolValue(true);
     });
 
-    put("fuzion.sys.net.bind"    , (interpreter, innerClazz) -> args -> {
-      checkUnsafeIntrinsics(innerClazz);
-
+    putUnsafe("fuzion.sys.net0.bind"    , (interpreter, innerClazz) -> args -> {
       var family = args.get(2).i32Value();
       if (family != 2)
         {
@@ -785,15 +789,11 @@ public class Intrinsics extends ANY
         }
     });
 
-    put("fuzion.sys.net.listen"  , (interpreter, innerClazz) -> args -> {
-      checkUnsafeIntrinsics(innerClazz);
-
+    putUnsafe("fuzion.sys.net0.listen"  , (interpreter, innerClazz) -> args -> {
       return new i32Value(0);
     });
 
-    put("fuzion.sys.net.accept"  , (interpreter, innerClazz) -> args -> {
-      checkUnsafeIntrinsics(innerClazz);
-
+    putUnsafe("fuzion.sys.net0.accept"  , (interpreter, innerClazz) -> args -> {
       try
         {
           var socket = ((ServerSocket)_openStreams_.get(args.get(1).i64Value())).accept();
@@ -806,9 +806,7 @@ public class Intrinsics extends ANY
         }
     });
 
-    put("fuzion.sys.net.connect" , (interpreter, innerClazz) -> args -> {
-      checkUnsafeIntrinsics(innerClazz);
-
+    putUnsafe("fuzion.sys.net0.connect" , (interpreter, innerClazz) -> args -> {
       var family = args.get(2).i32Value();
       if (family != 2)
         {
@@ -828,9 +826,7 @@ public class Intrinsics extends ANY
         }
     });
 
-    put("fuzion.sys.net.read" , (interpreter, innerClazz) -> args -> {
-      checkUnsafeIntrinsics(innerClazz);
-
+    putUnsafe("fuzion.sys.net0.read" , (interpreter, innerClazz) -> args -> {
       try
         {
           byte[] buff = (byte[])args.get(2).arrayData()._array;
@@ -849,9 +845,7 @@ public class Intrinsics extends ANY
         }
     });
 
-    put("fuzion.sys.net.write" , (interpreter, innerClazz) -> args -> {
-      checkUnsafeIntrinsics(innerClazz);
-
+    putUnsafe("fuzion.sys.net0.write" , (interpreter, innerClazz) -> args -> {
       try
         {
           var fileContent = (byte[])args.get(2).arrayData()._array;
@@ -865,9 +859,7 @@ public class Intrinsics extends ANY
         }
     });
 
-    put("fuzion.sys.net.close0" , (interpreter, innerClazz) -> args -> {
-      checkUnsafeIntrinsics(innerClazz);
-
+    putUnsafe("fuzion.sys.net0.close0" , (interpreter, innerClazz) -> args -> {
       long fd = args.get(1).i64Value();
       return _openStreams_.remove(fd)
         ? new i32Value(0)
@@ -1243,16 +1235,6 @@ public class Intrinsics extends ANY
     else if (elementType.compareTo(Types.resolved.t_u64 ) == 0) { return new u64Value (((long   [])ad._array)[x]       ); }
     else if (elementType.compareTo(Types.resolved.t_bool) == 0) { return new boolValue(((boolean[])ad._array)[x]       ); }
     else                                                        { return              ((Value   [])ad._array)[x]        ; }
-  }
-
-
-  static void checkUnsafeIntrinsics(Clazz innerClazz)
-  {
-    if (!ENABLE_UNSAFE_INTRINSICS)
-      {
-        System.err.println("*** error: unsafe feature "+innerClazz+" disabled");
-        System.exit(1);
-      }
   }
 
 }

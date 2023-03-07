@@ -23,12 +23,14 @@
 
 sockets =>
 
-  localhost array u8 := [127, 0, 0, 1]
+  localhost_ipv4 array u8 := [127, 0, 0, 1]
+  localhost_ipv6 array u8 := [0, 0, 0, 0, 0, 0, 0, 0,
+                              0, 0, 0, 0, 0, 0, 0, 1]
   port u16 := 9000
 
   # should result in connection refused
   # since no server is running yet...
-  net.client localhost port
+  net.client localhost_ipv4 port
   say (net.connection net.client).last_error
 
   # reading/writing from/to closed connection
@@ -77,7 +79,7 @@ sockets =>
 
   # write request to server and read response
   for _ in 1..2 do
-    net.client localhost port
+    net.client localhost_ipv4 port
 
     (net.connection net.client).write "I am a request payload".utf8
 
@@ -92,7 +94,7 @@ sockets =>
   # write request to server and read response
   for i in 1..5 do
     concur.thread.spawn ()->
-      net.client localhost port
+      net.client localhost_ipv4 port
 
       (net.connection net.client).write "parallel request of client".utf8
       rr := (net.connection net.client).read 10
@@ -112,7 +114,7 @@ sockets =>
   # write request to server and read response
   concur.thread.spawn ()->
 
-    net.client localhost port
+    net.client localhost_ipv4 port
     (net.connection net.client).read 10
     say "should not be reached since read blocks indefinitely"
 

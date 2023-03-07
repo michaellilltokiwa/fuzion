@@ -732,46 +732,50 @@ public class Intrinsics extends ANY
       });
 
 
-    put("fuzion.sys.net.socket",  (c,cl,outer,in) -> assignResultReturnTrueIfSuccessful(c, CExpr.call("fzE_socket",
-      // NYI get domain, type, protocol from args
-      new List<CExpr>(new CIdent("AF_INET"), new CIdent("SOCK_STREAM"), new CIdent("IPPROTO_TCP"))), A0));
+    /**
+     *  "Normally only a single protocol exists to  support  a  particular  socket
+     * type within a given protocol family, in which case protocol can be specified as 0."
+     * source: man socket
+    */
+    put("fuzion.sys.net0.socket",  (c,cl,outer,in) -> assignResultReturnTrueIfSuccessful(c, CExpr.call("fzE_socket",
+      new List<CExpr>(A0, A1, new CIdent("IPPROTO_TCP"))), A2));
 
-    put("fuzion.sys.net.bind",    (c,cl,outer,in) -> CExpr.call("fzE_bind", new List<CExpr>(
+    put("fuzion.sys.net0.bind",    (c,cl,outer,in) -> CExpr.call("fzE_bind", new List<CExpr>(
       A0.castTo("int"), // socket descriptor
       A1.castTo("int"), // family
       A2.castTo("char *"), // data for family, an array of bytes
       A3.castTo("int")  // data length
     )).ret());
 
-    put("fuzion.sys.net.listen",  (c,cl,outer,in) -> CExpr.call("fzE_listen", new List<CExpr>(
+    put("fuzion.sys.net0.listen",  (c,cl,outer,in) -> CExpr.call("fzE_listen", new List<CExpr>(
       A0.castTo("int"), // socket descriptor
       A1.castTo("int")  // size of backlog
     )).ret());
 
-    put("fuzion.sys.net.accept",  (c,cl,outer,in) -> assignResultReturnTrueIfSuccessful(c, CExpr.call("fzE_accept", new List<CExpr>(
+    put("fuzion.sys.net0.accept",  (c,cl,outer,in) -> assignResultReturnTrueIfSuccessful(c, CExpr.call("fzE_accept", new List<CExpr>(
       A0.castTo("int") // socket descriptor
     )), A1));
 
-    put("fuzion.sys.net.connect", (c,cl,outer,in) -> CExpr.call("fzE_connect", new List<CExpr>(
+    put("fuzion.sys.net0.connect", (c,cl,outer,in) -> CExpr.call("fzE_connect", new List<CExpr>(
       A0.castTo("int"), // socket descriptor
       A1.castTo("int"), // family
       A2.castTo("char *"), // data for family, an array of bytes
       A3.castTo("int")  // data length
     )).ret());
 
-    put("fuzion.sys.net.read", (c,cl,outer,in) -> assignResultReturnTrueIfSuccessful(c, CExpr.call("fzE_read", new List<CExpr>(
+    put("fuzion.sys.net0.read", (c,cl,outer,in) -> assignResultReturnTrueIfSuccessful(c, CExpr.call("fzE_read", new List<CExpr>(
       A0.castTo("int"),    // socket descriptor
       A1.castTo("void *"), // buffer
       A2.castTo("size_t")  // buffer length
     )), A3));
 
-    put("fuzion.sys.net.write", (c,cl,outer,in) -> CExpr.call("fzE_write", new List<CExpr>(
+    put("fuzion.sys.net0.write", (c,cl,outer,in) -> CExpr.call("fzE_write", new List<CExpr>(
       A0.castTo("int"),    // socket descriptor
       A1.castTo("void *"), // buffer
       A2.castTo("size_t")  // buffer length
     )).ret());
 
-    put("fuzion.sys.net.close0", (c,cl,outer,in) -> CExpr.call("fzE_close", new List<CExpr>(
+    put("fuzion.sys.net0.close0", (c,cl,outer,in) -> CExpr.call("fzE_close", new List<CExpr>(
       A0.castTo("int") // socket descriptor
     )).ret());
 
