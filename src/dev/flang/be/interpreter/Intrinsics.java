@@ -765,7 +765,7 @@ public class Intrinsics extends ANY
 
     putUnsafe("fuzion.sys.net0.bind"    , (interpreter, innerClazz) -> args -> {
       var family = args.get(2).i32Value();
-      if (family != 2)
+      if (family != 2 && family != 10)
         {
           throw new RuntimeException("NYI");
         }
@@ -808,7 +808,7 @@ public class Intrinsics extends ANY
 
     putUnsafe("fuzion.sys.net0.connect" , (interpreter, innerClazz) -> args -> {
       var family = args.get(2).i32Value();
-      if (family != 2)
+      if (family != 2 && family != 10)
         {
           throw new RuntimeException("NYI");
         }
