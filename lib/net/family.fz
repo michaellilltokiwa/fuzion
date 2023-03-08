@@ -41,10 +41,3 @@ family is
         local => 1  # pipes etc.
         ipv4  => 2
         ipv6  => 10
-
-
-  family_of(addr Sequence u8) family.family_choice
-  pre  (addr.count = 32/8   # ipv4
-     || addr.count = 128/8) # ipv6
-  is
-    if addr.count = 32/8 then family.ipv4 else family.ipv6

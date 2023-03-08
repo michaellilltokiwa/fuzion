@@ -21,6 +21,6 @@
 #
 # -----------------------------------------------------------------------
 
-override NAME = sockets
+override NAME = sockets_test
 FUZION_OPTIONS = -unsafeIntrinsics=on
 include ../simple.mk

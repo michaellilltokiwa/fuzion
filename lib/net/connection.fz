@@ -24,7 +24,7 @@
 
 # a network connection that can be read from and written to
 # NYI target of the connection
-private connection(T type, desc outcome i64, m effectMode.val) : effect m
+private connection(T type, desc outcome i64, m effectMode.val, _ unit) : effect m
 # NYI does not work
 # pre !(effects.exists (connection T) && (connection T).is_active && desc.ok)
 is
@@ -78,18 +78,24 @@ is
       d i64 =>
         match fuzion.sys.net0.close d
           unit =>
-            connection T (error "not initialized") effectMode.repl
+            connection T (error "not initialized") effectMode.repl unit
           e error =>
-            connection T e effectMode.repl
+            connection T e effectMode.repl unit
       e error =>
-        connection T (error "not initialized") effectMode.repl
+        connection T (error "not initialized") effectMode.repl unit
     unit
+
+
+# short hand to install new connection
+connection(T type, desc outcome i64) =>
+  (connection T).close
+  connection T desc effectMode.repl unit
 
 
 # short hand to get current connection
 # NYI type parameter to identify different connections
 connection(T type) =>
   if !effects.exists (connection T)
-    connection T (error "not initialized") effectMode.default
+    connection T (error "not initialized") effectMode.default unit
   (connection T).env
 

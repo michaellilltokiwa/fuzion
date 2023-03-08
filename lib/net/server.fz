@@ -40,6 +40,7 @@ is
 
   # close server, stop listening on port
   close is
+    (connection server).close
     match state
       d i64 =>
         match fuzion.sys.net0.close d
@@ -55,10 +56,9 @@ is
   # accept new connection
   # blocks until connection is established
   accept is
-    (connection server).close
     match state
       d i64 =>
-        connection server (fuzion.sys.net0.accept d) effectMode.repl
+        connection server (fuzion.sys.net0.accept d)
       * =>
     unit
 
@@ -89,28 +89,24 @@ Server_Provider ref is
 
 # opens sockets, binds to port and sets socket to listening
 private init_tcp_ip_server(f family.family_choice, port u16) outcome i64 is
-  local := (
+  any_addr := (
     match f
-      family.ipv4 => array u8 04 _->0
-      family.ipv6 => array u8 16 _->0
+      family.ipv4 => "0.0.0.0"
+      family.ipv6 => "0:0:0:0:0:0:0:0"
       family.local => panic "NYI"
   )
   backlog := 10
-  # open socket
-  match fuzion.sys.net0.socket f socket_type.stream
-    sd i64 =>
-      port_addr array u8:= (port.as_bytes ++ local).as_array
-      # bind to port
-      bind_res := fuzion.sys.net0.bind sd f.as_num port_addr.internalArray.data port_addr.length
-      if bind_res != 0
+  s net.socket_type.socket_type_choice := net.socket_type.stream
+  p net.protocol.protocol_choice := net.protocol.tcp
+
+  # bind to port
+  match fuzion.sys.net0.bind f.as_num s.as_num p.as_num any_addr port
+    err error => err
+    sd i64  =>
+      # listen
+      listen_res := fuzion.sys.net0.listen sd backlog
+      if listen_res != 0
         fuzion.sys.net0.close sd
-        error "binding server socket to port $port failed with error $bind_res."
+        error "listening on socket failed with error $listen_res."
       else
-        # listen
-        listen_res := fuzion.sys.net0.listen sd backlog
-        if listen_res != 0
-          fuzion.sys.net0.close sd
-          error "listening on socket failed with error $listen_res."
-        else
-          sd
-    con_err error => con_err
+        sd

@@ -73,19 +73,6 @@ public abstract class OpenResources<T>
     return id;
   }
 
-  /**
-   * update a resource, the old resource will be closed.
-   * @param key
-   * @param value
-   */
-  public void put(Long key, T value)
-  {
-    var result = data.put(key, value);
-    if (result != null)
-      {
-        close(result);
-      }
-  }
 
   /**
    * remove a resource and close/finalize it

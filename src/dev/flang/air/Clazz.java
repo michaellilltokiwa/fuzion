@@ -1440,7 +1440,7 @@ public class Clazz extends ANY implements Comparable<Clazz>
    *
    * @param data the data to be stored for this id.
    */
-  public void setRuntimeData(int id, Object data)
+  public synchronized void setRuntimeData(int id, Object data)
   {
     if (PRECONDITIONS) require
       (id >= 0,
@@ -1466,7 +1466,7 @@ public class Clazz extends ANY implements Comparable<Clazz>
    *
    * @return the data stored for this id.
    */
-  public Object getRuntimeData(int id)
+  public synchronized Object getRuntimeData(int id)
   {
     if (PRECONDITIONS) require
       (id < Clazzes.runtimeClazzIdCount(),

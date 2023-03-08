@@ -756,35 +756,32 @@ public class Intrinsics extends ANY
         });
 
 
-    putUnsafe("fuzion.sys.net0.socket"  , (interpreter, innerClazz) -> args -> {
-      // NYI DatagramSocket etc.
-      var res = (long[])args.get(3).arrayData()._array;
-      res[0] = _openStreams_.add(new Socket());
-      return new boolValue(true);
-    });
-
-    putUnsafe("fuzion.sys.net0.bind"    , (interpreter, innerClazz) -> args -> {
-      var family = args.get(2).i32Value();
+    putUnsafe("fuzion.sys.net0.bind0"    , (interpreter, innerClazz) -> args -> {
+      var family = args.get(1).i32Value();
+      var socketType = args.get(2).i32Value();
+      var protocol = args.get(3).i32Value();
+      var host = utf8ByteArrayDataToString(args.get(4));
+      var port = utf8ByteArrayDataToString(args.get(5));
+      var result = (long[])args.get(6).arrayData()._array;
       if (family != 2 && family != 10)
         {
           throw new RuntimeException("NYI");
         }
-      var arr = (byte[])args.get(3).arrayData()._array;
-      var port = ((((int)arr[0])<<8) + (int)arr[1]);
-      var ipAddress = arr[2] + "." + arr[3] + "." + arr[4] + "." + arr[5];
       try
         {
           var ss = new ServerSocket();
-          ss.bind(new InetSocketAddress(ipAddress, port));
-          _openStreams_.put(args.get(1).i64Value(), ss);
+          ss.bind(new InetSocketAddress(host, Integer.parseInt(port)));
+          result[0] = _openStreams_.add(ss);
           return new i32Value(0);
         }
       catch(BindException e)
         {
-          return new i32Value(SystemErrNo.EADDRINUSE.errno);
+          result[0] = SystemErrNo.EADDRINUSE.errno;
+          return new i32Value(-1);
         }
       catch(IOException e)
         {
+          result[0] = -1;
           return new i32Value(-1);
         }
     });
@@ -806,23 +803,27 @@ public class Intrinsics extends ANY
         }
     });
 
-    putUnsafe("fuzion.sys.net0.connect" , (interpreter, innerClazz) -> args -> {
-      var family = args.get(2).i32Value();
+    putUnsafe("fuzion.sys.net0.connect0" , (interpreter, innerClazz) -> args -> {
+      var family = args.get(1).i32Value();
+      var socketType = args.get(2).i32Value();
+      var protocol = args.get(3).i32Value();
+      var host = utf8ByteArrayDataToString(args.get(4));
+      var port = utf8ByteArrayDataToString(args.get(5));
+      var result = (long[])args.get(6).arrayData()._array;
       if (family != 2 && family != 10)
         {
           throw new RuntimeException("NYI");
         }
-      var arr = (byte[])args.get(3).arrayData()._array;
-      var port = ((((int)arr[0])<<8) + (int)arr[1]);
-      var ipAddress = arr[2] + "." + arr[3] + "." + arr[4] + "." + arr[5];
       try
         {
-          _openStreams_.put(args.get(1).i64Value(), new Socket(ipAddress, port));
+          var socket = new Socket(host, Integer.parseInt(port));
+          result[0] = _openStreams_.add(socket);
           return new i32Value(0);
         }
       catch(IOException e)
         {
-          return new i32Value(SystemErrNo.ECONNREFUSED.errno);
+          result[0] = SystemErrNo.ECONNREFUSED.errno;
+          return new i32Value(-1);
         }
     });
 

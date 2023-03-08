@@ -1194,11 +1194,10 @@ public class DFA extends ANY
         });
 
     // NYI these intrinsics manipulate an array passed as an arg.
-    put("fuzion.sys.net0.socket"          , cl -> cl._dfa._bool );
-    put("fuzion.sys.net0.bind"            , cl -> new NumericValue(cl._dfa, cl._dfa._fuir.clazzResultClazz(cl._cc)) );
+    put("fuzion.sys.net0.bind0"            , cl -> new NumericValue(cl._dfa, cl._dfa._fuir.clazzResultClazz(cl._cc)) );
     put("fuzion.sys.net0.listen"          , cl -> new NumericValue(cl._dfa, cl._dfa._fuir.clazzResultClazz(cl._cc)) );
     put("fuzion.sys.net0.accept"          , cl -> cl._dfa._bool );
-    put("fuzion.sys.net0.connect"         , cl -> new NumericValue(cl._dfa, cl._dfa._fuir.clazzResultClazz(cl._cc)) );
+    put("fuzion.sys.net0.connect0"         , cl -> new NumericValue(cl._dfa, cl._dfa._fuir.clazzResultClazz(cl._cc)) );
     put("fuzion.sys.net0.read"            , cl -> cl._dfa._bool );
     put("fuzion.sys.net0.write"           , cl -> new NumericValue(cl._dfa, cl._dfa._fuir.clazzResultClazz(cl._cc)) );
     put("fuzion.sys.net0.close0"          , cl -> new NumericValue(cl._dfa, cl._dfa._fuir.clazzResultClazz(cl._cc)) );

@@ -55,6 +55,7 @@ Fuzion language implementation.  If not, see <https://www.gnu.org/licenses/>.
 #include <poll.h>       // poll
 #include <fcntl.h>      // fcntl
 #include <unistd.h>     // close
+#include <netdb.h>      // getaddrinfo
 #endif
 
 
@@ -122,6 +123,19 @@ int fzE_net_error()
 #endif
 }
 
+int fzE_close(int sockfd)
+{
+#ifdef _WIN32
+  closesocket(sockfd);
+  WSACleanup();
+  return fzE_net_error();
+#else
+  return ( close(sockfd) == - 1 )
+    ? fzE_net_error()
+    : 0;
+#endif
+}
+
 int fzE_socket(int domain, int type, int protocol){
 #ifdef _WIN32
   WSADATA wsaData;
@@ -132,14 +146,47 @@ int fzE_socket(int domain, int type, int protocol){
   return socket(domain, type, protocol);
 }
 
-int fzE_bind(int sockfd, int family, char * data, int data_len){
+int fzE_getaddrinfo(int family, int socktype, int protocol, int flags, char * host, char * port, struct addrinfo * result){
+  struct addrinfo hints;
+
+#ifdef _WIN32
+  ZeroMemory(&hints, sizeof(hints));
+#else
+  memset(&hints, 0, sizeof hints);
+#endif
+  hints.ai_family = family;
+  hints.ai_socktype = socktype;
+  hints.ai_protocol = protocol;
+  hints.ai_flags = flags;
+
+  return getaddrinfo(host, port, &hints, &result);
+}
+
+// -1 error, 0 success
+int fzE_bind(int family, int socktype, int protocol, char * host, char * port, int64_t * result){
+  result[0] = fzE_socket(family, socktype, protocol);
+  if (result[0] == -1)
+  {
+    result[0] = fzE_net_error();
+    return -1;
+  }
   struct sockaddr sa;
   memset(&sa, 0, sizeof sa);
   sa.sa_family = family;
-  memcpy(sa.sa_data, data, data_len);
-  return ( bind(sockfd, &sa, sizeof sa) == -1 )
-    ? fzE_net_error()
-    : 0;
+  int addrRes = fzE_getaddrinfo(family, socktype, protocol, AI_PASSIVE, host, port, (struct addrinfo *)sa.sa_data);
+  if (addrRes != 0)
+  {
+    fzE_close(result[0]);
+    result[0] = addrRes;
+    return -1;
+  }
+  if (bind(result[0], &sa, sizeof sa) == -1)
+  {
+    fzE_close(result[0]);
+    result[0] = fzE_net_error();
+    return -1;
+  }
+  return 0;
 }
 
 int fzE_listen(int sockfd, int backlog){
@@ -152,14 +199,31 @@ int fzE_accept(int sockfd){
   return accept(sockfd, NULL, NULL);
 }
 
-int fzE_connect(int sockfd, int family, char * data, int data_len){
+// -1 error, 0 success
+int fzE_connect(int family, int socktype, int protocol, char * host, char * port, int64_t * result){
+  result[0] = fzE_socket(family, socktype, protocol);
+  if (result[0] == -1)
+  {
+    result[0] = fzE_net_error();
+    return -1;
+  }
   struct sockaddr sa;
   memset(&sa, 0, sizeof sa);
   sa.sa_family = family;
-  memcpy(sa.sa_data, data, data_len);
-  return ( connect(sockfd, &sa, sizeof sa) == -1 )
-    ? fzE_net_error()
-    : 0;
+  int addrRes = fzE_getaddrinfo(family, socktype, protocol, AI_PASSIVE, host, port, (struct addrinfo *)sa.sa_data);
+  if (addrRes != 0)
+  {
+    fzE_close(result[0]);
+    result[0] = addrRes;
+    return -1;
+  }
+  if (connect(result[0], &sa, sizeof sa) == -1)
+  {
+    fzE_close(result[0]);
+    result[0] = fzE_net_error();
+    return -1;
+  }
+  return 0;
 }
 
 int fzE_read(int sockfd, void * buf, size_t count){
@@ -173,18 +237,6 @@ return ( send( sockfd, buf, count, 0 ) == -1 )
   : 0;
 }
 
-int fzE_close(int sockfd)
-{
-#ifdef _WIN32
-  closesocket(sockfd);
-  WSACleanup();
-  return fzE_net_error();
-#else
-  return ( close(sockfd) == - 1 )
-    ? fzE_net_error()
-    : 0;
-#endif
-}
 
 
 #endif /* fz.h  */

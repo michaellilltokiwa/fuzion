@@ -25,33 +25,23 @@
 net0 is
 
 
-  # create a new socket descriptor
+  # bind a name to a socket
   #
-  # true  => arr_result[0] is the socket descriptor
-  # false => arr_result[0] is an error number
+  # 0  => arr_result[0] is the socket descriptor
+  # -1 => arr_result[0] is an error number
   #
-  socket(family, socket_type i32, arr_result Any) bool is intrinsic
+  bind0   (family, socket_type, protocol i32, host Any, port Any, arr_result Any) i32 is intrinsic
 
-  # convenience wrapper for socket intrinsic
-  socket(family net.family.family_choice, socket_type net.socket_type.socket_type_choice) outcome i64 is
+
+  # bind a name to a socket
+  #
+  bind    (family, socket_type, protocol i32, host String, port u16) outcome i64 is
     arr array i64 := [0]
-    if socket family.as_num socket_type.as_num arr.internalArray.data then arr[0] else error "socket open failed, error number: {arr[0]}"
+    if (bind0 family socket_type protocol (fuzion.sys.c_string host) (fuzion.sys.c_string port.as_string) arr.internalArray.data) = 0
+      arr[0]
+    else
+      error "error: {arr[0]}"
 
-
-  # bind server, zero on success
-  # array data depends on the family.
-  # - ipv4: first two bytes encode the port,
-  #         then four bytes for the ip address
-  #
-  # returns zero on success, anything else is an error.
-  #
-  bind   (sd i64, family i32, arr_data Any, length i32) i32 is intrinsic
-
-
-  # NYI wrap bind, listen, connect like this:
-  # bind   (sd i64, family i32, arr_data Any, length i32) outcome unit is
-  #   res := bind sd family arr_data length
-  #   if res = 0 then unit else error "binding failed with error: $res."
 
 
   # activates the server socket, setting a backlog
@@ -80,13 +70,22 @@ net0 is
 
 
   # connect the socket.
-  # details depend on the used family:
-  # - ipv4: first two bytes encode the port,
-  #         then four bytes for the ip address
   #
-  # returns zero on success, anything else is an error.
+  # 0  => arr_result[0] is the socket descriptor
+  # -1 => arr_result[0] is an error number
   #
-  connect(sd i64, family i32, arr_data Any, length i32) i32 is intrinsic
+  connect0(family, socket_type, protocol i32, host Any, port Any, arr_result Any) i32 is intrinsic
+
+
+  # connect the socket.
+  #
+  connect(family, socket_type, protocol i32, host String, port u16) outcome i64 is
+    arr array i64 := [0]
+    if (connect0 family socket_type protocol (fuzion.sys.c_string host) (fuzion.sys.c_string port.as_string) arr.internalArray.data) = 0
+      arr[0]
+    else
+      error "error: {arr[0]}"
+
 
 
   # read bytes into arr_data

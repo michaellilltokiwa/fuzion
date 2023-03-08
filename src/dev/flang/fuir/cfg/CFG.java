@@ -450,11 +450,10 @@ public class CFG extends ANY
     put("fuzion.sys.misc.unique_id"      , (cfg, cl) -> { } );
     put("fuzion.sys.thread.spawn0"       , (cfg, cl) -> { } );
 
-    put("fuzion.sys.net0.socket"          , (cfg, cl) -> { } );
-    put("fuzion.sys.net0.bind"            , (cfg, cl) -> { } );
+    put("fuzion.sys.net0.bind0"            , (cfg, cl) -> { } );
     put("fuzion.sys.net0.listen"          , (cfg, cl) -> { } );
     put("fuzion.sys.net0.accept"          , (cfg, cl) -> { } );
-    put("fuzion.sys.net0.connect"         , (cfg, cl) -> { } );
+    put("fuzion.sys.net0.connect0"         , (cfg, cl) -> { } );
     put("fuzion.sys.net0.read"            , (cfg, cl) -> { } );
     put("fuzion.sys.net0.write"           , (cfg, cl) -> { } );
     put("fuzion.sys.net0.close0"          , (cfg, cl) -> { } );
