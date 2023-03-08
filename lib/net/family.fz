@@ -25,12 +25,18 @@ family is
 
   # local is used to communicate between processes, mostly on unix-like systems
   local is
+    redef as_string String is
+      "local"
 
   # Internet Protocol Version 4
   ipv4 is
+    redef as_string String is
+      "IPv4"
 
   # Internet Protocol Version 6
   ipv6 is
+    redef as_string String is
+      "IPv6"
 
 
   # NYI needs better name
@@ -41,3 +47,9 @@ family is
         local => 1  # pipes etc.
         ipv4  => 2
         ipv6  => 10
+
+    redef as_string String is
+      match family_choice.this
+        l local => l.as_string
+        i4 ipv4  => i4.as_string
+        i6 ipv6  => i6.as_string

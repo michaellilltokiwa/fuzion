@@ -1,0 +1,24 @@
+IPv4-client, read  10 bytes from  127.0.0.1:9000: --error: error: 111--
+IPv4-client, read 100 bytes from  127.0.0.1:9000: --error: error: 111--
+opened IPv4-server on port 9000: unit
+server: is_active false
+opened IPv4-server on port 9000: --error: error: 98--
+IPv4-server, read  10 bytes: I am a req
+IPv4-server, read 100 bytes: uest payload
+IPv4-client, read  10 bytes from  127.0.0.1:9000: I am a res
+IPv4-client, read 100 bytes from  127.0.0.1:9000: ponse payload
+IPv4-server, read  10 bytes: I am a req
+IPv4-server, read 100 bytes: uest payload
+IPv4-client, read  10 bytes from  127.0.0.1:9000: I am a res
+IPv4-client, read 100 bytes from  127.0.0.1:9000: ponse payload
+opened IPv6-server on port 6000: unit
+server: is_active false
+opened IPv6-server on port 6000: --error: error: 98--
+IPv6-server, read  10 bytes: I am a req
+IPv6-server, read 100 bytes: uest payload
+IPv6-client, read  10 bytes from  ::1:6000: I am a res
+IPv6-client, read 100 bytes from  ::1:6000: ponse payload
+IPv6-server, read  10 bytes: I am a req
+IPv6-server, read 100 bytes: uest payload
+IPv6-client, read  10 bytes from  ::1:6000: I am a res
+IPv6-client, read 100 bytes from  ::1:6000: ponse payload

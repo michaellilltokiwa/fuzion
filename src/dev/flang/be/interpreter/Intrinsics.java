@@ -40,6 +40,7 @@ import dev.flang.util.Errors;
 import dev.flang.util.List;
 
 import java.lang.reflect.Array;
+import java.net.DatagramSocket;
 import java.net.Socket;
 import java.net.ServerSocket;
 import java.net.InetSocketAddress;
@@ -769,10 +770,24 @@ public class Intrinsics extends ANY
         }
       try
         {
-          var ss = new ServerSocket();
-          ss.bind(new InetSocketAddress(host, Integer.parseInt(port)));
-          result[0] = _openStreams_.add(ss);
-          return new i32Value(0);
+          if (protocol == 6)
+          {
+            var ss = new ServerSocket();
+            ss.bind(new InetSocketAddress(host, Integer.parseInt(port)));
+            result[0] = _openStreams_.add(ss);
+            return new i32Value(0);
+          }
+          else if (protocol == 17)
+          {
+            var ss = new DatagramSocket();
+            ss.bind(new InetSocketAddress(host, Integer.parseInt(port)));
+            result[0] = _openStreams_.add(ss);
+            return new i32Value(0);
+          }
+          else
+          {
+            throw new RuntimeException("NYI");
+          }
         }
       catch(BindException e)
         {

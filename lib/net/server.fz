@@ -25,8 +25,7 @@
 
 private server(
   state outcome i64,
-  m effectMode.val,
-  _ unit
+  m effectMode.val
 ) : effect m
 is
 
@@ -45,9 +44,9 @@ is
       d i64 =>
         match fuzion.sys.net0.close d
           unit =>
-            server (error "not initialized") effectMode.repl unit
+            server (error "not initialized") effectMode.repl
           error error =>
-            server error effectMode.repl unit
+            server error effectMode.repl
       * =>
     unit
 
@@ -66,11 +65,11 @@ is
 # open new server on port
 # closes currently installed server
 # NYI blocking / none blocking
-server(f family.family_choice, port u16) outcome unit is
+server(f family.family_choice, p protocol.protocol_choice, port u16) outcome unit is
   server.close
-  match init_tcp_ip_server f port
+  match init_tcp_ip_server f p port
     desc i64 =>
-      server desc effectMode.repl unit
+      server desc effectMode.repl
       unit
     e error =>
       e
@@ -79,7 +78,7 @@ server(f family.family_choice, port u16) outcome unit is
 # get currently installed server from env
 server =>
   if !effects.exists server
-    server (error "not initialized") effectMode.default unit
+    server (error "not initialized") effectMode.default
   server.env
 
 
@@ -88,7 +87,7 @@ Server_Provider ref is
 
 
 # opens sockets, binds to port and sets socket to listening
-private init_tcp_ip_server(f family.family_choice, port u16) outcome i64 is
+private init_tcp_ip_server(f family.family_choice, p protocol.protocol_choice, port u16) outcome i64 is
   any_addr := (
     match f
       family.ipv4 => "0.0.0.0"
@@ -96,8 +95,12 @@ private init_tcp_ip_server(f family.family_choice, port u16) outcome i64 is
       family.local => panic "NYI"
   )
   backlog := 10
-  s net.socket_type.socket_type_choice := net.socket_type.stream
-  p net.protocol.protocol_choice := net.protocol.tcp
+  s net.socket_type.socket_type_choice := (
+    match p
+      protocol.tcp => net.socket_type.stream
+      protocol.udp => net.socket_type.datagram
+      *   => net.socket_type.raw
+    )
 
   # bind to port
   match fuzion.sys.net0.bind f.as_num s.as_num p.as_num any_addr port
