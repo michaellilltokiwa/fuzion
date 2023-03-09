@@ -40,9 +40,6 @@ import dev.flang.util.Errors;
 import dev.flang.util.List;
 
 import java.lang.reflect.Array;
-import java.net.DatagramSocket;
-import java.net.Socket;
-import java.net.ServerSocket;
 import java.net.InetSocketAddress;
 import java.net.BindException;
 import java.io.File;
@@ -51,6 +48,9 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.RandomAccessFile;
+import java.nio.ByteBuffer;
+import java.nio.channels.ServerSocketChannel;
+import java.nio.channels.SocketChannel;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -772,14 +772,7 @@ public class Intrinsics extends ANY
         {
           if (protocol == 6)
           {
-            var ss = new ServerSocket();
-            ss.bind(new InetSocketAddress(host, Integer.parseInt(port)));
-            result[0] = _openStreams_.add(ss);
-            return new i32Value(0);
-          }
-          else if (protocol == 17)
-          {
-            var ss = new DatagramSocket();
+            var ss = ServerSocketChannel.open();
             ss.bind(new InetSocketAddress(host, Integer.parseInt(port)));
             result[0] = _openStreams_.add(ss);
             return new i32Value(0);
@@ -808,7 +801,7 @@ public class Intrinsics extends ANY
     putUnsafe("fuzion.sys.net0.accept"  , (interpreter, innerClazz) -> args -> {
       try
         {
-          var socket = ((ServerSocket)_openStreams_.get(args.get(1).i64Value())).accept();
+          var socket = ((ServerSocketChannel)_openStreams_.get(args.get(1).i64Value())).accept();
           ((long[])args.get(2).arrayData()._array)[0] = _openStreams_.add(socket);
           return new boolValue(true);
         }
@@ -831,7 +824,8 @@ public class Intrinsics extends ANY
         }
       try
         {
-          var socket = new Socket(host, Integer.parseInt(port));
+          var socket = SocketChannel.open();
+          socket.connect(new InetSocketAddress(host, Integer.parseInt(port)));
           result[0] = _openStreams_.add(socket);
           return new i32Value(0);
         }
@@ -846,10 +840,9 @@ public class Intrinsics extends ANY
       try
         {
           byte[] buff = (byte[])args.get(2).arrayData()._array;
-          var socket = (Socket)_openStreams_.get(args.get(1).i64Value());
-          var is = socket.getInputStream();
+          var sc = (SocketChannel)_openStreams_.get(args.get(1).i64Value());
           // NYI blocking / none blocking read
-          var bytesRead = is.read(buff);
+          var bytesRead = sc.read(ByteBuffer.wrap(buff));
           ((long[])args.get(4).arrayData()._array)[0] = bytesRead;
           return new boolValue(bytesRead != -1);
         }
@@ -865,8 +858,8 @@ public class Intrinsics extends ANY
       try
         {
           var fileContent = (byte[])args.get(2).arrayData()._array;
-          var socket = (Socket)_openStreams_.get(args.get(1).i64Value());
-          socket.getOutputStream().write(fileContent);
+          var sc = (SocketChannel)_openStreams_.get(args.get(1).i64Value());
+          sc.write(ByteBuffer.wrap(fileContent));
           return new i32Value(0);
         }
       catch(IOException e)
