@@ -234,15 +234,15 @@ int fzE_connect(int family, int socktype, int protocol, char * host, char * port
   return con_res;
 }
 
-
+// return -1 on error or number of bytes read
 int fzE_read(int sockfd, void * buf, size_t count){
-  int res = recv( sockfd, buf, count, 0 );
-  return res;
+  return recvfrom( sockfd, buf, count, 0, NULL, NULL );
 }
 
 
+// return error code or zero on success
 int fzE_write(int sockfd, const void * buf, size_t count){
-return ( send( sockfd, buf, count, 0 ) == -1 )
+return ( sendto( sockfd, buf, count, 0, NULL, 0 ) == -1 )
   ? fzE_net_error()
   : 0;
 }
