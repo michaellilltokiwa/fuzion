@@ -51,13 +51,24 @@ is
     unit
 
 
-  # close current connection
   # accept new connection
   # blocks until connection is established
   accept is
     match state
       d i64 =>
         connection server (fuzion.sys.net0.accept d)
+      * =>
+    unit
+
+
+  # accept connection in new thread
+  # NYI option to pass thread pool
+  accept_in_new_thread(code () -> unit) is
+    match state
+      d i64 =>
+        concur.thread.spawn ()->
+          connection server (fuzion.sys.net0.accept d)
+          code()
       * =>
     unit
 
