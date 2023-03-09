@@ -24,18 +24,18 @@
 protocol is
 
   tcp is
-    redef as_string => "Transmission Control Protocol"
+    redef as_string => "TCP"
 
   udp is
-    redef as_string => "User Datagram Protocol"
+    redef as_string => "UDP"
 
   local is
 
   ipv4 is
-    redef as_string => "Internet Protocol Version 4"
+    redef as_string => "IPv4"
 
   ipv6 is
-    redef as_string => "Internet Protocol Version 6"
+    redef as_string => "IPv6"
 
 
   # NYI these numbers are system dependent
@@ -47,4 +47,11 @@ protocol is
         tcp => 6
         udp => 17
         ipv6 => 41
+
+    redef as_string =>
+      match protocol_choice.this
+        i4 ipv4 => i4.as_string
+        t tcp => t.as_string
+        u udp => u.as_string
+        i6 ipv6 => i6.as_string
 

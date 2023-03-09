@@ -25,7 +25,9 @@
 
 private server(
   state outcome i64,
-  m effectMode.val
+  auto_close bool,
+  m effectMode.val,
+  _ unit
 ) : effect m
 is
 
@@ -44,9 +46,9 @@ is
       d i64 =>
         match fuzion.sys.net0.close d
           unit =>
-            server (error "not initialized") effectMode.repl
+            server (error "not initialized") false effectMode.repl unit
           error error =>
-            server error effectMode.repl
+            server error false effectMode.repl unit
       * =>
     unit
 
@@ -56,7 +58,7 @@ is
   accept is
     match state
       d i64 =>
-        connection server (fuzion.sys.net0.accept d)
+        connection server (fuzion.sys.net0.accept d) auto_close
       * =>
     unit
 
@@ -67,7 +69,7 @@ is
     match state
       d i64 =>
         concur.thread.spawn ()->
-          connection server (fuzion.sys.net0.accept d)
+          connection server (fuzion.sys.net0.accept d) auto_close
           code()
       * =>
     unit
@@ -78,9 +80,15 @@ is
 # NYI blocking / none blocking
 server(f family.family_choice, p protocol.protocol_choice, port u16) outcome unit is
   server.close
-  match init_tcp_ip_server f p port
+  auto_close := (
+    match p
+      net.protocol.tcp =>
+        true
+      * =>
+        false)
+  match init_ip_server f p port
     desc i64 =>
-      server desc effectMode.repl
+      server desc auto_close effectMode.repl unit
       unit
     e error =>
       e
@@ -89,7 +97,7 @@ server(f family.family_choice, p protocol.protocol_choice, port u16) outcome uni
 # get currently installed server from env
 server =>
   if !effects.exists server
-    server (error "not initialized") effectMode.default
+    server (error "not initialized") false effectMode.default unit
   server.env
 
 
@@ -98,7 +106,7 @@ Server_Provider ref is
 
 
 # opens sockets, binds to port and sets socket to listening
-private init_tcp_ip_server(f family.family_choice, p protocol.protocol_choice, port u16) outcome i64 is
+private init_ip_server(f family.family_choice, p protocol.protocol_choice, port u16) outcome i64 is
   any_addr := (
     match f
       family.ipv4 => "0.0.0.0"

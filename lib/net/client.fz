@@ -38,6 +38,6 @@ is
     )
   match fuzion.sys.net0.connect f.as_num s.as_num p.as_num host port
     desc i64 =>
-      connection T desc
+      connection T desc true
     err error =>
-      connection T err
+      connection T err true

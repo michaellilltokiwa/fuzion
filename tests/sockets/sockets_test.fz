@@ -33,20 +33,26 @@ sockets_test is
     concur.thread.spawn ()->
 
       # install server in env
-      say "opened $family-server on port $port: {net.server family protocol port}"
+      say "opened $protocol/$family-server on port $port: {net.server family protocol port}"
 
       while net.server.is_active
       do
         net.server.accept
         if (net.connection net.server).is_active
           b := (net.connection net.server).read 10
-          say "$family-server, read  10 bytes: {b.bind String (d -> String.type.from_bytes  d)}"
+          say "$protocol/$family-server, read  10 bytes: {b.bind String (d -> String.type.from_bytes  d)}"
 
-          # read more than available
-          b := (net.connection net.server).read 100
-          say "$family-server, read 100 bytes: {b.bind String (d -> String.type.from_bytes  d)}"
+          match protocol
+            net.protocol.tcp =>
+              # read more than available
+              b := (net.connection net.server).read 100
+              say "$protocol/$family-server, read 100 bytes: {b.bind String (d -> String.type.from_bytes  d)}"
 
-          (net.connection net.server).write "I am a response payload".utf8
+              (net.connection net.server).write "I am a response payload".utf8
+            net.protocol.udp =>
+              # rest of udp datagram was discarded
+            * =>
+              panic "NI"
 
 
     # wait for server to start
@@ -59,7 +65,7 @@ sockets_test is
     concur.thread.spawn ()->
 
       # server is installed in env
-      say "opened $family-server on port $port: {net.server family protocol port}"
+      say "opened $protocol/$family-server on port $port: {net.server family protocol port}"
 
       unit
 
@@ -67,30 +73,39 @@ sockets_test is
     time.nano.sleep (time.durations.ms 500)
 
 
-  client(family net.family.family_choice, p net.protocol.protocol_choice, host String, port u16, print bool) =>
-    conn := net.client sockets_test family p host port
+  client(family net.family.family_choice, protocol net.protocol.protocol_choice, host String, port u16, print bool) =>
+    conn := net.client sockets_test family protocol host port
 
     conn.write "I am a request payload".utf8
 
-    b := conn.read 10
-    say "$family-client, read  10 bytes from  $host:$port: {b.bind String (d -> String.type.from_bytes  d)}"
+    match protocol
+      net.protocol.tcp =>
+        b := conn.read 10
+        say "$protocol/$family-client, read  10 bytes from  $host:$port: {b.bind String (d -> String.type.from_bytes  d)}"
 
-    # read more than available
-    b := conn.read 100
-    say "$family-client, read 100 bytes from  $host:$port: {b.bind String (d -> String.type.from_bytes  d)}"
+        # read more than available
+        b := conn.read 100
+        say "$protocol/$family-client, read 100 bytes from  $host:$port: {b.bind String (d -> String.type.from_bytes  d)}"
+
+      net.protocol.udp =>
+        # rest of udp datagram was discarded
+      * =>  panic "NI"
+
 
 
 ########### Tests ################
 
+  say "TCP-Tests:"
+
   # should result in refused connection
   # since no server is running yet
-  client net.family.ipv4 net.protocol.tcp localhost_ipv4 9000 true
+  client net.family.ipv4 net.protocol.tcp localhost_ipv4 4000 true
 
-  start_server_in_background net.family.ipv4 net.protocol.tcp 9000
+  start_server_in_background net.family.ipv4 net.protocol.tcp 4000
 
   # write request to server and read response
   for _ in 1..2 do
-    client net.family.ipv4 net.protocol.tcp localhost_ipv4 9000 true
+    client net.family.ipv4 net.protocol.tcp localhost_ipv4 4000 true
 
 
   start_server_in_background net.family.ipv6 net.protocol.tcp 6000
@@ -98,3 +113,17 @@ sockets_test is
   # write request to server and read response
   for _ in 1..2 do
     client net.family.ipv6 net.protocol.tcp localhost_ipv6 6000 true
+
+
+  say
+  say "UDP-Tests:"
+
+  start_server_in_background net.family.ipv6 net.protocol.udp 14000
+
+  # write request to server and read response
+  for _ in 1..2 do
+    client net.family.ipv4 net.protocol.udp localhost_ipv6 14000 true
+
+
+  # wait for server to receive udp packages
+  time.nano.sleep (time.durations.ms 500)

@@ -51,6 +51,7 @@ import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
 import java.nio.channels.ByteChannel;
 import java.nio.channels.DatagramChannel;
+import java.nio.channels.NotYetConnectedException;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.nio.channels.spi.AbstractSelectableChannel;
@@ -787,10 +788,7 @@ public class Intrinsics extends ANY
             result[0] = _openStreams_.add(ss);
             return new i32Value(0);
           }
-          else
-          {
-            throw new RuntimeException("NYI");
-          }
+          throw new RuntimeException("NYI");
         }
       catch(BindException e)
         {
@@ -811,9 +809,19 @@ public class Intrinsics extends ANY
     putUnsafe("fuzion.sys.net0.accept"  , (interpreter, innerClazz) -> args -> {
       try
         {
-          var socket = ((ServerSocketChannel)_openStreams_.get(args.get(1).i64Value())).accept();
-          ((long[])args.get(2).arrayData()._array)[0] = _openStreams_.add(socket);
-          return new boolValue(true);
+          var asc = _openStreams_.get(args.get(1).i64Value());
+          if(asc instanceof ServerSocketChannel ssc)
+            {
+              var socket = ssc.accept();
+              ((long[])args.get(2).arrayData()._array)[0] = _openStreams_.add(socket);
+              return new boolValue(true);
+            }
+          else if(asc instanceof DatagramChannel dc)
+            {
+              ((long[])args.get(2).arrayData()._array)[0] = args.get(1).i64Value();
+              return new boolValue(true);
+            }
+          throw new RuntimeException("NYI");
         }
       catch(IOException e)
         {
@@ -834,10 +842,21 @@ public class Intrinsics extends ANY
         }
       try
         {
-          var socket = SocketChannel.open();
-          socket.connect(new InetSocketAddress(host, Integer.parseInt(port)));
-          result[0] = _openStreams_.add(socket);
-          return new i32Value(0);
+          if (protocol == 6)
+          {
+            var socket = SocketChannel.open();
+            socket.connect(new InetSocketAddress(host, Integer.parseInt(port)));
+            result[0] = _openStreams_.add(socket);
+            return new i32Value(0);
+          }
+          else if (protocol == 17)
+          {
+            var ss = DatagramChannel.open();
+            ss.connect(new InetSocketAddress(host, Integer.parseInt(port)));
+            result[0] = _openStreams_.add(ss);
+            return new i32Value(0);
+          }
+          throw new RuntimeException("NYI");
         }
       catch(IOException e)
         {
@@ -850,9 +869,24 @@ public class Intrinsics extends ANY
       try
         {
           byte[] buff = (byte[])args.get(2).arrayData()._array;
-          var sc = (ByteChannel)_openStreams_.get(args.get(1).i64Value());
+          var desc = _openStreams_.get(args.get(1).i64Value());
           // NYI blocking / none blocking read
-          var bytesRead = sc.read(ByteBuffer.wrap(buff));
+          long bytesRead;
+          if (desc instanceof DatagramChannel dc)
+            {
+              bytesRead = dc.receive(ByteBuffer.wrap(buff)) == null
+                ? 0
+                // NYI how to determine datagram length?
+                : buff.length;
+            }
+          else if (desc instanceof ByteChannel sc)
+            {
+              bytesRead = sc.read(ByteBuffer.wrap(buff));
+            }
+          else
+            {
+              throw new RuntimeException("NYI");
+            }
           ((long[])args.get(4).arrayData()._array)[0] = bytesRead;
           return new boolValue(bytesRead != -1);
         }
