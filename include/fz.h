@@ -25,8 +25,8 @@ Fuzion language implementation.  If not, see <https://www.gnu.org/licenses/>.
  *---------------------------------------------------------------------*/
 
 
-#ifndef	_FUZION_H
-#define	_FUZION_H	1
+#ifndef  _FUZION_H
+#define  _FUZION_H  1
 
 #include <errno.h>
 #include <stdio.h>
@@ -96,22 +96,17 @@ int fzE_unsetenv(const char *name){
 
 // 0 = blocking
 // 1 = none_blocking
-int fzE_set_blocking(int fd, unsigned long blocking)
+int fzE_set_blocking(int fd, int blocking)
 {
 #ifdef _WIN32
-  if ( ioctlsocket(fd, FIONBIO, &blocking) == -1 ) {
-    return -1;
-  }
+  return ioctlsocket(fd, FIONBIO, &blocking);
 #else
   int flag = blocking == 1
     ? fcntl(fd, F_GETFL, 0) | O_NONBLOCK
     : fcntl(fd, F_GETFL, 0) & ~O_NONBLOCK;
 
-  if ( fcntl(fd, F_SETFL, flag) == -1 ) {
-    return -1;
-  }
+  return fcntl(fd, F_SETFL, flag);
 #endif
-  return fd;
 }
 
 int fzE_net_error()

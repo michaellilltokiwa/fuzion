@@ -49,8 +49,11 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
+import java.nio.channels.ByteChannel;
+import java.nio.channels.DatagramChannel;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
+import java.nio.channels.spi.AbstractSelectableChannel;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -777,6 +780,13 @@ public class Intrinsics extends ANY
             result[0] = _openStreams_.add(ss);
             return new i32Value(0);
           }
+          else if (protocol == 17)
+          {
+            var ss = DatagramChannel.open();
+            ss.bind(new InetSocketAddress(host, Integer.parseInt(port)));
+            result[0] = _openStreams_.add(ss);
+            return new i32Value(0);
+          }
           else
           {
             throw new RuntimeException("NYI");
@@ -840,7 +850,7 @@ public class Intrinsics extends ANY
       try
         {
           byte[] buff = (byte[])args.get(2).arrayData()._array;
-          var sc = (SocketChannel)_openStreams_.get(args.get(1).i64Value());
+          var sc = (ByteChannel)_openStreams_.get(args.get(1).i64Value());
           // NYI blocking / none blocking read
           var bytesRead = sc.read(ByteBuffer.wrap(buff));
           ((long[])args.get(4).arrayData()._array)[0] = bytesRead;
@@ -858,7 +868,7 @@ public class Intrinsics extends ANY
       try
         {
           var fileContent = (byte[])args.get(2).arrayData()._array;
-          var sc = (SocketChannel)_openStreams_.get(args.get(1).i64Value());
+          var sc = (ByteChannel)_openStreams_.get(args.get(1).i64Value());
           sc.write(ByteBuffer.wrap(fileContent));
           return new i32Value(0);
         }
@@ -873,6 +883,20 @@ public class Intrinsics extends ANY
       return _openStreams_.remove(fd)
         ? new i32Value(0)
         : new i32Value(-1);
+    });
+
+    putUnsafe("fuzion.sys.net0.set_blocking" , (interpreter, innerClazz) -> args -> {
+      var asc = (AbstractSelectableChannel)_openStreams_.get(args.get(1).i64Value());
+      var blocking = args.get(2).i32Value();
+      try
+        {
+          asc.configureBlocking(blocking == 1);
+          return new i32Value(0);
+        }
+      catch(IOException e)
+        {
+          return new i32Value(-1);
+        }
     });
 
     put("safety"                , (interpreter, innerClazz) -> args -> new boolValue(Interpreter._options_.fuzionSafety()));

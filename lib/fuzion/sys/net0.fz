@@ -133,3 +133,9 @@ net0 is
     res := close0 sd
     if res = -1 then error "error: $res" else unit
 
+
+  # 0 = blocking, 1 = none_blocking
+  #
+  # returns zero on success, anything else is an error.
+  #
+  set_blocking(sd i64, blocking i32) i32 is intrinsic

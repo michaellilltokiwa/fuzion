@@ -457,6 +457,7 @@ public class CFG extends ANY
     put("fuzion.sys.net0.read"            , (cfg, cl) -> { } );
     put("fuzion.sys.net0.write"           , (cfg, cl) -> { } );
     put("fuzion.sys.net0.close0"          , (cfg, cl) -> { } );
+    put("fuzion.sys.net0.set_blocking"    , (cfg, cl) -> { } );
 
     put("fuzion.std.nano_sleep"          , (cfg, cl) -> { } );
     put("fuzion.std.nano_time"           , (cfg, cl) -> { } );
