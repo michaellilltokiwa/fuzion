@@ -22,6 +22,14 @@
 # -----------------------------------------------------------------------
 
 # groups networking related features
+#
+# internally this builds on:
+# - java: nio
+#   - why not java.net.Socket etc.?: this is only suitable for blocking I/O
+#   - why not nio2?                : nio2 is basically the same as nio but asynchronous.
+#                                    I.e. read/write return Futures.
+# - c/posix: posix-sockets
+# - c/win: winsock2
 net0 is
 
 
@@ -138,4 +146,11 @@ net0 is
   #
   # returns zero on success, anything else is an error.
   #
+  # NYI non blocking needs some kind of polling mechanism like epoll / kqueue
+  # probably not good enough:
+  # - select "can monitor only file descriptors  numbers
+  #           that  are less  than  FD_SETSIZE (1024)—an unreasonably
+  #           low limit for many modern applications"
+  # - poll is in O(n)
+  # difficult to implement on windows, read here: https://notgull.github.io/device-afd/
   set_blocking(sd i64, blocking i32) i32 is intrinsic

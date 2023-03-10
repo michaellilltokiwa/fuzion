@@ -125,10 +125,14 @@ private init_ip_server(f family.family_choice, p protocol.protocol_choice, port 
   match fuzion.sys.net0.bind f.as_num s.as_num p.as_num any_addr port
     err error => err
     sd i64  =>
-      # listen
-      listen_res := fuzion.sys.net0.listen sd backlog
-      if listen_res != 0
-        fuzion.sys.net0.close sd
-        error "listening on socket failed with error $listen_res."
-      else
-        sd
+      match p
+        protocol.tcp =>
+          # listen
+          listen_res := fuzion.sys.net0.listen sd backlog
+          if listen_res != 0
+            fuzion.sys.net0.close sd
+            error "listening on socket failed with error $listen_res."
+          else
+            sd
+        * =>
+          sd
