@@ -39,16 +39,30 @@ sockets_test is
       do
         net.server.accept
         if (net.connection net.server).is_active
-          b := (net.connection net.server).read 10
-          say "$protocol/$family-server, read  10 bytes: {b.or(error "error").bind String (d -> String.type.from_bytes  d)}"
+          rr := (net.connection net.server)
+            .read 11
+            .or(error "error")
+            .bind String (d -> String.type.from_bytes  d)
+
+          say "$protocol/$family-server, read  10 bytes: {rr}"
 
           match protocol
             net.protocol.tcp =>
               # read more than available
-              b := (net.connection net.server).read 100
-              say "$protocol/$family-server, read 100 bytes: {b.or(error "error").bind String (d -> String.type.from_bytes  d)}"
+              rr := (net.connection net.server)
+                .read 100
+                .or (error "error")
+                .bind String (d -> String.type.from_bytes  d)
 
-              (net.connection net.server).write "I am a response payload".utf8
+              say "$protocol/$family-server, read 100 bytes: {rr}"
+
+              res := ("HTTP 200 OK\n"
+                + "content-length: 0\n")
+
+              wr := (net.connection net.server)
+                .write res.utf8
+                .or (error "error")
+              say "$protocol/$family-server, write {wr}"
             net.protocol.udp =>
               # rest of udp datagram was discarded
             * =>
@@ -57,8 +71,6 @@ sockets_test is
 
     # wait for server to start
     time.nano.sleep (time.durations.ms 500)
-
-    say "server: is_active {net.server.is_active}"
 
 
     # try start another server on same port in background
@@ -76,16 +88,25 @@ sockets_test is
   client(family net.family.family_choice, protocol net.protocol.protocol_choice, host String, port u16, print bool) =>
     conn := net.client sockets_test family protocol host port
 
-    conn.write "I am a request payload".utf8
+    req := ("GET / HTTP\n"
+      + "Host: $host\n")
+
+    say "$protocol/$family-client, write: {(conn.write req.utf8).or(error "error")}"
 
     match protocol
       net.protocol.tcp =>
-        b := conn.read 10
-        say "$protocol/$family-client, read  10 bytes from  $host:$port: {b.or(error "error").bind String (d -> String.type.from_bytes  d)}"
+        rr := conn
+          .read 12
+          .or(error "error")
+          .bind String (d -> String.type.from_bytes  d)
+        say "$protocol/$family-client, read  10 bytes from  $host:$port: {rr}"
 
         # read more than available
-        b := conn.read 100
-        say "$protocol/$family-client, read 100 bytes from  $host:$port: {b.or(error "error").bind String (d -> String.type.from_bytes  d)}"
+        rr := conn
+          .read 100
+          .or(error "error")
+          .bind String (d -> String.type.from_bytes  d)
+        say "$protocol/$family-client, read 100 bytes from  $host:$port: {rr}"
 
       net.protocol.udp =>
         # rest of udp datagram was discarded
