@@ -41,7 +41,7 @@ is
 
   # close server, stop listening on port
   close is
-    (connection server).close
+    (channel server).close
     match state
       d i64 =>
         match fuzion.sys.net0.close d
@@ -56,14 +56,15 @@ is
   # accept new TCP connection
   # does nothing for UDP etc.
   # blocks until connection is established
+  # NYI we may want to close on server on certain errors?
   accept is
-    match p
-      protocol.tcp =>
-        match state
-          d i64 =>
-            connection server (fuzion.sys.net0.accept d) true
-          * =>
-      * =>
+    match state
+      d i64 =>
+        match p
+          protocol.tcp => channel server (fuzion.sys.net0.accept d) true
+          * => channel server state false
+      error =>
+        channel server (error "not initialized") true
     unit
 
 
@@ -73,14 +74,16 @@ is
   accept_in_thread(code () -> unit) is
     match state
       d i64 =>
-        match p
-          protocol.tcp =>
-            concur.thread.spawn ()->
-              connection server (fuzion.sys.net0.accept d) true
+        concur.thread.spawn ()->
+          match p
+            protocol.tcp =>
+              channel server (fuzion.sys.net0.accept d) true
               code()
-          * =>
-            code()
-      * =>
+            * =>
+              channel server state true
+              code()
+      error =>
+        channel server (error "not initialized") true
     unit
 
 

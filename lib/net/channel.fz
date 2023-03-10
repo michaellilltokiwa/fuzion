@@ -17,22 +17,22 @@
 #
 #  Tokiwa Software GmbH, Germany
 #
-#  Source code of Fuzion standard library feature net.connection
+#  Source code of Fuzion standard library feature net.channel
 #
 # -----------------------------------------------------------------------
 
 
-# a network connection that can be read from and written to
-# NYI target of the connection
-private connection(T type, desc outcome i64, auto_close bool, m effectMode.val) : effect m
+# a network channel that can be read from and written to
+# NYI target of the channel
+private channel(T type, desc outcome i64, auto_close bool, m effectMode.val) : effect m
 # NYI does not work
-# pre !(effects.exists (connection T) && (connection T).is_active && desc.ok)
+# pre !(effects.exists (channel T) && (channel T).is_active && desc.ok)
 is
 
   # get the last error that occured
   last_error => desc.bind unit (_ -> unit)
 
-  # is this connection still active?
+  # is this channel still active?
   is_active => desc.ok
 
   # shorthand to replace the effect installed in env
@@ -41,9 +41,9 @@ is
     replace
     a
 
-  # read bytes from connection
+  # read bytes from channel
   public read(max_bytes i32) outcome (array u8) is
-    # close connection on certain read errors?
+    # close channel on certain read errors?
     replace (match desc
       d i64 => fuzion.sys.net0.read d max_bytes
       e error => e)
@@ -64,14 +64,14 @@ is
       e error =>
         e
 
-  # write data to connection
+  # write data to channel
   public write(data Sequence u8) outcome unit is
-    # close connection on certain write errors?
+    # close channel on certain write errors?
     match desc
       d i64 => replace (fuzion.sys.net0.write d data.as_array)
       e error => e
 
-  # close the connection
+  # close the channel
   # NYI should be automatically done
   close is
     if auto_close
@@ -79,24 +79,24 @@ is
         d i64 =>
           match fuzion.sys.net0.close d
             unit =>
-              connection T (error "not initialized") false effectMode.repl
+              channel T (error "not initialized") false effectMode.repl
             e error =>
-              connection T e false effectMode.repl
+              channel T e false effectMode.repl
         e error =>
-          connection T (error "not initialized") false effectMode.repl
+          channel T (error "not initialized") false effectMode.repl
     unit
 
 
-# short hand to install new connection
-connection(T type, desc outcome i64, auto_close bool) =>
-  (connection T).close
-  connection T desc auto_close effectMode.repl
+# short hand to install new channel
+channel(T type, desc outcome i64, auto_close bool) =>
+  (channel T).close
+  channel T desc auto_close effectMode.repl
 
 
-# short hand to get current connection
-# NYI type parameter to identify different connections
-connection(T type) =>
-  if !effects.exists (connection T)
-    connection T (error "not initialized") false effectMode.default
-  (connection T).env
+# short hand to get current channel
+# NYI type parameter to identify different channels
+channel(T type) =>
+  if !effects.exists (channel T)
+    channel T (error "not initialized") false effectMode.default
+  (channel T).env
 
