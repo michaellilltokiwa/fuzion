@@ -30,6 +30,12 @@
 #                                    I.e. read/write return Futures.
 # - c/posix: posix-sockets
 # - c/win: winsock2
+#
+# sources of inspiration:
+# - https://github.com/tezc/sc/
+# - https://github.com/jart/cosmopolitan
+# - https://learn.microsoft.com/en-us/windows/win32/winsock/complete-server-code
+# - https://learn.microsoft.com/en-us/windows/win32/winsock/complete-client-code
 net0 is
 
 
