@@ -95,35 +95,27 @@ sockets_test is
 
 ########### Tests ################
 
-  say "TCP-Tests:"
+  families array net.family.family_choice := [net.family.ipv4, net.family.ipv6]
+  protocols array net.protocol.protocol_choice := [net.protocol.tcp, net.protocol.udp]
+  for p in protocols do
+    for f in families do
+      say "### $p/$f-Tests ###"
 
-  # should result in refused connection
-  # since no server is running yet
-  client net.family.ipv4 net.protocol.tcp localhost_ipv4 4000 true
+      # NYI we don't have proper means yet to communicate
+      # with other threads. So we can't shut down the server
+      # after a test. For now use a different port for every test.
+      port := u16 40000 + p.as_num.as_u16*10 + f.as_num.as_u16
 
-  start_server_in_background net.family.ipv4 net.protocol.tcp 4000
-
-  # write request to server and read response
-  for _ in 1..2 do
-    client net.family.ipv4 net.protocol.tcp localhost_ipv4 4000 true
-
-
-  start_server_in_background net.family.ipv6 net.protocol.tcp 6000
-
-  # write request to server and read response
-  for _ in 1..2 do
-    client net.family.ipv6 net.protocol.tcp localhost_ipv6 6000 true
+      # should result in refused connection
+      # since no server is running yet
+      client f p localhost_ipv4 port true
 
 
-  say
-  say "UDP-Tests:"
+      start_server_in_background f p port
 
-  start_server_in_background net.family.ipv6 net.protocol.udp 14000
+      # write request to server and read response
+      for _ in 1..2 do
+        client f p localhost_ipv4 port true
 
-  # write request to server and read response
-  for _ in 1..2 do
-    client net.family.ipv4 net.protocol.udp localhost_ipv6 14000 true
-
-
-  # wait for server to receive udp packages
-  time.nano.sleep (time.durations.ms 500)
+      # wait for server to receive udp packages
+      time.nano.sleep (time.durations.ms 500)

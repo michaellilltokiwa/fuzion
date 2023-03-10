@@ -25,7 +25,7 @@
 
 private server(
   state outcome i64,
-  auto_close bool,
+  p protocol.protocol_choice,
   m effectMode.val,
   _ unit
 ) : effect m
@@ -46,31 +46,40 @@ is
       d i64 =>
         match fuzion.sys.net0.close d
           unit =>
-            server (error "not initialized") false effectMode.repl unit
+            server (error "not initialized") nil effectMode.repl unit
           error error =>
-            server error false effectMode.repl unit
+            server error nil effectMode.repl unit
       * =>
     unit
 
 
-  # accept new connection
+  # accept new TCP connection
+  # does nothing for UDP etc.
   # blocks until connection is established
   accept is
-    match state
-      d i64 =>
-        connection server (fuzion.sys.net0.accept d) auto_close
+    match p
+      protocol.tcp =>
+        match state
+          d i64 =>
+            connection server (fuzion.sys.net0.accept d) true
+          * =>
       * =>
     unit
 
 
-  # accept connection in new thread
-  # NYI option to pass thread pool
-  accept_in_new_thread(code () -> unit) is
+  # accept new TCP connection in new thread, then runs code
+  # runs code immediately for UDP etc.
+  # NYI should need effect thread pool
+  accept_in_thread(code () -> unit) is
     match state
       d i64 =>
-        concur.thread.spawn ()->
-          connection server (fuzion.sys.net0.accept d) auto_close
-          code()
+        match p
+          protocol.tcp =>
+            concur.thread.spawn ()->
+              connection server (fuzion.sys.net0.accept d) true
+              code()
+          * =>
+            code()
       * =>
     unit
 
@@ -80,15 +89,10 @@ is
 # NYI blocking / none blocking
 server(f family.family_choice, p protocol.protocol_choice, port u16) outcome unit is
   server.close
-  auto_close := (
-    match p
-      net.protocol.tcp =>
-        true
-      * =>
-        false)
+
   match init_ip_server f p port
     desc i64 =>
-      server desc auto_close effectMode.repl unit
+      server desc p effectMode.repl unit
       unit
     e error =>
       e
@@ -97,7 +101,7 @@ server(f family.family_choice, p protocol.protocol_choice, port u16) outcome uni
 # get currently installed server from env
 server =>
   if !effects.exists server
-    server (error "not initialized") false effectMode.default unit
+    server (error "not initialized") nil effectMode.default unit
   server.env
 
 

@@ -40,18 +40,20 @@ protocol is
 
   # NYI these numbers are system dependent
   # NYI needs better name
-  protocol_choice : choice ipv4 tcp udp ipv6 is
+  protocol_choice : choice tcp udp ipv4 ipv6 nil is
     as_num i32 is
       match protocol_choice.this
+        tcp  => 6
+        udp  => 17
         ipv4 => 0
-        tcp => 6
-        udp => 17
         ipv6 => 41
+        nil  => -1
 
     redef as_string =>
       match protocol_choice.this
+        t tcp   => t.as_string
+        u udp   => u.as_string
         i4 ipv4 => i4.as_string
-        t tcp => t.as_string
-        u udp => u.as_string
         i6 ipv6 => i6.as_string
+        nil     => "none"
 
