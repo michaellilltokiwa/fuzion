@@ -36,6 +36,9 @@
 # - https://github.com/jart/cosmopolitan
 # - https://learn.microsoft.com/en-us/windows/win32/winsock/complete-server-code
 # - https://learn.microsoft.com/en-us/windows/win32/winsock/complete-client-code
+#
+# NYI: use error codes coming from backend
+#
 net0 is
 
 
