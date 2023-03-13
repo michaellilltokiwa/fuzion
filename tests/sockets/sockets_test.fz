@@ -93,7 +93,7 @@ sockets_test is
     req := ("GET / HTTP\n"
       + "Host: $host\n")
 
-    say "$protocol/$family-client, write: {(conn.write req.utf8).or(error "error")}"
+    say "$protocol/$family-client, write to $host:$port: {(conn.write req.utf8).or(error "error")}"
 
     match protocol
       net.protocol.tcp =>
