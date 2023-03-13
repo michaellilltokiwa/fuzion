@@ -101,14 +101,14 @@ sockets_test is
           .read 12
           .or(error "error")
           .bind String (d -> String.type.from_bytes  d)
-        say "$protocol/$family-client  $num, read  12 bytes from  $host:$port: {rr}"
+        say "$protocol/$family-client $num, read  12 bytes from  $host:$port: {rr}"
 
         # read more than available
         rr := conn
           .read 100
           .or(error "error")
           .bind String (d -> String.type.from_bytes  d)
-        say "$protocol/$family-client  $num, read 100 bytes from  $host:$port: {rr}"
+        say "$protocol/$family-client $num, read 100 bytes from  $host:$port: {rr}"
 
       net.protocol.udp =>
         # rest of udp datagram was discarded
