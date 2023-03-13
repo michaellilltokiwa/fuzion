@@ -23,8 +23,11 @@
 
 sockets_test is
 
-  localhost_ipv4 String := "127.0.0.1"
-  localhost_ipv6 String := "::1"
+  localhost(f net.family.family_choice) String is
+    match f
+      net.family.ipv4 => "127.0.0.1"
+      net.family.ipv6 => "::1"
+      net.family.local => panic "NYI"
 
 
   # server handles one connection at a time
@@ -128,14 +131,14 @@ sockets_test is
 
       # should result in refused connection
       # since no server is running yet
-      client f p localhost_ipv4 port true
+      client f p (localhost f) port true
 
 
       start_server_in_background f p port
 
       # write request to server and read response
       for _ in 1..2 do
-        client f p localhost_ipv4 port true
+        client f p (localhost f) port true
 
       # wait for server to receive udp packages
       time.nano.sleep (time.durations.ms 500)
