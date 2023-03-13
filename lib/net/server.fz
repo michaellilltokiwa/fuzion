@@ -56,21 +56,26 @@ is
   # accept new TCP connection
   # does nothing for UDP etc.
   # blocks until connection is established
-  # NYI we may want to close on server on certain errors?
-  accept is
+  # NYI we may want to close server on certain errors?
+  accept outcome unit is
     match state
       d i64 =>
         match p
-          protocol.tcp => channel server (fuzion.sys.net0.accept d) true
-          * => channel server state false
+          protocol.tcp =>
+            ar := fuzion.sys.net0.accept d
+            channel server ar true
+            ar.bind unit d->unit
+          * =>
+            channel server state false
+            unit
       error =>
-        channel server (error "not initialized") true
-    unit
+        error "not initialized"
 
 
   # accept new TCP connection in new thread, then runs code
   # runs code immediately for UDP etc.
   # NYI should need effect thread pool / work queue?, to run on a background thread.
+  # NYI on error ...
   accept_in_thread(code () -> unit) is
     match state
       d i64 =>

@@ -38,9 +38,8 @@ sockets_test is
       # install server in env
       say "opened $protocol/$family-server on port $port: {(net.server family protocol port).or(error "error")}"
 
-      while net.server.is_active
+      while net.server.is_active && net.server.accept.ok
       do
-        net.server.accept
         rr := (net.channel net.server)
           .read 11
           .or(error "error")
