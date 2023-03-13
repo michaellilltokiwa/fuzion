@@ -123,7 +123,7 @@ int fzE_net_error()
 int get_family(int family)
 {
   return family == 1
-    ? AF_LOCAL
+    ? AF_UNIX
     : family == 2
     ? AF_INET
     : family == 10
