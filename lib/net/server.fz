@@ -70,7 +70,7 @@ is
 
   # accept new TCP connection in new thread, then runs code
   # runs code immediately for UDP etc.
-  # NYI should need effect thread pool
+  # NYI should need effect thread pool / work queue?, to run on a background thread.
   accept_in_thread(code () -> unit) is
     match state
       d i64 =>
