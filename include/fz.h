@@ -99,7 +99,8 @@ int fzE_unsetenv(const char *name){
 int fzE_set_blocking(int fd, int blocking)
 {
 #ifdef _WIN32
-  return ioctlsocket(fd, FIONBIO, &blocking);
+  u_long b = blocking;
+  return ioctlsocket(fd, FIONBIO, &b);
 #else
   int flag = blocking == 1
     ? fcntl(fd, F_GETFL, 0) | O_NONBLOCK
@@ -117,6 +118,45 @@ int fzE_net_error()
   return errno;
 #endif
 }
+
+
+int get_family(int family)
+{
+  return family == 1
+    ? AF_LOCAL
+    : family == 2
+    ? AF_INET
+    : family == 10
+    ? AF_INET6
+    : -1;
+}
+
+
+int get_socket_type(int socktype)
+{
+  return socktype == 1
+    ? SOCK_STREAM
+    : socktype == 2
+    ? SOCK_DGRAM
+    : socktype == 3
+    ? SOCK_RAW
+    : -1;
+}
+
+
+int get_protocol(int protocol)
+{
+  return protocol == 6
+    ? IPPROTO_TCP
+    : protocol == 17
+    ? IPPROTO_UDP
+    : protocol == 0
+    ? IPPROTO_IP
+    : protocol == 41
+    ? IPPROTO_IPV6
+    : -1;
+}
+
 
 int fzE_close(int sockfd)
 {
@@ -139,7 +179,7 @@ int fzE_socket(int domain, int type, int protocol){
     return -1;
   }
 #endif
-  return socket(domain, type, protocol);
+  return socket(get_family(domain), get_socket_type(type), get_protocol(protocol));
 }
 
 
@@ -151,9 +191,9 @@ int fzE_getaddrinfo(int family, int socktype, int protocol, int flags, char * ho
 #else
   memset(&hints, 0, sizeof hints);
 #endif
-  hints.ai_family = family;
-  hints.ai_socktype = socktype;
-  hints.ai_protocol = protocol;
+  hints.ai_family = get_family(family);
+  hints.ai_socktype = get_socket_type(socktype);
+  hints.ai_protocol = get_protocol(protocol);
   hints.ai_flags = flags;
 
   return getaddrinfo(host, port, &hints, result);
