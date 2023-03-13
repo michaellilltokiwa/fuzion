@@ -271,7 +271,20 @@ int fzE_connect(int family, int socktype, int protocol, char * host, char * port
 
 // return -1 on error or number of bytes read
 int fzE_read(int sockfd, void * buf, size_t count){
+#ifdef _WIN32
+  int rec_res = recvfrom( sockfd, buf, count, 0, NULL, NULL );
+  if (rec_res == -1)
+  {
+    // silently discard rest to
+    // match behaviour on linux
+    return fzE_net_error() == MSG_TRUNC
+      ? count
+      : rec_res;
+  }
+  return rec_res;
+#else
   return recvfrom( sockfd, buf, count, 0, NULL, NULL );
+#endif
 }
 
 

@@ -86,13 +86,14 @@ sockets_test is
     time.nano.sleep (time.durations.ms 500)
 
 
-  client(family net.family.family_choice, protocol net.protocol.protocol_choice, host String, port u16) =>
+  client(family net.family.family_choice, protocol net.protocol.protocol_choice, host String, port u16, num i32) =>
     conn := net.client sockets_test family protocol host port
 
     req := ("GET / HTTP\n"
-      + "Host: $host\n")
+      + "Host: $host\n"
+      + "Client: $num\n")
 
-    say "$protocol/$family-client, write to $host:$port: {(conn.write req.utf8).or(error "error")}"
+    say "$protocol/$family-client $num, write to $host:$port: {(conn.write req.utf8).or(error "error")}"
 
     match protocol
       net.protocol.tcp =>
@@ -100,14 +101,14 @@ sockets_test is
           .read 12
           .or(error "error")
           .bind String (d -> String.type.from_bytes  d)
-        say "$protocol/$family-client, read  12 bytes from  $host:$port: {rr}"
+        say "$protocol/$family-client  $num, read  12 bytes from  $host:$port: {rr}"
 
         # read more than available
         rr := conn
           .read 100
           .or(error "error")
           .bind String (d -> String.type.from_bytes  d)
-        say "$protocol/$family-client, read 100 bytes from  $host:$port: {rr}"
+        say "$protocol/$family-client  $num, read 100 bytes from  $host:$port: {rr}"
 
       net.protocol.udp =>
         # rest of udp datagram was discarded
@@ -130,14 +131,14 @@ sockets_test is
 
       # should result in refused connection
       # since no server is running yet
-      client f p (localhost f) port
+      client f p (localhost f) port 0
 
 
       start_server_in_background f p port
 
       # write request to server and read response
-      for _ in 1..2 do
-        client f p (localhost f) port
+      for i in 1..2 do
+        client f p (localhost f) port i
 
       # wait for server to receive udp packages
       time.nano.sleep (time.durations.ms 500)
