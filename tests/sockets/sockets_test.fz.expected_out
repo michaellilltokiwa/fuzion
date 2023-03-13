@@ -1,24 +1,72 @@
-IPv4-client, read  10 bytes from  127.0.0.1:9000: --error: error: 111--
-IPv4-client, read 100 bytes from  127.0.0.1:9000: --error: error: 111--
-opened IPv4-server on port 9000: unit
-server: is_active false
-opened IPv4-server on port 9000: --error: error: 98--
-IPv4-server, read  10 bytes: I am a req
-IPv4-server, read 100 bytes: uest payload
-IPv4-client, read  10 bytes from  127.0.0.1:9000: I am a res
-IPv4-client, read 100 bytes from  127.0.0.1:9000: ponse payload
-IPv4-server, read  10 bytes: I am a req
-IPv4-server, read 100 bytes: uest payload
-IPv4-client, read  10 bytes from  127.0.0.1:9000: I am a res
-IPv4-client, read 100 bytes from  127.0.0.1:9000: ponse payload
-opened IPv6-server on port 6000: unit
-server: is_active false
-opened IPv6-server on port 6000: --error: error: 98--
-IPv6-server, read  10 bytes: I am a req
-IPv6-server, read 100 bytes: uest payload
-IPv6-client, read  10 bytes from  ::1:6000: I am a res
-IPv6-client, read 100 bytes from  ::1:6000: ponse payload
-IPv6-server, read  10 bytes: I am a req
-IPv6-server, read 100 bytes: uest payload
-IPv6-client, read  10 bytes from  ::1:6000: I am a res
-IPv6-client, read 100 bytes from  ::1:6000: ponse payload
+### TCP/IPv4-Tests ###
+TCP/IPv4-client, write: --error: error--
+TCP/IPv4-client, read  12 bytes from  127.0.0.1:40062: --error: error--
+TCP/IPv4-client, read 100 bytes from  127.0.0.1:40062: --error: error--
+opened TCP/IPv4-server on port 40062: unit
+opened TCP/IPv4-server on port 40062: --error: error--
+TCP/IPv4-client, write: unit
+TCP/IPv4-server, read  11 bytes: GET / HTTP
+
+TCP/IPv4-server, read 100 bytes: Host: 127.0.0.1
+
+TCP/IPv4-server, write unit
+TCP/IPv4-client, read  12 bytes from  127.0.0.1:40062: HTTP 200 OK
+
+TCP/IPv4-client, read 100 bytes from  127.0.0.1:40062: content-length: 0
+
+TCP/IPv4-client, write: unit
+TCP/IPv4-server, read  11 bytes: GET / HTTP
+
+TCP/IPv4-server, read 100 bytes: Host: 127.0.0.1
+
+TCP/IPv4-server, write unit
+TCP/IPv4-client, read  12 bytes from  127.0.0.1:40062: HTTP 200 OK
+
+TCP/IPv4-client, read 100 bytes from  127.0.0.1:40062: content-length: 0
+
+### TCP/IPv6-Tests ###
+TCP/IPv6-client, write: --error: error--
+TCP/IPv6-client, read  12 bytes from  ::1:40070: --error: error--
+TCP/IPv6-client, read 100 bytes from  ::1:40070: --error: error--
+opened TCP/IPv6-server on port 40070: unit
+opened TCP/IPv6-server on port 40070: --error: error--
+TCP/IPv6-client, write: unit
+TCP/IPv6-server, read  11 bytes: GET / HTTP
+
+TCP/IPv6-server, read 100 bytes: Host: ::1
+
+TCP/IPv6-server, write unit
+TCP/IPv6-client, read  12 bytes from  ::1:40070: HTTP 200 OK
+
+TCP/IPv6-client, read 100 bytes from  ::1:40070: content-length: 0
+
+TCP/IPv6-client, write: unit
+TCP/IPv6-server, read  11 bytes: GET / HTTP
+
+TCP/IPv6-server, read 100 bytes: Host: ::1
+
+TCP/IPv6-server, write unit
+TCP/IPv6-client, read  12 bytes from  ::1:40070: HTTP 200 OK
+
+TCP/IPv6-client, read 100 bytes from  ::1:40070: content-length: 0
+
+### UDP/IPv4-Tests ###
+UDP/IPv4-client, write: unit
+opened UDP/IPv4-server on port 40172: unit
+opened UDP/IPv4-server on port 40172: --error: error--
+UDP/IPv4-client, write: unit
+UDP/IPv4-server, read  11 bytes: GET / HTTP
+
+UDP/IPv4-client, write: unit
+UDP/IPv4-server, read  11 bytes: GET / HTTP
+
+### UDP/IPv6-Tests ###
+UDP/IPv6-client, write: unit
+opened UDP/IPv6-server on port 40180: unit
+opened UDP/IPv6-server on port 40180: --error: error--
+UDP/IPv6-client, write: unit
+UDP/IPv6-server, read  11 bytes: GET / HTTP
+
+UDP/IPv6-client, write: unit
+UDP/IPv6-server, read  11 bytes: GET / HTTP
+
