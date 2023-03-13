@@ -87,7 +87,7 @@ sockets_test is
     time.nano.sleep (time.durations.ms 500)
 
 
-  client(family net.family.family_choice, protocol net.protocol.protocol_choice, host String, port u16, print bool) =>
+  client(family net.family.family_choice, protocol net.protocol.protocol_choice, host String, port u16) =>
     conn := net.client sockets_test family protocol host port
 
     req := ("GET / HTTP\n"
@@ -131,14 +131,14 @@ sockets_test is
 
       # should result in refused connection
       # since no server is running yet
-      client f p (localhost f) port true
+      client f p (localhost f) port
 
 
       start_server_in_background f p port
 
       # write request to server and read response
       for _ in 1..2 do
-        client f p (localhost f) port true
+        client f p (localhost f) port
 
       # wait for server to receive udp packages
       time.nano.sleep (time.durations.ms 500)
