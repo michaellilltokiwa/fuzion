@@ -277,7 +277,7 @@ int fzE_read(int sockfd, void * buf, size_t count){
   {
     // silently discard rest to
     // match behaviour on linux
-    return fzE_net_error() == MSG_TRUNC
+    return fzE_net_error() == WSAEMSGSIZE
       ? count
       : rec_res;
   }
