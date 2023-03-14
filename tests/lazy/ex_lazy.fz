@@ -17,26 +17,44 @@
 #
 #  Tokiwa Software GmbH, Germany
 #
-#  Source code of Fuzion standard library feature oneway_monad
-#
-#  Author: Fridtjof Siebert (siebert@tokiwa.software)
+#  Source code of Fuzion test ex_lazy
 #
 # -----------------------------------------------------------------------
 
-# oneway_monad -- heir feature of all one-way monads.
-#
-# oneway_monad is the heir feature of all one-way monads. A one-way monad is
-# a monadic feature that can be accessed only through the environment and
-# that will be replaced in the environment whenever a new instance is created.
-#
-oneway_monad(
+ex_lazy is
+  and(a bool, b Lazy bool) bool is
+    if a
+      b
+    else
+      false
 
-  redef A type,
+  x := and true true
+  y := and true ()->false
 
-  OMA type : oneway_monad A OMA,
+  say x
+  say y
 
-  # action to be performed, may include code to run while this effect is installed.
-  #
-  redef r effectMode.val
-  ) : monad A OMA, effect r
-is
+  say "should not eval mtrue"
+  x0 := and !true mtrue
+  say "should eval mtrue"
+  y0 := and true mtrue
+
+  mtrue => say "eval mtrue!"; true
+
+  lst(T type, h T, t Lazy (list T)) list T is
+    ref : Cons T (list T)
+      head => h
+      tail => t
+
+  ones => say "eval ones!"; lst 1 ones
+
+  say "x"
+  say (ones.take 10)
+  say "y"
+
+/*
+ * NYI: should work but currently does not.
+  type_of2(W type, x Lazy W) Type is W
+  say (type_of2 42)
+  say (type_of2 ()->42)
+ */

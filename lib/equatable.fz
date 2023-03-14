@@ -17,26 +17,26 @@
 #
 #  Tokiwa Software GmbH, Germany
 #
-#  Source code of Fuzion standard library feature oneway_monad
+#  Source code of Fuzion standard library feature equatable
 #
 #  Author: Fridtjof Siebert (siebert@tokiwa.software)
 #
 # -----------------------------------------------------------------------
 
-# oneway_monad -- heir feature of all one-way monads.
+# equatable -- feature for immutable values that define an equality relation
 #
-# oneway_monad is the heir feature of all one-way monads. A one-way monad is
-# a monadic feature that can be accessed only through the environment and
-# that will be replaced in the environment whenever a new instance is created.
-#
-oneway_monad(
+equatable is
 
-  redef A type,
 
-  OMA type : oneway_monad A OMA,
-
-  # action to be performed, may include code to run while this effect is installed.
+  # equality implements the default equality relation for values of this type.
   #
-  redef r effectMode.val
-  ) : monad A OMA, effect r
-is
+  # This relation must be
+  #
+  #  - reflexive (equality a b),
+  #  - symmetric (equality a b = equality b a), and
+  #  - transitive ((equality a b && equality b c) : equality a c).
+  #
+  # result is true iff 'a' is considered to represent the same abstract value
+  # as 'b'.
+  #
+  type.equality(a, b equatable.this.type) bool is abstract

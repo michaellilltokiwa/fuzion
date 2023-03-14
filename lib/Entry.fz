@@ -17,26 +17,40 @@
 #
 #  Tokiwa Software GmbH, Germany
 #
-#  Source code of Fuzion standard library feature oneway_monad
-#
-#  Author: Fridtjof Siebert (siebert@tokiwa.software)
+#  Source code of Fuzion standard library feature Entry
 #
 # -----------------------------------------------------------------------
 
-# oneway_monad -- heir feature of all one-way monads.
+
+# Entry -- an entry of a mutable tree map
 #
-# oneway_monad is the heir feature of all one-way monads. A one-way monad is
-# a monadic feature that can be accessed only through the environment and
-# that will be replaced in the environment whenever a new instance is created.
-#
-oneway_monad(
+private Entry(LM type : mutate, K type : has_total_order, V type, key K, val V) ref is
 
-  redef A type,
 
-  OMA type : oneway_monad A OMA,
-
-  # action to be performed, may include code to run while this effect is installed.
+  # reference to the left subtree at this entry, or, if it is empty, nil
   #
-  redef r effectMode.val
-  ) : monad A OMA, effect r
-is
+  private left := LM.env.new (option (Entry LM K V)) nil
+
+
+  # reference to the right subtree at this entry, or if it is empty, nil
+  #
+  private right := LM.env.new (option (Entry LM K V)) nil
+
+
+  # height of the subtree whose root is this entry
+  #
+  private height := LM.env.new i32 0
+
+
+  # get the value stored in this submap at key k, nil if k is not a key
+  # in this submap
+  #
+  private get(k K) option V is
+    if k ⩻ key
+      left.get ? nil => nil
+               | e Entry => e.get k
+    else if key ⩻ k
+      right.get ? nil => nil
+                | e Entry => e.get k
+    else
+      val
