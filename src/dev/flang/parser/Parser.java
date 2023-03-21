@@ -2131,7 +2131,7 @@ simpleterm  : bracketTerm
           default          :
             if (isStartedString(current()))
               {
-                result = stringTerm(null);
+                result = stringTerm(null, -1);
               }
             else
               {
@@ -2175,19 +2175,20 @@ stringTermB : '}any chars&quot;'
             | '}any chars{' block stringTermB
             ;
   */
-  Expr stringTerm(Expr leftString)
+  Expr stringTerm(Expr leftString, int multiLineIndentation)
   {
     return relaxLineAndSpaceLimit(() -> {
         Expr result = leftString;
         var t = current();
         if (isString(t))
           {
-            var str = new StrConst(posObject(), string());
+            var ps = string(multiLineIndentation);
+            var str = new StrConst(posObject(), ps._v0);
             result = concatString(posObject(), leftString, str);
             next();
             if (isPartialString(t))
               {
-                result = stringTerm(concatString(posObject(), result, block()));
+                result = stringTerm(concatString(posObject(), result, block()), ps._v1);
               }
           }
         else

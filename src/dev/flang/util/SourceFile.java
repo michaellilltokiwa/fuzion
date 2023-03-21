@@ -75,6 +75,9 @@ public class SourceFile extends ANY
   static final int PF  = 0x2029;   // Paragraph Separator, U+2029
 
 
+  static final int SP  = 0x0020;   // Space character, U+0020
+
+
   /**
    * Quick byte -> hex conversion table:
    */
@@ -566,6 +569,24 @@ public class SourceFile extends ANY
         BEGINNING_OF_FILE -> true;
       default -> false;
       };
+  }
+
+
+  public boolean isSpace(int cp)
+  {
+    return cp == SP;
+  }
+
+
+  public boolean isCRorLF(int cp)
+  {
+    return cp == CR || cp == LF;
+  }
+
+
+  public boolean isCR(int cp)
+  {
+    return cp == CR;
   }
 
 

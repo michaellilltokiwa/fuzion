@@ -32,6 +32,7 @@ import java.util.stream.Stream;
 
 import dev.flang.util.Callable;
 import dev.flang.util.Errors;
+import dev.flang.util.Pair;
 import dev.flang.util.SourceFile;
 import dev.flang.util.SourcePosition;
 import dev.flang.util.UnicodeData;
@@ -2398,6 +2399,9 @@ PIPE        : "|"
       };
 
 
+    private int _multiLineIndentation;
+
+
     /**
      * Create a string lexer at the start of lexing a string.  The first token
      * will be returned through this.finish().  Lexer.this._stringLexer will be
@@ -2409,6 +2413,7 @@ PIPE        : "|"
       _stringStart = Lexer.this.pos();
       _pos = -1;
       _beginning = StringEnd.QUOTE;
+      _multiLineIndentation = -1;
     }
 
 
@@ -2418,8 +2423,9 @@ PIPE        : "|"
      * lexing step has finished.
      *
      * @param sb a StringBuilder to receive the code points of this string.
+     * @param multiLineIndentation
      */
-    StringLexer(StringBuilder sb)
+    StringLexer(StringBuilder sb, int multiLineIndentation)
     {
       if (PRECONDITIONS) require
         (isString(current()));
@@ -2427,6 +2433,7 @@ PIPE        : "|"
       _stringStart = Lexer.this.pos();
       _pos =  Lexer.this.pos() + (beginning(current()) == StringEnd.DOLLAR ? 0 : 1);
       _beginning = StringEnd.QUOTE;
+      _multiLineIndentation = multiLineIndentation;
       iterateCodePoints(sb);
     }
 
@@ -2445,6 +2452,7 @@ PIPE        : "|"
       this._beginning = original._beginning;
       this._state = original._state;
       this._outer = original._outer == null ? null : new StringLexer(original._outer);
+      this._multiLineIndentation = original._multiLineIndentation;
     }
 
 
@@ -2465,6 +2473,30 @@ PIPE        : "|"
       var t = Token.t_undefined;
       var pos = _pos;
 
+      if (atMultiLineDelimitor(getPos(pos) - 1) && !inMultiLineString())
+        {
+          pos = advance(pos); // skip fat quotation
+          pos = advance(pos);
+          while(t == Token.t_undefined && isCRorLF(raw(pos)) || isSpace(raw(pos)))
+            {
+              pos = advance(pos);
+              if (raw(pos) == END_OF_FILE)
+                {
+                  Errors.unterminatedString(sourcePos(), Lexer.this.sourcePos(_stringStart));
+                  t = Token.t_error;
+                }
+            }
+          if(t == Token.t_undefined)
+            {
+              if (lineNum(getPos(pos)) != lineNum(_stringStart) + 1)
+              {
+                Errors.expectedIndentedStringInFirstLineAfterFatQuotation(sourcePos(_stringStart), sourcePos(getPos(pos)));
+                t = Token.t_error;
+              }
+              _multiLineIndentation = codePointInLine(getPos(pos)) - 1;
+            }
+        }
+
       var escaped = false;
       while (t == Token.t_undefined)
         {
@@ -2475,7 +2507,7 @@ PIPE        : "|"
               Errors.unterminatedString(sourcePos(), Lexer.this.sourcePos(_stringStart));
               t = Token.t_error;
             }
-          else if (p < _asciiControlName.length && _asciiControlName[p] != null)
+          else if (p < _asciiControlName.length && _asciiControlName[p] != null && !(inMultiLineString() && isCRorLF(p)))
             {
               Errors.unexpectedControlCodeInString(sourcePos(), _asciiControlName[p], p, sourcePos(_stringStart));
               t = Token.t_error;
@@ -2501,24 +2533,30 @@ PIPE        : "|"
                 {
                   escaped = true;
                 }
-              else if (p == '"') { t = _beginning.token(StringEnd.QUOTE);  }
+              else if (inMultiLineString() && atMultiLineDelimitor(getPos(pos)))
+                {
+                  pos = advance(pos);
+                  pos = advance(pos);
+                  t = _beginning.token(StringEnd.QUOTE);
+                }
+              else if ((p == '"' && !inMultiLineString()))
+                {
+                  t = _beginning.token(StringEnd.QUOTE);
+                }
               else if (p == '$') { t = _beginning.token(StringEnd.DOLLAR); }
               else if (p == '{') { t = _beginning.token(StringEnd.BRACE);  }
-              else
+              else if (!ignored(pos))
                 {
+                  if (inMultiLineString() && !isSpace(raw(pos)) && codePointInLine(getPos(pos)) - 1 < _multiLineIndentation)
+                    {
+                      Errors.notEnoughIndentationInMultiLineString(sourcePos(getPos(pos)), _multiLineIndentation);
+                    }
                   c = p;
                 }
               var l = p;
-              if (pos < 0)
-                {
-                  nextCodePoint();
-                }
-              else
-                {
-                  pos = pos + codePointSize(pos);
-                }
+              pos = advance(pos);
               p = raw(pos);
-              if (isNewLine(l, p))
+              if (isNewLine(l, p) && !inMultiLineString())
                 {
                   Errors.unexpectedEndOfLineInString(sourcePos(bytePos()-1), sourcePos(_stringStart));
                   t = Token.t_error;
@@ -2530,6 +2568,48 @@ PIPE        : "|"
             }
         }
       return t;
+    }
+
+
+    private int getPos(int pos)
+    {
+      return (pos < 0)
+        ? bytePos()
+        : pos;
+    }
+
+
+    private int advance(int pos)
+    {
+      if (pos < 0)
+        {
+          nextCodePoint();
+        }
+      else
+        {
+          pos = pos + codePointSize(pos);
+        }
+      return pos;
+    }
+
+
+    private boolean ignored(int pos)
+    {
+      return inMultiLineString()
+        && (((isSpace(raw(pos)) && codePointInLine(getPos(pos)) - 1 <= _multiLineIndentation))
+          || isCR(raw(pos)));
+    }
+
+
+    private boolean atMultiLineDelimitor(int pos)
+    {
+      return raw(pos) == '"' && raw(pos+1) == '"' && raw(pos+2) == '"';
+    }
+
+
+    private boolean inMultiLineString()
+    {
+      return _multiLineIndentation >= 0;
     }
 
 
@@ -2701,15 +2781,16 @@ PIPE        : "|"
   /**
    * Return the actual string constant of the current t_string* token as a
    * string.
+   * @param multiLineIndentation
    */
-  String string()
+  Pair<String, Integer> string(int multiLineIndentation)
   {
     if (PRECONDITIONS) require
       (isString(current()));
 
     var sb = new StringBuilder();
-    var s = new StringLexer(sb);
-    return sb.toString();
+    var s = new StringLexer(sb, multiLineIndentation);
+    return new Pair<>(sb.toString(), s._multiLineIndentation);
   }
 
 

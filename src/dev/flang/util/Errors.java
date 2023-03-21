@@ -667,6 +667,25 @@ public class Errors extends ANY
   }
 
 
+  public static void expectedIndentedStringInFirstLineAfterFatQuotation(SourcePosition start,
+    SourcePosition multiLineStringStart)
+  {
+    syntaxError(start,
+    "Expected multiline string to start in first line following fat quotation '\"\"\"'",
+    "Found start at " + multiLineStringStart.show() + " instead.");
+  }
+
+
+
+  public static void notEnoughIndentationInMultiLineString(SourcePosition sourcePos, int indentation)
+  {
+    syntaxError(sourcePos,
+    "Found codepoint at less indentation than expected in multiline string.",
+    "Codepoint was expected to by indented by at least " + indentation + " spaces.");
+  }
+
+
+
   /*
    * get copy of current errors
    */
@@ -714,6 +733,7 @@ public class Errors extends ANY
         System.exit(e.getStatus());
       }
   }
+
 
 }
 
