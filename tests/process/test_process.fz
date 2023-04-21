@@ -1,0 +1,10 @@
+test_process =>
+
+  op := fuzion.sys.process.create "/usr/bin/cat"
+  match op
+    p fuzion.sys.process.r_process =>
+      p.write "Hello from the other side."
+      p.close_write
+      say p.read
+      p.wait
+    error => say "error"

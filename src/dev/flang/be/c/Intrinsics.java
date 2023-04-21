@@ -335,6 +335,12 @@ public class Intrinsics extends ANY
           );
         });
 
+    put("fuzion.sys.process.create", (c,cl,outer,in) ->
+      CExpr.call("fzE_process_create", new List<>(A0.castTo("char *"), A1.castTo("int64_t *"))).ret());
+
+    put("fuzion.sys.process.wait", (c,cl,outer,in) ->
+      CExpr.call("fzE_process_wait", new List<>(A0.castTo("int64_t"))));
+
         /* NYI: The C standard does not guarantee wrap-around semantics for signed types, need
          * to check if this is the case for the C compilers used for Fuzion.
          */
