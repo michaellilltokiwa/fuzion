@@ -35,16 +35,23 @@ public process is
       wait p_id
 
     close_write bool is
-      fuzion.sys.fileio.close r_process.this.stdin
-        .ok
+      pipe.close r_process.this.stdin = 0
 
-    write(s String) is
-      _ := io.file.write.write r_process.this.stdin s.utf8.as_array
+    write(s String) outcome unit is
+      arr := s.utf8.as_array
+      res := pipe.write r_process.this.stdin arr.internalArray.data arr.count
+      if res != arr.count
+        error "error writing to stdin."
+      else
+        unit
 
-    read outcome String is
-      match io.file.read.read_file r_process.this.stdout
-        arr array u8 => String.type.from_bytes arr
-        e error => e
+    read(count i32) outcome String is
+      arr := array u8 count i->0
+      res := pipe.read r_process.this.stdout arr.internalArray.data arr.count
+      if res = -1
+        error "error reading from stdout."
+      else
+        String.type.from_bytes (array u8 res i->arr[i])
 
 
     # NYI cleanup resources

@@ -5,6 +5,6 @@ test_process =>
     p fuzion.sys.process.r_process =>
       p.write "Hello from the other side."
       p.close_write
-      say p.read
+      say (p.read 100)
       p.wait
     error => say "error"

@@ -204,10 +204,37 @@ int fzE_process_create(char * cmdLine, int64_t * result){
     }
 
   result[0] = processId;
-  result[1] = (int64_t) fdopen(stdIn[1], "w");
-  result[2] = (int64_t) fdopen(stdOut[0], "r");
-  result[3] = (int64_t) fdopen(stdErr[0], "r");
+  result[1] = (int64_t) stdIn[1];
+  result[2] = (int64_t) stdOut[0];
+  result[3] = (int64_t) stdErr[0];
   return 0;
+#endif
+}
+
+
+int fzE_pipe_read(int64_t desc, char * buf, size_t nbytes){
+#if _WIN32
+  ReadFile((HANDLE)desc, );
+#else
+  return read((int) desc, buf, nbytes);
+#endif
+}
+
+
+int fzE_pipe_write(int64_t desc, char * buf, size_t nbytes){
+#if _WIN32
+  WriteFile((HANDLE)desc, );
+#else
+  return write((int) desc, buf, nbytes);
+#endif
+}
+
+
+int fzE_pipe_close(int64_t desc){
+#if _WIN32
+  CloseHandle((HANDLE)desc);
+#else
+  return close((int) desc);
 #endif
 }
 
