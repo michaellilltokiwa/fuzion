@@ -103,6 +103,7 @@ int fzE_process_create(char * cmdLine, int64_t * result) {
 
   SECURITY_ATTRIBUTES secAttr = { sizeof(SECURITY_ATTRIBUTES) , NULL, TRUE };
 
+  // NYI cleanup on error
   if ( !CreatePipe(&stdIn[0], &stdIn[1], &secAttr, 0)
     || !CreatePipe(&stdOut[0], &stdOut[1],&secAttr, 0)
     || !CreatePipe(&stdErr[0], &stdErr[1], &secAttr, 0))
@@ -156,9 +157,12 @@ int fzE_process_create(char * cmdLine, int64_t * result) {
   result[3] = (int64_t) stdErr[0];
   return 0;
 #else
+  // https://www.microsoft.com/en-us/research/publication/a-fork-in-the-road/
+
   int stdIn[2];
   int stdOut[2];
   int stdErr[2];
+  // NYI cleanup on error
   if ( pipe(stdIn) == -1
     || pipe(stdErr) == -1
     || pipe(stdOut) == -1)
@@ -207,7 +211,7 @@ int fzE_process_create(char * cmdLine, int64_t * result) {
       close(stdOut[1]);
       close(stdErr[0]);
       close(stdErr[1]);
-      retur n -1;
+      return -1;
     }
 
   result[0] = processId;

@@ -25,8 +25,13 @@
 #
 public process is
 
+  # NYI args, env, pwd
+  # NYI cleanup after process exit
   create(p Any, r Any) i32 is intrinsic
   wait(p i64) is intrinsic
+  # send_signal(p i64, signal i32) NYI is intrinsic
+  # is_alive(p i64) NYI is intrinsic
+  # exit_code(p i64) NYI is intrinsic
 
   # NYI move this to effect
   # NYI rename
