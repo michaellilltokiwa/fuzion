@@ -33,9 +33,11 @@ Fuzion language implementation.  If not, see <https://www.gnu.org/licenses/>.
 #include <sys/types.h>  // mkdir
 
 #if _WIN32
+#include <synchapi.h> // WaitForSingleObject
+#include <windows.h>
 #include <namedpipeapi.h>
 #else
-#include <stdio.h> // fdopen
+#include <stdio.h>      // fdopen
 #include <spawn.h>      // posix_spawn
 #include <unistd.h>     // pipe
 #include <sys/wait.h>   // wait
@@ -77,20 +79,10 @@ int fzE_unsetenv(const char *name){
 }
 
 
-// create pipe
-int fzE_create_pipe(int pipes[]){
-#if _WIN32
-  return CreatePipe(&pipes[0], &pipes[1], NULL, 0) ? 0 : -1;
-#else
-  return pipe(pipes);
-#endif
-}
-
-
 // wait for process to finish
 void fzE_process_wait(int64_t p){
 #if _WIN32
-  WaitForSingleObject(p, INFINITE );
+  WaitForSingleObject((HANDLE)p, INFINITE);
 #else
 int status;
 do {
@@ -102,20 +94,23 @@ do {
 
 
 // zero on success, -1 error
-int fzE_process_create(char * cmdLine, int64_t * result){
+int fzE_process_create(char * cmdLine, int64_t * result) {
+#if _WIN32
+  // create stdIn, stdOut, stdErr pipes
+  HANDLE stdIn[2];
+  HANDLE stdOut[2];
+  HANDLE stdErr[2];
 
-  int stdIn[2];
-  int stdOut[2];
-  int stdErr[2];
-  if (
-       fzE_create_pipe(stdIn) == -1
-    || fzE_create_pipe(stdErr) == -1
-    || fzE_create_pipe(stdOut) == -1
-   )
+  SECURITY_ATTRIBUTES secAttr = { sizeof(SECURITY_ATTRIBUTES) , NULL, TRUE };
+
+  if ( !CreatePipe(&stdIn[0], &stdIn[1], &secAttr, 0)
+    || !CreatePipe(&stdOut[0], &stdOut[1],&secAttr, 0)
+    || !CreatePipe(&stdErr[0], &stdErr[1], &secAttr, 0))
   {
     return -1;
   }
-#if _WIN32
+
+  // prepare create process args
   PROCESS_INFORMATION processInfo;
   ZeroMemory( &processInfo, sizeof(PROCESS_INFORMATION) );
   STARTUPINFO startupInfo;
@@ -137,6 +132,7 @@ int fzE_process_create(char * cmdLine, int64_t * result){
       &startupInfo,  // STARTUPINFO pointer
       &processInfo)) // receives PROCESS_INFORMATION
   {
+    // cleanup all pipes
     CloseHandle(stdIn[0]);
     CloseHandle(stdIn[1]);
     CloseHandle(stdOut[0]);
@@ -145,19 +141,30 @@ int fzE_process_create(char * cmdLine, int64_t * result){
     CloseHandle(stdErr[1]);
     return -1;
   }
+
   // no need for this handle, closing
   CloseHandle(processInfo.hThread);
 
+  // close the handles given to child process.
   CloseHandle(stdIn[0]);
   CloseHandle(stdOut[1]);
   CloseHandle(stdErr[1]);
 
-  result[0] = processInfo.hProcess;
-  result[1] = (int64_t) fdopen(stdIn[1], "w");
-  result[2] = (int64_t) fdopen(stdOut[0], "r");
-  result[3] = (int64_t) fdopen(stdErr[0], "r");
+  result[0] = (int64_t) processInfo.hProcess;
+  result[1] = (int64_t) stdIn[1];
+  result[2] = (int64_t) stdOut[0];
+  result[3] = (int64_t) stdErr[0];
   return 0;
 #else
+  int stdIn[2];
+  int stdOut[2];
+  int stdErr[2];
+  if ( pipe(stdIn) == -1
+    || pipe(stdErr) == -1
+    || pipe(stdOut) == -1)
+  {
+    return -1;
+  }
   pid_t processId;
 
   posix_spawn_file_actions_t file_actions;
@@ -177,7 +184,7 @@ int fzE_process_create(char * cmdLine, int64_t * result){
 
   char * const args[] = {cmdLine, NULL};
 
-  int s = posix_spawn(
+  int s = posix_spawnp(
         &processId,
         args[0],
         &file_actions,
@@ -200,7 +207,7 @@ int fzE_process_create(char * cmdLine, int64_t * result){
       close(stdOut[1]);
       close(stdErr[0]);
       close(stdErr[1]);
-      return -1;
+      retur n -1;
     }
 
   result[0] = processId;
@@ -214,7 +221,11 @@ int fzE_process_create(char * cmdLine, int64_t * result){
 
 int fzE_pipe_read(int64_t desc, char * buf, size_t nbytes){
 #if _WIN32
-  ReadFile((HANDLE)desc, );
+  DWORD bytesRead;
+  if (!ReadFile((HANDLE)desc, buf, nbytes, &bytesRead, NULL)){
+    return -1;
+  }
+  return bytesRead;
 #else
   return read((int) desc, buf, nbytes);
 #endif
@@ -223,7 +234,11 @@ int fzE_pipe_read(int64_t desc, char * buf, size_t nbytes){
 
 int fzE_pipe_write(int64_t desc, char * buf, size_t nbytes){
 #if _WIN32
-  WriteFile((HANDLE)desc, );
+  DWORD bytesRead;
+  if (!WriteFile((HANDLE)desc, buf, nbytes, &bytesRead, NULL)){
+    return -1;
+  }
+  return bytesRead;
 #else
   return write((int) desc, buf, nbytes);
 #endif
@@ -232,7 +247,9 @@ int fzE_pipe_write(int64_t desc, char * buf, size_t nbytes){
 
 int fzE_pipe_close(int64_t desc){
 #if _WIN32
-  CloseHandle((HANDLE)desc);
+  return CloseHandle((HANDLE)desc)
+    ? 0
+    : -1;
 #else
   return close((int) desc);
 #endif
