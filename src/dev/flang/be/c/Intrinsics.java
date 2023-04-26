@@ -63,6 +63,8 @@ public class Intrinsics extends ANY
   static CIdent A0 = new CIdent("arg0");
   static CIdent A1 = new CIdent("arg1");
   static CIdent A2 = new CIdent("arg2");
+  static CIdent A3 = new CIdent("arg3");
+  static CIdent A4 = new CIdent("arg4");
 
   /**
    * Predefined identifier to access errno macro.
@@ -336,7 +338,15 @@ public class Intrinsics extends ANY
         });
 
     put("fuzion.sys.process.create", (c,cl,outer,in) ->
-      CExpr.call("fzE_process_create", new List<>(A0.castTo("char *"), A1.castTo("int64_t *"))).ret());
+      CExpr.call("fzE_process_create", new List<>(
+        // args
+        A0.castTo("char **"),
+        A1.castTo("size_t"),
+        // env
+        A2.castTo("char **"),
+        A3.castTo("size_t"),
+        // result
+        A4.castTo("int64_t *"))).ret());
 
     put("fuzion.sys.process.wait", (c,cl,outer,in) ->
       CExpr.call("fzE_process_wait", new List<>(A0.castTo("int64_t"))));

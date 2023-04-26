@@ -45,6 +45,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.GregorianCalendar;
@@ -52,6 +53,7 @@ import java.util.Set;
 import java.util.TimeZone;
 import java.util.TreeMap;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 
 /**
@@ -974,13 +976,28 @@ public class Intrinsics extends ANY
         });
 
     put("fuzion.sys.process.create"  , (interpreter, innerClazz) -> args -> {
-      var cmd = utf8ByteArrayDataToString(args.get(1));
-      var result = (long[])args.get(2).arrayData()._array;
+      var process_and_args = Arrays
+        .stream(((Value[])args.get(1).arrayData()._array))
+        .limit(args.get(2).i32Value()-1)
+        .map(x -> utf8ByteArrayDataToString(x))
+        .collect(Collectors.toList());
+
+      var env_vars = Arrays
+        .stream(((Value[])args.get(3).arrayData()._array))
+        .limit(args.get(4).i32Value()-1)
+        .map(x -> utf8ByteArrayDataToString(x))
+        .collect(Collectors.toMap((x -> x.split("=")[0]), (x -> x.split("=")[1])));
+
+      var result = (long[])args.get(5).arrayData()._array;
       try
         {
-          var process = new ProcessBuilder()
-                          .command(cmd)
-                          .start();
+          var pb = new ProcessBuilder()
+                              .command(process_and_args);
+
+          pb.environment().putAll(env_vars);
+
+          var process = pb.start();
+
           result[0] = process.pid();
           result[1] = _openStreams_.add(process.getOutputStream());
           result[2] = _openStreams_.add(process.getInputStream());

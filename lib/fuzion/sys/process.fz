@@ -25,9 +25,12 @@
 #
 public process is
 
+
+  # NYI compose processes
+
   # NYI args, env, pwd
   # NYI cleanup after process exit
-  create(p Any, r Any) i32 is intrinsic
+  create(args Any, arg_len i32, env_vars Any, env_vars_len i32, r Any) i32 is intrinsic
   wait(p i64) is intrinsic
   # send_signal(p i64, signal i32) NYI is intrinsic
   # is_alive(p i64) NYI is intrinsic
@@ -61,10 +64,21 @@ public process is
 
     # NYI cleanup resources
 
-  create(p String) outcome r_process is
-    arr_data := array i64 4 i->0
-    if (create (c_string p) arr_data.internalArray.data) = -1
+  create(process_and_args array String, env_vars array String) outcome r_process
+  pre process_and_args.length > 0
+  is
+    # posix_spawn needs last arg to be NULL
+    arg_data := array Any process_and_args.count+1 (i -> if i<process_and_args.length then c_string process_and_args[i] else Any)
+
+    # posix_spawn needs last arg to be NULL
+    # NYI issue #1313
+    # env_var_items := create.this.env_vars.items.as_array
+    # env_data := array Any env_var_items.length+1 (i -> if i<env_var_items.length then "{env_var_items[i].values.0}={env_var_items[i].values.1}" else Any)
+    env_data := array Any create.this.env_vars.length+1 (i -> if i<create.this.env_vars.length then c_string create.this.env_vars[i] else Any)
+
+    res_data := array i64 4 i->0
+    if (create arg_data.internalArray.data arg_data.count env_data.internalArray.data env_data.count res_data.internalArray.data) = -1
       error "error creating process"
     else
-      r_process arr_data[0] arr_data[1] arr_data[2] arr_data[3]
+      r_process res_data[0] res_data[1] res_data[2] res_data[3]
 

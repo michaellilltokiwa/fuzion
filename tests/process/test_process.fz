@@ -1,6 +1,8 @@
 test_process =>
 
-  op := fuzion.sys.process.create "cat"
+  # NYI type inference
+  e array String := []
+  op := fuzion.sys.process.create ["cat"] e
   match op
     p fuzion.sys.process.r_process =>
       p.write "Hello from the other side."
@@ -8,4 +10,15 @@ test_process =>
       say (p.read 100)
       # NYI
       # p.wait
+    error => say "error"
+
+
+  match fuzion.sys.process.create ["echo", "eecchhoo"] e
+    p fuzion.sys.process.r_process =>
+      say (p.read 100)
+    error => say "error"
+
+  match fuzion.sys.process.create ["printenv", "MYENVVAR"] ["MYENVVAR=something"]
+    p fuzion.sys.process.r_process =>
+      say (p.read 100)
     error => say "error"
