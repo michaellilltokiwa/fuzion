@@ -94,7 +94,7 @@ do {
 
 
 // zero on success, -1 error
-int fzE_process_create(char * args[], size_t argsLen, char * env[], size_t envLen, int64_t * result) {
+int fzE_process_create(char * args[], size_t argsLen, char * env[], size_t envLen, int64_t * result, char * args_str, char * env_str) {
 #if _WIN32
   // create stdIn, stdOut, stdErr pipes
   HANDLE stdIn[2];
@@ -122,19 +122,21 @@ int fzE_process_create(char * args[], size_t argsLen, char * env[], size_t envLe
   startupInfo.hStdError = stdErr[1];
   startupInfo.dwFlags |= STARTF_USESTDHANDLES;
 
-  lpEnvironment = concat env up to envLen-2
+  // NYI use unicode?
+  // int wchars_num = MultiByteToWideChar(CP_UTF8, 0, &str, -1, NULL, 0);
+  // wchar_t* wstr = new wchar_t[wchars_num];
+  // MultiByteToWideChar(CP_UTF8, 0, &str, -1, wstr, wchars_num);
+  // Note that an ANSI environment block is terminated by two zero bytes: one for the last string, one more to terminate the block.
+  // A Unicode environment block is terminated by four zero bytes: two for the last string, two more to terminate the block.
 
-  Note that an ANSI environment block is terminated by two zero bytes: one for the last string, one more to terminate the block. A Unicode environment block is terminated by four zero bytes: two for the last string, two more to terminate the block.
-
-  cmdLine = concat args up to argsLen-2
 
   if( !CreateProcess(NULL,
-      TEXT(cmdLine),                 // command line
+      TEXT(args_str),                // command line
       NULL,                          // process security attributes
       NULL,                          // primary thread security attributes
       TRUE,                          // handles are inherited
-      CREATE_UNICODE_ENVIRONMENT,    // creation flags
-      &lpEnvironment,                // use parent's environment
+      0,                             // creation flags
+      env_str,                       // environment
       NULL,                          // use parent's current directory
       &startupInfo,                  // STARTUPINFO pointer
       &processInfo))                 // receives PROCESS_INFORMATION

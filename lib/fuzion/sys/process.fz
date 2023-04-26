@@ -30,7 +30,7 @@ public process is
 
   # NYI args, env, pwd
   # NYI cleanup after process exit
-  create(args Any, arg_len i32, env_vars Any, env_vars_len i32, r Any) i32 is intrinsic
+  create(args Any, arg_len i32, env_vars Any, env_vars_len i32, r Any, args_str Any, env_str Any) i32 is intrinsic
   wait(p i64) is intrinsic
   # send_signal(p i64, signal i32) NYI is intrinsic
   # is_alive(p i64) NYI is intrinsic
@@ -64,8 +64,13 @@ public process is
 
     # NYI cleanup resources
 
+  # NYI env_vars should be map, issue #1313
   create(process_and_args array String, env_vars array String) outcome r_process
-  pre process_and_args.length > 0
+  pre process_and_args.length > 0,
+  # NYI allow utf-8?
+      process_and_args ∀ (x -> x.as_codepoint_sequence ∀ (y -> y.is_ascii)),
+      create.this.env_vars ∀ (x -> x.as_codepoint_sequence ∀ (y -> y.is_ascii)),
+      create.this.env_vars ∀ (x -> x.contains "=") # NYI check that only one =
   is
     # posix_spawn needs last arg to be NULL
     arg_data := array Any process_and_args.count+1 (i -> if i<process_and_args.length then c_string process_and_args[i] else Any)
@@ -77,7 +82,11 @@ public process is
     env_data := array Any create.this.env_vars.length+1 (i -> if i<create.this.env_vars.length then c_string create.this.env_vars[i] else Any)
 
     res_data := array i64 4 i->0
-    if (create arg_data.internalArray.data arg_data.count env_data.internalArray.data env_data.count res_data.internalArray.data) = -1
+
+    args_str := c_string (String.type.join process_and_args " ")
+    env_str := c_string ((String.type.join create.this.env_vars (codepoint 0)) + (codepoint 0))
+
+    if (create arg_data.internalArray.data arg_data.count env_data.internalArray.data env_data.count res_data.internalArray.data args_str env_str) = -1
       error "error creating process"
     else
       r_process res_data[0] res_data[1] res_data[2] res_data[3]
