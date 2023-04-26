@@ -107,19 +107,23 @@ public class Intrinsics extends ANY
   /**
    * This contains all open files/streams.
    */
-  private static OpenResources<AutoCloseable> _openStreams_ = new OpenResources<AutoCloseable>()
+  private static OpenResources<Object> _openStreams_ = new OpenResources<Object>()
   {
     @Override
-    protected boolean close(AutoCloseable f) {
-      try
-      {
-        f.close();
-        return true;
-      }
-      catch(Exception e)
-      {
-        return false;
-      }
+    protected boolean close(Object f) {
+      if (f instanceof AutoCloseable ac)
+        {
+          try
+          {
+            ac.close();
+            return true;
+          }
+          catch(Exception e)
+          {
+            return false;
+          }
+        }
+      return true;
     }
   };
 
@@ -998,7 +1002,7 @@ public class Intrinsics extends ANY
 
           var process = pb.start();
 
-          result[0] = process.pid();
+          result[0] = _openStreams_.add(process);
           result[1] = _openStreams_.add(process.getOutputStream());
           result[2] = _openStreams_.add(process.getInputStream());
           result[3] = _openStreams_.add(process.getErrorStream());
@@ -1011,7 +1015,19 @@ public class Intrinsics extends ANY
     });
 
     put("fuzion.sys.process.wait"    , (interpreter, innerClazz) -> args -> {
-      throw new RuntimeException("NYI");
+      var desc = args.get(1).i64Value();
+      var p = (Process)_openStreams_.get(desc);
+      try
+        {
+          p.waitFor();
+        }
+      catch(InterruptedException e)
+        {
+          System.err.println("*** Interrupted while waiting for process to exit. ***");
+          System.exit(1);
+        }
+      _openStreams_.remove(desc);
+      return new i32Value(p.exitValue());
     });
 
     put("fuzion.sys.pipe.read"       , (interpreter, innerClazz) -> args -> {
@@ -1053,7 +1069,7 @@ public class Intrinsics extends ANY
       var desc = args.get(1).i64Value();
       try
         {
-          _openStreams_.get(desc).close();
+          _openStreams_.remove(desc);
           return new i32Value(0);
         }
       catch (Exception e)

@@ -31,7 +31,8 @@ public process is
   # NYI args, env, pwd
   # NYI cleanup after process exit
   create(args Any, arg_len i32, env_vars Any, env_vars_len i32, r Any, args_str Any, env_str Any) i32 is intrinsic
-  wait(p i64) is intrinsic
+  wait(p i64) i32 is intrinsic
+
   # send_signal(p i64, signal i32) NYI is intrinsic
   # is_alive(p i64) NYI is intrinsic
   # exit_code(p i64) NYI is intrinsic
@@ -39,12 +40,18 @@ public process is
   # NYI move this to effect
   # NYI rename
   r_process(private p_id, stdin, stdout, stderr i64) is
+
+    # wait for the process to end
     wait =>
       wait p_id
 
+
+    # close stdin of child process
     close_write bool is
       pipe.close r_process.this.stdin = 0
 
+
+    # write s to stdin of child process
     write(s String) outcome unit is
       arr := s.utf8.as_array
       res := pipe.write r_process.this.stdin arr.internalArray.data arr.count
@@ -53,6 +60,8 @@ public process is
       else
         unit
 
+
+    # read `count` bytes
     read(count i32) outcome String is
       arr := array u8 count i->0
       res := pipe.read r_process.this.stdout arr.internalArray.data arr.count
@@ -62,10 +71,55 @@ public process is
         String.type.from_bytes (array u8 res i->arr[i])
 
 
-    # NYI cleanup resources
+    #
+    read_string outcome String is
+      arr := (for acc := (marray String).type.new 0 "", acc.add res.val
+                  res := read 100, read 100
+              while res.ok && !res.val.is_empty
+              else
+                acc)
+      String.type.join arr ""
 
+
+    # NYI cleanup resources (process handle windows, close pipes)
+
+
+  process_or_error : choice r_process error is
+
+    # pipe output to other process
+    infix | (p2 Lazy process_or_error) process_or_error is
+      match process_or_error.this
+        p1 r_process =>
+          p3 := p2()
+          match p3
+            p4 r_process =>
+              for p1rb := (p1.read 100), (p1.read 100)
+              while p1rb.ok && !p1rb.val.is_empty && (p4.write p1rb.val).ok
+              p4.close_write
+
+              exit_code_p1 := p1.wait
+              if exit_code_p1 = 0
+                p3
+              else
+                error "*** exit_code: $exit_code_p1 ***"
+            e error =>
+              e
+        e error =>
+          e
+
+    # the output as a String
+    redef as_string String is
+      match process_or_error.this
+        r r_process =>
+          r.read_string.val ""
+        error => "*** error ***"
+
+
+
+  # create process with option to pass environment variables
+  #
   # NYI env_vars should be map, issue #1313
-  create(process_and_args array String, env_vars array String) outcome r_process
+  create(process_and_args array String, env_vars array String) process_or_error
   pre process_and_args.length > 0,
   # NYI allow utf-8?
       process_and_args ∀ (x -> x.as_codepoint_sequence ∀ (y -> y.is_ascii)),
@@ -87,7 +141,14 @@ public process is
     env_str := c_string ((String.type.join create.this.env_vars (codepoint 0)) + (codepoint 0))
 
     if (create arg_data.internalArray.data arg_data.count env_data.internalArray.data env_data.count res_data.internalArray.data args_str env_str) = -1
-      error "error creating process"
+      error "*** error creating process ***"
     else
       r_process res_data[0] res_data[1] res_data[2] res_data[3]
 
+
+
+  # short hand to create process
+  #
+  create(process_and_args array String) =>
+    e array String := []
+    create process_and_args e

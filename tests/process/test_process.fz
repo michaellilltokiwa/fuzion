@@ -1,24 +1,35 @@
 test_process =>
 
-  # NYI type inference
-  e array String := []
-  op := fuzion.sys.process.create ["cat"] e
+  proc := fuzion.sys.process
+
+
+
+  op := proc.create ["cat"]
   match op
     p fuzion.sys.process.r_process =>
       p.write "Hello from the other side."
-      say p.close_write
-      say (p.read 100)
-      # NYI
-      # p.wait
+      say "close write successful: {p.close_write}"
+      say "close write successful: {p.close_write}"
+      say p.read_string
+      say "exit code: {p.wait}"
     error => say "error"
 
 
-  match fuzion.sys.process.create ["echo", "eecchhoo"] e
+
+  match proc.create ["echo", "eecchhoo"]
     p fuzion.sys.process.r_process =>
-      say (p.read 100)
+      say p.read_string
+      say "exit code: {p.wait}"
     error => say "error"
 
-  match fuzion.sys.process.create ["printenv", "MYENVVAR"] ["MYENVVAR=something"]
+
+
+  match proc.create ["printenv", "MYENVVAR"] ["MYENVVAR=content"]
     p fuzion.sys.process.r_process =>
-      say (p.read 100)
+      say p.read_string
+      say "exit code: {p.wait}"
     error => say "error"
+
+
+
+  say ((proc.create ["echo", "'feed me to cat'"]) | (proc.create ["cat"]))

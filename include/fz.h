@@ -79,16 +79,25 @@ int fzE_unsetenv(const char *name){
 }
 
 
-// wait for process to finish
-void fzE_process_wait(int64_t p){
+// wait for process to finish, cleanup resources
+int fzE_process_wait(int64_t p){
 #if _WIN32
+  int status = 0;
   WaitForSingleObject((HANDLE)p, INFINITE);
+  if (!GetExitCodeProcess((HANDLE)p, &status)){
+    exit(1);
+  }
+  CloseHandle((HANDLE)p);
+  return status;
 #else
-int status;
-do {
-  if (waitpid(p, &status, WUNTRACED | WCONTINUED) == -1)
-      exit(1);
-} while (WIFCONTINUED(status));
+  int status;
+  do {
+    if (waitpid(p, &status, WUNTRACED | WCONTINUED) == -1)
+        exit(1);
+  } while (WIFCONTINUED(status));
+  return WIFEXITED(status)
+    ? 0
+    : WEXITSTATUS(status);
 #endif
 }
 

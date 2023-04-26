@@ -356,7 +356,7 @@ public class Intrinsics extends ANY
         )).ret());
 
     put("fuzion.sys.process.wait", (c,cl,outer,in) ->
-      CExpr.call("fzE_process_wait", new List<>(A0.castTo("int64_t"))));
+      CExpr.call("fzE_process_wait", new List<>(A0.castTo("int64_t"))).ret());
 
     put("fuzion.sys.pipe.read", (c,cl,outer,in) ->
       CExpr.call("fzE_pipe_read", new List<>(
