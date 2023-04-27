@@ -82,13 +82,13 @@ int fzE_unsetenv(const char *name){
 // wait for process to finish, cleanup resources
 int fzE_process_wait(int64_t p){
 #if _WIN32
-  int status = 0;
+  DWORD status = 0;
   WaitForSingleObject((HANDLE)p, INFINITE);
   if (!GetExitCodeProcess((HANDLE)p, &status)){
     exit(1);
   }
   CloseHandle((HANDLE)p);
-  return status;
+  return (int)status;
 #else
   int status;
   do {
@@ -119,6 +119,11 @@ int fzE_process_create(char * args[], size_t argsLen, char * env[], size_t envLe
   {
     return -1;
   }
+
+  // without this, process reading from stdin
+  // hang even when stdin is closed by parent process
+  DWORD mode = PIPE_NOWAIT;
+  SetNamedPipeHandleState(stdIn[0], &mode, NULL, NULL);
 
   // prepare create process args
   PROCESS_INFORMATION processInfo;
@@ -268,6 +273,7 @@ int fzE_pipe_write(int64_t desc, char * buf, size_t nbytes){
 
 
 int fzE_pipe_close(int64_t desc){
+// NYI do we need to flush?
 #if _WIN32
   return CloseHandle((HANDLE)desc)
     ? 0

@@ -87,6 +87,9 @@ public process is
   process_or_error : choice r_process error is
 
     # pipe output to other process
+    # NYI should wire pipe directly to process
+    # NYI this works only when pipes buffer is large enough for
+    # what is being written/read to/from pipes
     infix | (p2 Lazy process_or_error) process_or_error is
       match process_or_error.this
         p1 r_process =>
