@@ -26,6 +26,15 @@
 public process is
 
 
+  # how many bytes are written at a time
+  # NYI put this in effect?
+  private write_chunk_size := 100
+
+  # how many bytes are read at a time
+  # NYI put this in effect?
+  private read_chunk_size := 100
+
+
   # NYI compose processes
 
   # NYI args, env, pwd
@@ -41,44 +50,66 @@ public process is
   # NYI rename
   r_process(private p_id, stdin, stdout, stderr i64) is
 
+
     # wait for the process to end
     wait =>
       wait p_id
 
 
     # close stdin of child process
+    #
     close_write bool is
       pipe.close r_process.this.stdin = 0
 
 
-    # write s to stdin of child process
-    write(s String) outcome unit is
-      arr := s.utf8.as_array
-      res := pipe.write r_process.this.stdin arr.internalArray.data arr.count
-      if res != arr.count
-        error "error writing to stdin."
-      else
-        unit
+    # write string to stdin of child process
+    #
+    write_string (s String) outcome unit is
+      write_bytes s.utf8
+
+
+    # write bytes to stdin of child process
+    #
+    write_bytes (b Sequence u8) outcome unit is
+      for chunk in b.chunk write_chunk_size do
+        arr := chunk.as_array
+        res := pipe.write r_process.this.stdin arr.internalArray.data arr.count
+        if res != arr.count
+          error "error writing to stdin."
+        else
+          unit
 
 
     # read `count` bytes
-    read(count i32) outcome String is
+    #
+    read_bytes (count i32) outcome (Sequence u8) is
       arr := array u8 count i->0
       res := pipe.read r_process.this.stdout arr.internalArray.data arr.count
       if res = -1
         error "error reading from stdout."
       else
-        String.type.from_bytes (array u8 res i->arr[i])
+        arr.slice 0 res
 
 
+    # read all of stdout to string
+    # NYI return error on error
     #
     read_string outcome String is
-      arr := (for acc := (marray String).type.new 0 "", acc.add res.val
-                  res := read 100, read 100
+      arr := (for acc := (marray (Sequence u8)).type.new 0 (Sequence u8).type.empty, acc.add res.val
+                  res := read_bytes read_chunk_size, read_bytes read_chunk_size
               while res.ok && !res.val.is_empty
               else
                 acc)
-      String.type.join arr ""
+      ref : String
+        utf8 Sequence u8 is
+          arr.flat_map_sequence u8 (x -> x)
+
+
+    # NYI
+    # read_string_safe String is
+    #   ref : String
+    #     utf8 Sequence u8 is
+
 
 
     # NYI cleanup resources (process handle windows, close pipes)
@@ -96,8 +127,8 @@ public process is
           p3 := p2()
           match p3
             p4 r_process =>
-              for p1rb := (p1.read 100), (p1.read 100)
-              while p1rb.ok && !p1rb.val.is_empty && (p4.write p1rb.val).ok
+              for p1rb := (p1.read_bytes fuzion.sys.process.read_chunk_size), (p1.read_bytes fuzion.sys.process.read_chunk_size)
+              while p1rb.ok && !p1rb.val.is_empty && (p4.write_bytes p1rb.val).ok
               p4.close_write
 
               exit_code_p1 := p1.wait

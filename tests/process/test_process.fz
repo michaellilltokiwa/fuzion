@@ -4,10 +4,9 @@ test_process =>
 
 
 
-  op := proc.create ["cat"]
-  match op
+  match proc.create ["cat"]
     p fuzion.sys.process.r_process =>
-      p.write "Hello from the other side."
+      p.write_string "Hello from the other side."
       say "close write successful: {p.close_write}"
       say "close write successful: {p.close_write}"
       say p.read_string
@@ -36,8 +35,7 @@ test_process =>
 
 
 
-  op := proc.create ["cat"]
-  match op
+  match proc.create ["cat"]
     p2 fuzion.sys.process.r_process =>
 
       concur.thread.spawn (() ->
@@ -50,3 +48,35 @@ test_process =>
       say "read: {p2.read_string}"
       say "exit code: {p2.wait}"
     error => say "error"
+
+
+
+  s String is
+    ref : String
+      utf8 Sequence u8 is
+        // NYI we want to be larger than pipe buffer here
+        // 1MB
+        (1..1E6)
+          .map u8 (x -> codepoint.type.zero_char)
+
+  match (proc.create ["echo", "-n", s]) | (proc.create ["cat"])
+    p fuzion.sys.process.r_process =>
+      say p.read_string.val.byte_length
+      say "exit code: {p.wait}"
+    error =>
+
+
+  match proc.create ["cat"]
+    p3 fuzion.sys.process.r_process =>
+      concur.thread.spawn (() ->
+        # wait 1s
+        time.nano.sleep (time.duration 1E9)
+        say "start reading"
+        while (p3.read_bytes 100).ok)
+
+      # NYI write should block here?
+      say (p3.write_bytes s.utf8)
+      p3.close_write
+      say "exit code: {p3.wait}"
+    error =>
+
