@@ -33,3 +33,20 @@ test_process =>
 
 
   say ((proc.create ["echo", "'feed me to cat'"]) | (proc.create ["cat"]))
+
+
+
+  op := proc.create ["cat"]
+  match op
+    p2 fuzion.sys.process.r_process =>
+
+      concur.thread.spawn (() ->
+        # wait 100ms
+        time.nano.sleep (time.duration 1E8)
+        say "closing write"
+        _ := p2.close_write)
+
+      # this read should block until stdin is closed
+      say "read: {p2.read_string}"
+      say "exit code: {p2.wait}"
+    error => say "error"

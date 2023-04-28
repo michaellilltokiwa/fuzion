@@ -1,5 +1,5 @@
 close write successful: true
-close write successful: true
+close write successful: false
 Hello from the other side.
 exit code: 0
 eecchhoo
@@ -10,3 +10,6 @@ content
 exit code: 0
 'feed me to cat'
 
+closing write
+read: 
+exit code: 0
