@@ -111,6 +111,9 @@ public class Intrinsics extends ANY
   {
     @Override
     protected boolean close(Object f) {
+      if(PRECONDITIONS) require
+        (f != null);
+
       if (f instanceof AutoCloseable ac)
         {
           try
@@ -1067,15 +1070,9 @@ public class Intrinsics extends ANY
 
     put("fuzion.sys.pipe.close"      , (interpreter, innerClazz) -> args -> {
       var desc = args.get(1).i64Value();
-      try
-        {
-          _openStreams_.remove(desc);
-          return new i32Value(0);
-        }
-      catch (Exception e)
-        {
-          return new i32Value(-1);
-        }
+      return _openStreams_.remove(desc)
+        ? new i32Value(0)
+        : new i32Value(-1);
     });
   }
 
