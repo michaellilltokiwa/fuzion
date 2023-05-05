@@ -31,6 +31,7 @@ Fuzion language implementation.  If not, see <https://www.gnu.org/licenses/>.
 #include <stdlib.h>     // setenv, unsetenv
 #include <sys/stat.h>   // mkdir
 #include <sys/types.h>  // mkdir
+#include <stdint.h>
 
 #if _WIN32
 #include <synchapi.h> // WaitForSingleObject
@@ -41,6 +42,9 @@ Fuzion language implementation.  If not, see <https://www.gnu.org/licenses/>.
 #include <spawn.h>      // posix_spawn
 #include <unistd.h>     // pipe
 #include <sys/wait.h>   // wait
+#include <fcntl.h>      // O_NONBLOCK
+#include <poll.h>       // poll
+#include <errno.h>
 #endif
 
 
@@ -80,7 +84,7 @@ int fzE_unsetenv(const char *name){
 
 
 // wait for process to finish, cleanup resources
-int fzE_process_wait(int64_t p){
+uint32_t fzE_process_wait(int64_t p){
 #if _WIN32
   DWORD status = 0;
   WaitForSingleObject((HANDLE)p, INFINITE);
@@ -88,7 +92,7 @@ int fzE_process_wait(int64_t p){
     exit(1);
   }
   CloseHandle((HANDLE)p);
-  return (int)status;
+  return (uint32_t)status;
 #else
   int status;
   do {
@@ -124,6 +128,8 @@ int fzE_process_create(char * args[], size_t argsLen, char * env[], size_t envLe
   // hang even when stdin is closed by parent process
   DWORD mode = PIPE_NOWAIT;
   SetNamedPipeHandleState(stdIn[0], &mode, NULL, NULL);
+  SetNamedPipeHandleState(stdOut[1], &mode, NULL, NULL);
+  SetNamedPipeHandleState(stdErr[1], &mode, NULL, NULL);
 
   // prepare create process args
   PROCESS_INFORMATION processInfo;
@@ -185,9 +191,9 @@ int fzE_process_create(char * args[], size_t argsLen, char * env[], size_t envLe
   int stdOut[2];
   int stdErr[2];
   // NYI cleanup on error
-  if ( pipe(stdIn) == -1
-    || pipe(stdErr) == -1
-    || pipe(stdOut) == -1)
+  if ( pipe(stdIn ) == -1
+    || pipe(stdOut) == -1
+    || pipe(stdErr) == -1)
   {
     return -1;
   }
@@ -261,11 +267,11 @@ int fzE_pipe_read(int64_t desc, char * buf, size_t nbytes){
 
 int fzE_pipe_write(int64_t desc, char * buf, size_t nbytes){
 #if _WIN32
-  DWORD bytesRead;
-  if (!WriteFile((HANDLE)desc, buf, nbytes, &bytesRead, NULL)){
+  DWORD bytesWritten;
+  if (!WriteFile((HANDLE)desc, buf, nbytes, &bytesWritten, NULL)){
     return -1;
   }
-  return bytesRead;
+  return bytesWritten;
 #else
   return write((int) desc, buf, nbytes);
 #endif
