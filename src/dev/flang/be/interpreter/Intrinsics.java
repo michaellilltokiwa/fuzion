@@ -983,6 +983,11 @@ public class Intrinsics extends ANY
         });
 
     put("fuzion.sys.process.create"  , (interpreter, innerClazz) -> args -> {
+      if (!ENABLE_UNSAFE_INTRINSICS)
+      {
+        System.err.println("*** error: unsafe feature "+innerClazz+" disabled");
+        System.exit(1);
+      }
       var process_and_args = Arrays
         .stream(((Value[])args.get(1).arrayData()._array))
         .limit(args.get(2).i32Value()-1)
