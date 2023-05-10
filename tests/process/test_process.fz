@@ -2,81 +2,94 @@ test_process =>
 
   proc := fuzion.sys.process
 
+  test(str String) is
+    say "===  Test: $str  ==="
 
-
+  test "write to stdin"
   match proc.create ["cat"]
-    p fuzion.sys.process.r_process =>
+    p fuzion.sys.process.r_processes =>
       p.write_string "Hello from the other side."
-      say "close write successful: {p.close_write}"
-      say "close write successful: {p.close_write}"
+      say "close write: {p.close_write}"
+      say "close write again: {p.close_write}"
       say p.read_string
-      say "exit code: {p.wait}"
+      say "exit code: {p.exit}"
     error => say "error"
 
 
 
+  test "read stdout"
   match proc.create ["echo", "eecchhoo"]
-    p fuzion.sys.process.r_process =>
+    p fuzion.sys.process.r_processes =>
       say p.read_string
-      say "exit code: {p.wait}"
+      say "exit code: {p.exit}"
     error => say "error"
 
 
 
+  test "environment variable"
   match proc.create ["printenv", "MYENVVAR"] ["MYENVVAR=content"]
-    p fuzion.sys.process.r_process =>
+    p fuzion.sys.process.r_processes =>
       say p.read_string
-      say "exit code: {p.wait}"
+      say "exit code: {p.exit}"
     error => say "error"
 
 
 
+  test "pipe to another process"
   say ((proc.create ["echo", "'feed me to cat'"]) | (proc.create ["cat"]))
 
 
 
+  test "read stdout blocks until stdin closed"
   match proc.create ["cat"]
-    p2 fuzion.sys.process.r_process =>
+    p2 fuzion.sys.process.r_processes =>
 
       concur.thread.spawn (() ->
-        # wait 100ms
-        time.nano.sleep (time.duration 1E8)
-        say "closing write"
+        time.nano.sleep (time.durations.ms 100)
+        say "1) closing write"
         _ := p2.close_write)
 
       # this read should block until stdin is closed
-      say "read: {p2.read_string}"
-      say "exit code: {p2.wait}"
+      say "2) read: {p2.read_string}"
+      say "3) exit code: {p2.exit}"
     error => say "error"
 
 
 
-  s String is
+  # create string of given byte size
+  get_str(byte_size i32) =>
     ref : String
       utf8 Sequence u8 is
-        // NYI we want to be larger than pipe buffer here
-        // 1MB
-        (1..1E6)
+        (1..byte_size)
           .map u8 (x -> codepoint.type.zero_char)
 
-  match (proc.create ["echo", "-n", s]) | (proc.create ["cat"])
-    p fuzion.sys.process.r_process =>
+
+
+  test "1mb arg, piped to another process"
+  match (proc.create ["echo", "-n", (get_str 1E6)]) | (proc.create ["cat"])
+    p fuzion.sys.process.r_processes =>
       say p.read_string.val.byte_length
-      say "exit code: {p.wait}"
-    error =>
+      say "exit code: {p.exit}"
+    e error =>
+      say e
 
 
+
+  test "10mb write to stdin, piped to another process"
   match proc.create ["cat"]
-    p3 fuzion.sys.process.r_process =>
+    p3 fuzion.sys.process.r_processes =>
       concur.thread.spawn (() ->
-        # wait 1s
-        time.nano.sleep (time.duration 1E9)
+        time.nano.sleep (time.durations.s 1)
         say "start reading"
-        while (p3.read_bytes 100).ok)
+        while
+          match p3.read_bytes 100
+            Sequence => true
+            * => false
+      )
 
       # NYI write should block here?
-      say (p3.write_bytes s.utf8)
+      say (p3.write_bytes (get_str 1E7).utf8)
       p3.close_write
-      say "exit code: {p3.wait}"
+      say "exit code: {p3.exit}"
     error =>
 
