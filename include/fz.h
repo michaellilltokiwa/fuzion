@@ -190,13 +190,29 @@ int fzE_process_create(char * args[], size_t argsLen, char * env[], size_t envLe
   int stdIn[2];
   int stdOut[2];
   int stdErr[2];
-  // NYI cleanup on error
-  if ( pipe(stdIn ) == -1
-    || pipe(stdOut) == -1
-    || pipe(stdErr) == -1)
+  if ( pipe(stdIn ) == -1)
   {
     return -1;
   }
+  if (pipe(stdOut) == -1)
+  {
+    close(stdIn[0]);
+    close(stdIn[1]);
+    return -1;
+  }
+  if(pipe(stdErr) == -1)
+  {
+    close(stdIn[0]);
+    close(stdIn[1]);
+    close(stdOut[0]);
+    close(stdOut[1]);
+    return -1;
+  }
+
+  fcntl(stdIn[1], F_SETFD, FD_CLOEXEC);
+  fcntl(stdOut[0], F_SETFD, FD_CLOEXEC);
+  fcntl(stdErr[0], F_SETFD, FD_CLOEXEC);
+
   pid_t processId;
 
   posix_spawn_file_actions_t file_actions;
@@ -204,9 +220,6 @@ int fzE_process_create(char * args[], size_t argsLen, char * env[], size_t envLe
   if (posix_spawn_file_actions_init(&file_actions) != 0)
     exit(1);
 
-  posix_spawn_file_actions_addclose(&file_actions, stdIn[1]);
-  posix_spawn_file_actions_addclose(&file_actions, stdOut[0]);
-  posix_spawn_file_actions_addclose(&file_actions, stdErr[0]);
   posix_spawn_file_actions_adddup2(&file_actions, stdIn[0], 0);
   posix_spawn_file_actions_adddup2(&file_actions, stdOut[1], 1);
   posix_spawn_file_actions_adddup2(&file_actions, stdErr[1], 2);

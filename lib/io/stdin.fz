@@ -149,10 +149,6 @@ private codepoint0 choice codepoint end_of_file error is
 
 
 
-# type to indicate an `end of file`
-end_of_file is
-
-
 # short-hand for creating and installing stdin effect
 stdin(h Byte_Input_Handler, f () -> unit) =>
   s := stdin h effect_mode.new unit
