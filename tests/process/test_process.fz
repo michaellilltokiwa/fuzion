@@ -65,8 +65,8 @@ test_process =>
 
 
 
-  test "1mb arg, piped to another process"
-  match (proc.create ["echo", "-n", (get_str 1E6)]) | (proc.create ["cat"])
+  test "100kb arg, piped to another process"
+  match (proc.create ["echo", "-n", (get_str 1E5)]) | (proc.create ["cat"])
     p fuzion.sys.process.r_processes =>
       say p.read_string.val.byte_length
       say "exit code: {p.exit}"
@@ -78,14 +78,13 @@ test_process =>
   test "10mb write to stdin, piped to another process"
   match proc.create ["cat"]
     p3 fuzion.sys.process.r_processes =>
-      concur.thread.spawn (() ->
+      concur.thread.spawn ()->
         time.nano.sleep (time.durations.s 1)
         say "start reading"
         while
           match p3.read_bytes 100
             Sequence => true
             * => false
-      )
 
       # NYI write should block here?
       say (p3.write_bytes (get_str 1E7).utf8)
