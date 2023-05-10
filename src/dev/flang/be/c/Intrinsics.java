@@ -102,13 +102,18 @@ public class Intrinsics extends ANY
         "fuzion.sys.err.write" , (c,cl,outer,in) ->
         {
           // How do I print a non-null-terminated strings: https://stackoverflow.com/a/25111267
-          return CExpr.call("fwrite",
-                              new List<>(
-                                A0.castTo("void *"),
-                                CExpr.sizeOfType("char"),
-                                A1,
-                                outOrErr(in)
-                              ));
+          return CStmnt.seq(
+            CExpr.call("fwrite",
+              new List<>(
+                A0.castTo("void *"),
+                CExpr.sizeOfType("char"),
+                A1,
+                outOrErr(in)
+              )),
+            CExpr.call("fflush", new List<>(outOrErr(in)))
+          );
+
+
         });
     put("fuzion.sys.fileio.read"         , (c,cl,outer,in) ->
         {

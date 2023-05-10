@@ -2,6 +2,7 @@ test_process =>
 
   proc := fuzion.sys.process
 
+  /*
 
 
   match proc.create ["cat"]
@@ -33,50 +34,74 @@ test_process =>
 
   say ((proc.create ["echo", "'feed me to cat'"]) | (proc.create ["cat"]))
 
+  */
+  /*
+  for i in 1..2 do
+
+    match proc.create ["cat"]
+      p2 fuzion.sys.process.r_processes =>
+
+        concur.thread.spawn (() ->
+          time.nano.sleep (time.durations.seconds 1)
+          say "closing write {p2.exit}")
+
+        # this read should block until stdin is closed
+        say "read: {p2.read_bytes 10}"
+      error => say "error"
+
+  time.nano.sleep (time.durations.seconds 5)
+  */
+
+
+  # match (proc.create ["cat"]) | (proc.create ["cat"])
+
+  #   p3 fuzion.sys.process.r_processes =>
+  #     concur.thread.spawn (() ->
+  #       for res := p3.read_bytes 100, p3.read_bytes 100
+  #       while res.ok do
+  #         say "read {res.val.count}"
+  #       say "not reading anymore"
+  #       )
+
+  #     # NYI write should block here?
+  #     # NYI we want to be larger than pipe buffer here
+  #     say "wrote {p3.write_bytes (array u8 1E2 idx->0)} bytes"
+  #     say p3.exit
+  #     time.nano.sleep (time.durations.s 1)
+  #   e error =>
+  #     say e
+
+
 
 
   match proc.create ["cat"]
-    p2 fuzion.sys.process.r_process =>
-
+    p fuzion.sys.process.r_processes =>
       concur.thread.spawn (() ->
-        # wait 100ms
-        time.nano.sleep (time.duration 1E8)
-        say "closing write"
-        _ := p2.close_write)
+        say (p.read_bytes 100)
+      )
 
-      # this read should block until stdin is closed
-      say "read: {p2.read_string}"
-      say "exit code: {p2.wait}"
+      # concur.thread.spawn (() ->
+      #   say (p.write_bytes "abcd".utf8)
+      #   say (p.write_bytes "defg".utf8)
+      # )
+
+      # concur.thread.spawn (() ->
+      #   time.nano.sleep (time.durations.seconds 3)
+      #   say "waiting for exit"
+      #   say "{p.exit}")
+
+
+
     error => say "error"
 
 
 
-  s String is
-    ref : String
-      utf8 Sequence u8 is
-        // NYI we want to be larger than pipe buffer here
-        // 1MB
-        (1..1E6)
-          .map u8 (x -> codepoint.type.zero_char)
+  concur.thread.spawn (() ->
+    say "hello from thread 1"
+    time.nano.sleep (time.durations.seconds 1)
+    say "hello from thread 2"
+    )
 
-  match (proc.create ["echo", "-n", s]) | (proc.create ["cat"])
-    p fuzion.sys.process.r_process =>
-      say p.read_string.val.byte_length
-      say "exit code: {p.wait}"
-    error =>
-
-
-  match proc.create ["cat"]
-    p3 fuzion.sys.process.r_process =>
-      concur.thread.spawn (() ->
-        # wait 1s
-        time.nano.sleep (time.duration 1E9)
-        say "start reading"
-        while (p3.read_bytes 100).ok)
-
-      # NYI write should block here?
-      say (p3.write_bytes s.utf8)
-      p3.close_write
-      say "exit code: {p3.wait}"
-    error =>
-
+  say "sleeping"
+  time.nano.sleep (time.durations.seconds 10)
+  say "sleeping finished"

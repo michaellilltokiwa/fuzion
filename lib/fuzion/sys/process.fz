@@ -27,12 +27,12 @@ public process is
 
 
   # how many bytes are written at a time
-  # NYI put this in effect?
-  private write_chunk_size := 100
+  # POSIX.1 requires PIPE_BUF to be at least 512 bytes
+  private write_chunk_size := 512
 
   # how many bytes are read at a time
-  # NYI put this in effect?
-  private read_chunk_size := 100
+  # POSIX.1 requires PIPE_BUF to be at least 512 bytes
+  private read_chunk_size := 512
 
 
   # NYI compose processes
@@ -40,7 +40,10 @@ public process is
   # NYI args, env, pwd
   # NYI cleanup after process exit
   create(args Any, arg_len i32, env_vars Any, env_vars_len i32, r Any, args_str Any, env_str Any) i32 is intrinsic
-  wait(p i64) i32 is intrinsic
+
+
+  #
+  wait(p i64) u32 is intrinsic
 
   # send_signal(p i64, signal i32) NYI is intrinsic
   # is_alive(p i64) NYI is intrinsic
@@ -48,46 +51,69 @@ public process is
 
   # NYI move this to effect
   # NYI rename
-  r_process(private p_id, stdin, stdout, stderr i64) is
+  private r_process(private p_id, stdin, stdout, stderr i64) ref
+  is
+
+    say "created process $p_id, {r_process.this.stdin}, {r_process.this.stdout}, {r_process.this.stderr}"
+
+
+    close =>
+      say "closing {r_process.this.stdin}"
+      say "closed {r_process.this.stdin} {pipe.close r_process.this.stdin}"
+
+    close_stdout =>
+      say "closing {r_process.this.stdout} {r_process.this.stderr}"
+      say "closed {r_process.this.stdout} {pipe.close r_process.this.stdout}"
+      say "closed {r_process.this.stderr} {pipe.close r_process.this.stderr}"
 
 
     # wait for the process to end
-    wait =>
-      wait p_id
-
-
-    # close stdin of child process
     #
-    close_write bool is
-      pipe.close r_process.this.stdin = 0
+    exit =>
+      say "waiting for $p_id"
+      r := wait p_id
+      say "exited $p_id with $r"
+      r
 
 
     # write string to stdin of child process
     #
-    write_string (s String) outcome unit is
+    write_string (s String) outcome i32 is
       write_bytes s.utf8
 
 
     # write bytes to stdin of child process
     #
-    write_bytes (b Sequence u8) outcome unit is
-      for chunk in b.chunk write_chunk_size do
-        arr := chunk.as_array
-        res := pipe.write r_process.this.stdin arr.internalArray.data arr.count
-        if res != arr.count
-          error "error writing to stdin."
-        else
-          unit
+    write_bytes (bytes Sequence u8) outcome i32
+    pre bytes.count > 0
+    is
+      say "writing bytes to {r_process.this.stdin}"
+      r := bytes
+        .chunk write_chunk_size
+        .reduce_or_error 0 ((r, t) ->
+          arr := t.as_array
+          bw := pipe.write r_process.this.stdin arr.internalArray.data arr.count
+          if bw = -1
+            abort (outcome i32) (error "error while writing. wrote $r bytes already.")
+          else
+            r+bw
+        )
+      say "finished writing bytes to {r_process.this.stdin} {r}"
+      r
 
 
     # read `count` bytes
     #
-    read_bytes (count i32) outcome (Sequence u8) is
+    read_bytes (count i32) outcome (Sequence u8)
+    pre count > 0
+    is
+      say "reading $count bytes from {r_process.this.p_id} {r_process.this.stdout}"
       arr := array u8 count i->0
       res := pipe.read r_process.this.stdout arr.internalArray.data arr.count
       if res = -1
         error "error reading from stdout."
       else
+        say "bytes read from {r_process.this.stdout} count {res}"
         arr.slice 0 res
 
 
@@ -97,7 +123,7 @@ public process is
     read_string outcome String is
       arr := (for acc := (marray (Sequence u8)).type.new 0 (Sequence u8).type.empty, acc.add res.val
                   res := read_bytes read_chunk_size, read_bytes read_chunk_size
-              while res.ok && !res.val.is_empty
+              while res.ok
               else
                 acc)
       ref : String
@@ -114,46 +140,80 @@ public process is
 
     # NYI cleanup resources (process handle windows, close pipes)
 
+  r_processes (processes Sequence r_process)
+  pre !processes.is_empty
+  is
+    # the output as a String
+    redef as_string String is
+      processes.last.read_string.as_string
 
-  process_or_error : choice r_process error is
+
+    read_bytes (count i32) outcome (Sequence u8)
+    pre count > 0
+    is
+      processes.last.read_bytes count
+
+
+    write_bytes (bytes Sequence u8) outcome i32
+    pre bytes.count > 0
+    is
+      processes.first.write_bytes bytes
+
+    # close_stdout =>
+    #   processes
+    #     .for_each (p ->
+    #       _ := p.close_stdout)
+
+
+    exit Sequence u32 is
+      processes
+        .map_sequence (p ->
+          p.close
+          p.exit)
+
+
+
+
+  processes_or_error : choice fuzion.sys.process.r_processes error is
 
     # pipe output to other process
     # NYI should wire pipe directly to process
     # NYI this works only when pipes buffer is large enough for
     # what is being written/read to/from pipes
-    infix | (p2 Lazy process_or_error) process_or_error is
-      match process_or_error.this
-        p1 r_process =>
-          p3 := p2()
-          match p3
-            p4 r_process =>
-              for p1rb := (p1.read_bytes fuzion.sys.process.read_chunk_size), (p1.read_bytes fuzion.sys.process.read_chunk_size)
-              while p1rb.ok && !p1rb.val.is_empty && (p4.write_bytes p1rb.val).ok
-              p4.close_write
+    infix | (lp2 Lazy processes_or_error) processes_or_error is
+      match processes_or_error.this
+        p1 fuzion.sys.process.r_processes =>
+          match lp2()
+            p2 fuzion.sys.process.r_processes =>
+              r :=  fuzion.sys.process.r_processes (p1.processes.concat_sequences p2.processes)
+              concur.thread.spawn ()->
+                for i in 1..1
+                    p1rb := (p1.read_bytes fuzion.sys.process.read_chunk_size), (p1.read_bytes fuzion.sys.process.read_chunk_size)
+                while p1rb.ok && (p2.write_bytes p1rb.val).ok
+                # p1.close_stdout
+                say "transfer tread finished"
+              r
 
-              exit_code_p1 := p1.wait
-              if exit_code_p1 = 0
-                p3
-              else
-                error "*** exit_code: $exit_code_p1 ***"
             e error =>
               e
         e error =>
           e
 
-    # the output as a String
-    redef as_string String is
-      match process_or_error.this
-        r r_process =>
-          r.read_string.val ""
-        error => "*** error ***"
+
+    # # the output as a String
+    # redef as_string String is
+    #   match processes_or_error.this
+    #     r fuzion.sys.process.r_processes =>
+    #       r.as_string
+    #     error =>
+    #       "*** error ***"
 
 
 
   # create process with option to pass environment variables
   #
   # NYI env_vars should be map, issue #1313
-  create(process_and_args array String, env_vars array String) process_or_error
+  create(process_and_args array String, env_vars array String) processes_or_error
   pre process_and_args.length > 0,
   # NYI allow utf-8?
       process_and_args ∀ (x -> x.as_codepoint_sequence ∀ (y -> y.is_ascii)),
@@ -177,7 +237,7 @@ public process is
     if (create arg_data.internalArray.data arg_data.count env_data.internalArray.data env_data.count res_data.internalArray.data args_str env_str) = -1
       error "*** error creating process ***"
     else
-      r_process res_data[0] res_data[1] res_data[2] res_data[3]
+      fuzion.sys.process.r_processes [fuzion.sys.process.r_process res_data[0] res_data[1] res_data[2] res_data[3]]
 
 
 
