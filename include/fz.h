@@ -29,7 +29,6 @@ Fuzion language implementation.  If not, see <https://www.gnu.org/licenses/>.
 #define _FUZION_H 1
 
 
-#include <fcntl.h>      // fcntl, O_NONBLOCK
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>     // setenv, unsetenv
@@ -53,6 +52,7 @@ Fuzion language implementation.  If not, see <https://www.gnu.org/licenses/>.
 #else
 
 #include <errno.h>
+#include <fcntl.h>      // fcntl, O_NONBLOCK
 #include <netdb.h>      // getaddrinfo
 #include <netinet/in.h> // AF_INET
 #include <poll.h>       // poll
@@ -108,7 +108,7 @@ int fzE_set_blocking(int sockfd, int blocking)
 {
 #ifdef _WIN32
   u_long b = blocking;
-  return ioctlsocket(fd, FIONBIO, &b);
+  return ioctlsocket(sockfd, FIONBIO, &b);
 #else
   int flag = blocking == 1
     ? fcntl(sockfd, F_GETFL, 0) | O_NONBLOCK
@@ -192,7 +192,9 @@ int fzE_socket(int family, int type, int protocol){
 #endif
   // NYI use lock to make this _atomic_.
   int sockfd = socket(get_family(family), get_socket_type(type), get_protocol(protocol));
+#ifndef _WIN32
   fcntl(sockfd, F_SETFD, FD_CLOEXEC);
+#endif
   return sockfd;
 }
 
@@ -382,11 +384,44 @@ int fzE_process_create(char * args[], size_t argsLen, char * env[], size_t envLe
   ZeroMemory( &processInfo, sizeof(PROCESS_INFORMATION) );
   STARTUPINFO startupInfo;
   ZeroMemory( &startupInfo, sizeof(STARTUPINFO) );
-  startupInfo.cb = sizeof(STARTUPINFO);
   startupInfo.hStdInput = stdIn[0];
   startupInfo.hStdOutput = stdOut[1];
   startupInfo.hStdError = stdErr[1];
   startupInfo.dwFlags |= STARTF_USESTDHANDLES;
+
+  // Programmatically controlling which handles are inherited by new processes in Win32
+  // https://devblogs.microsoft.com/oldnewthing/20111216-00/?p=8873
+
+  SIZE_T size = 0;
+  LPPROC_THREAD_ATTRIBUTE_LIST lpAttributeList = NULL;
+  if(! (InitializeProcThreadAttributeList(NULL, 1, 0, &size) ||
+             GetLastError() == ERROR_INSUFFICIENT_BUFFER)){
+    return -1;
+  }
+  lpAttributeList = (LPPROC_THREAD_ATTRIBUTE_LIST) HeapAlloc(GetProcessHeap(), 0, size);
+  if(lpAttributeList == NULL){
+    return -1;
+  }
+  if(!InitializeProcThreadAttributeList(lpAttributeList,
+                      1, 0, &size)){
+    HeapFree(GetProcessHeap(), 0, lpAttributeList);
+    return -1;
+  }
+  HANDLE handlesToInherit[] =  { stdIn[0], stdOut[1], stdErr[1] };
+  if(!UpdateProcThreadAttribute(lpAttributeList,
+                      0, PROC_THREAD_ATTRIBUTE_HANDLE_LIST,
+                      handlesToInherit,
+                      3 * sizeof(HANDLE), NULL, NULL)){
+    DeleteProcThreadAttributeList(lpAttributeList);
+    HeapFree(GetProcessHeap(), 0, lpAttributeList);
+    return -1;
+  }
+
+  STARTUPINFOEX startupInfoEx;
+  ZeroMemory( &startupInfoEx, sizeof(startupInfoEx) );
+  startupInfoEx.StartupInfo = startupInfo;
+  startupInfoEx.StartupInfo.cb = sizeof(startupInfoEx);
+  startupInfoEx.lpAttributeList = lpAttributeList;
 
   // NYI use unicode?
   // int wchars_num = MultiByteToWideChar(CP_UTF8, 0, &str, -1, NULL, 0);
@@ -400,11 +435,11 @@ int fzE_process_create(char * args[], size_t argsLen, char * env[], size_t envLe
       TEXT(args_str),                // command line
       NULL,                          // process security attributes
       NULL,                          // primary thread security attributes
-      FALSE,                         // handles are not inherited
-      0,                             // creation flags
+      TRUE,                          // inherit handles listed in startupInfo
+      EXTENDED_STARTUPINFO_PRESENT,  // creation flags
       env_str,                       // environment
       NULL,                          // use parent's current directory
-      &startupInfo,                  // STARTUPINFO pointer
+      &startupInfoEx.StartupInfo,    // STARTUPINFOEX pointer
       &processInfo))                 // receives PROCESS_INFORMATION
   {
     // cleanup all pipes
@@ -416,6 +451,9 @@ int fzE_process_create(char * args[], size_t argsLen, char * env[], size_t envLe
     CloseHandle(stdErr[1]);
     return -1;
   }
+
+   DeleteProcThreadAttributeList(lpAttributeList);
+   HeapFree(GetProcessHeap(), 0, lpAttributeList);
 
   // no need for this handle, closing
   CloseHandle(processInfo.hThread);
@@ -431,7 +469,7 @@ int fzE_process_create(char * args[], size_t argsLen, char * env[], size_t envLe
   result[3] = (int64_t) stdErr[0];
   return 0;
 #else
-  // The problems with fork, exec:
+  // Some problems with fork, exec:
   // https://www.microsoft.com/en-us/research/publication/a-fork-in-the-road/
 
   int stdIn[2];
@@ -516,8 +554,13 @@ int fzE_pipe_read(int64_t desc, char * buf, size_t nbytes){
 #if _WIN32
   DWORD bytesRead;
   if (!ReadFile((HANDLE)desc, buf, nbytes, &bytesRead, NULL)){
-    return -1;
+    printf("bytes read: %d\n", bytesRead);
+    printf("last error: %d\n", GetLastError());
+    return GetLastError() == ERROR_BROKEN_PIPE
+      ? 0
+      : -1;
   }
+  printf("bytes read: %d\n", bytesRead);
   return bytesRead;
 #else
   return read((int) desc, buf, nbytes);
@@ -590,7 +633,9 @@ void fzE_file_open(char * file_name, int64_t * open_results, int8_t mode)
       exit(1);
     }
   }
+#ifndef _WIN32
   fcntl(open_results[0], F_SETFD, FD_CLOEXEC);
+#endif
   open_results[1] = (int64_t)errno;
 }
 
