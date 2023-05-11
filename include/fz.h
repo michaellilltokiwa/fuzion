@@ -28,28 +28,12 @@ Fuzion language implementation.  If not, see <https://www.gnu.org/licenses/>.
 #ifndef _FUZION_H
 #define _FUZION_H 1
 
-#include <errno.h>
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>     // setenv, unsetenv
-#include <sys/stat.h>   // mkdir
-#include <sys/types.h>  // mkdir
+
+#include <fcntl.h>      // fcntl, O_NONBLOCK
 #include <stdint.h>
-
-#if _WIN32
-#include <synchapi.h> // WaitForSingleObject
-#include <windows.h>
-#include <namedpipeapi.h>
-#else
-#include <stdio.h>      // fdopen
-#include <spawn.h>      // posix_spawn
-#include <unistd.h>     // pipe
-#include <sys/wait.h>   // wait
-#include <fcntl.h>      // O_NONBLOCK
-#include <poll.h>       // poll
-#include <errno.h>
-#endif
-
+#include <stdio.h>
+#include <stdlib.h>     // setenv, unsetenv
+#include <string.h>
 
 #if _WIN32
 
@@ -63,14 +47,23 @@ Fuzion language implementation.  If not, see <https://www.gnu.org/licenses/>.
 #include <windows.h>
 #include <ws2tcpip.h>
 
+#include <synchapi.h> // WaitForSingleObject
+#include <namedpipeapi.h>
+
 #else
-#include <sys/socket.h> // socket, bind, listen, accept, connect
-#include <sys/ioctl.h>  // ioctl, FIONREAD
+
+#include <errno.h>
+#include <netdb.h>      // getaddrinfo
 #include <netinet/in.h> // AF_INET
 #include <poll.h>       // poll
-#include <fcntl.h>      // fcntl
-#include <unistd.h>     // close
-#include <netdb.h>      // getaddrinfo
+#include <spawn.h>      // posix_spawn
+#include <sys/ioctl.h>  // ioctl, FIONREAD
+#include <sys/socket.h> // socket, bind, listen, accept, connect
+#include <sys/stat.h>   // mkdir
+#include <sys/types.h>
+#include <sys/wait.h>   // wait
+#include <unistd.h>     // close, pipe
+
 #endif
 
 
@@ -197,7 +190,10 @@ int fzE_socket(int family, int type, int protocol){
     return -1;
   }
 #endif
-  return socket(get_family(family), get_socket_type(type), get_protocol(protocol));
+  // NYI use lock to make this _atomic_.
+  int sockfd = socket(get_family(family), get_socket_type(type), get_protocol(protocol));
+  fcntl(sockfd, F_SETFD, FD_CLOEXEC);
+  return sockfd;
 }
 
 
@@ -551,6 +547,51 @@ int fzE_pipe_close(int64_t desc){
 #else
   return close((int) desc);
 #endif
+}
+
+
+void fzE_file_open(char * file_name, int64_t * open_results, int8_t mode)
+{
+  // NYI use lock to make fopen and fcntl _atomic_.
+  FILE * fp;
+  errno = 0;
+  switch (mode)
+  {
+    case 0:
+    {
+      fp = fopen(file_name,"rb");
+      if (fp!=NULL)
+      {
+        open_results[0] = (int64_t)fp;
+      }
+      break;
+    }
+    case 1:
+    {
+      fp = fopen(file_name,"wb");
+      if (fp!=NULL)
+      {
+        open_results[0] = (int64_t)fp;
+      }
+      break;
+    }
+    case 2:
+    {
+      fp = fopen(file_name,"ab");
+      if (fp!=NULL)
+      {
+        open_results[0] = (int64_t)fp;
+      }
+      break;
+    }
+    default:
+    {
+      fprintf(stderr,"*** Unsupported open flag. Please use: 0 for READ, 1 for WRITE, 2 for APPEND. ***\012");
+      exit(1);
+    }
+  }
+  fcntl(open_results[0], F_SETFD, FD_CLOEXEC);
+  open_results[1] = (int64_t)errno;
 }
 
 

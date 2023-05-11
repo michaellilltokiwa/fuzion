@@ -241,51 +241,11 @@ public class Intrinsics extends ANY
         );
     put("fuzion.sys.fileio.open"   , (c,cl,outer,in) ->
         {
-          var filePointer = new CIdent("fp");
-          var openResults = new CIdent("open_results");
-          return CStmnt.seq(
-            CExpr.decl("FILE *", filePointer),
-            CExpr.decl("fzT_1i64 *", openResults),
-            openResults.assign(A1.castTo("fzT_1i64 *")),
-            errno.assign(new CIdent("0")),
-            CStmnt.suitch(
-              A2,
-              new List<>(
-                CStmnt.caze(
-                  new List<>(CExpr.int8const(0)),
-                  CStmnt.seq(
-                    filePointer.assign(CExpr.call("fopen", new List<>(A0.castTo("char *"), CExpr.string("rb")))),
-                    CExpr.iff(CExpr.notEq(filePointer, new CIdent("NULL")),
-                      CStmnt.seq(openResults.index(0).assign(filePointer.castTo("fzT_1i64")))),
-                    CStmnt.BREAK
-                    )
-                  ),
-                CStmnt.caze(
-                  new List<>(CExpr.int8const(1)),
-                  CStmnt.seq(
-                    filePointer.assign(CExpr.call("fopen", new List<>(A0.castTo("char *"), CExpr.string("wb")))),
-                    CExpr.iff(CExpr.notEq(filePointer, new CIdent("NULL")),
-                      CStmnt.seq(openResults.index(0).assign(filePointer.castTo("fzT_1i64")))),
-                    CStmnt.BREAK
-                    )
-                  ),
-                CStmnt.caze(
-                  new List<>(CExpr.int8const(2)),
-                  CStmnt.seq(
-                    filePointer.assign(CExpr.call("fopen", new List<>(A0.castTo("char *"), CExpr.string("ab")))),
-                    CExpr.iff(CExpr.notEq(filePointer, new CIdent("NULL")),
-                      CStmnt.seq(openResults.index(0).assign(filePointer.castTo("fzT_1i64")))),
-                    CStmnt.BREAK
-                    )
-                  )
-                ),
-              CStmnt.seq(
-                CExpr.fprintfstderr("*** Unsupported open flag. Please use: 0 for READ, 1 for WRITE, 2 for APPEND. ***\n"),
-                CExpr.exit(1)
-                )
-              ),
-            openResults.index(1).assign(errno.castTo("fzT_1i64"))
-            );
+          return CExpr.call("fzE_file_open", new List<>(
+              A0.castTo("char *"),
+              A1.castTo("int64_t *"),
+              A2.castTo("int8_t")))
+              .ret();
         }
         );
     put("fuzion.sys.fileio.close"   , (c,cl,outer,in) ->
