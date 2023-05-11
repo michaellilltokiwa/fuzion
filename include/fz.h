@@ -105,9 +105,16 @@ uint32_t fzE_process_wait(int64_t p){
 #endif
 }
 
-
+// NYI make this thread safe
+// NYI option to pass stdin,stdout,stderr
 // zero on success, -1 error
 int fzE_process_create(char * args[], size_t argsLen, char * env[], size_t envLen, int64_t * result, char * args_str, char * env_str) {
+
+// Describes the how and why
+// of making file descriptors, handlers, sockets
+// none inheritable (CLOEXEC, HANDLE_FLAG_INHERIT):
+// https://peps.python.org/pep-0446/
+
 #if _WIN32
   // create stdIn, stdOut, stdErr pipes
   HANDLE stdIn[2];
@@ -185,12 +192,13 @@ int fzE_process_create(char * args[], size_t argsLen, char * env[], size_t envLe
   result[3] = (int64_t) stdErr[0];
   return 0;
 #else
+  // The problems with fork, exec:
   // https://www.microsoft.com/en-us/research/publication/a-fork-in-the-road/
 
   int stdIn[2];
   int stdOut[2];
   int stdErr[2];
-  if ( pipe(stdIn ) == -1)
+  if (pipe(stdIn ) == -1)
   {
     return -1;
   }
@@ -200,7 +208,7 @@ int fzE_process_create(char * args[], size_t argsLen, char * env[], size_t envLe
     close(stdIn[1]);
     return -1;
   }
-  if(pipe(stdErr) == -1)
+  if (pipe(stdErr) == -1)
   {
     close(stdIn[0]);
     close(stdIn[1]);
