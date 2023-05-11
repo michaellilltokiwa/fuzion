@@ -554,13 +554,10 @@ int fzE_pipe_read(int64_t desc, char * buf, size_t nbytes){
 #if _WIN32
   DWORD bytesRead;
   if (!ReadFile((HANDLE)desc, buf, nbytes, &bytesRead, NULL)){
-    printf("bytes read: %d\n", bytesRead);
-    printf("last error: %d\n", GetLastError());
     return GetLastError() == ERROR_BROKEN_PIPE
       ? 0
       : -1;
   }
-  printf("bytes read: %d\n", bytesRead);
   return bytesRead;
 #else
   return read((int) desc, buf, nbytes);
