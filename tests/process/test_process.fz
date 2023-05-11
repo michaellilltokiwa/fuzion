@@ -5,7 +5,7 @@ test_process =>
   test(str String) is
     say "===  Test: $str  ==="
 
-  test "write to stdin"
+  test "write to stdin of process"
   match proc.create ["cat"]
     p fuzion.sys.process.r_processes =>
       p.write_string "Hello from the other side."
@@ -17,7 +17,7 @@ test_process =>
 
 
 
-  test "read stdout"
+  test "read stdout of process"
   match proc.create ["echo", "eecchhoo"]
     p fuzion.sys.process.r_processes =>
       say p.read_string
@@ -26,7 +26,7 @@ test_process =>
 
 
 
-  test "environment variable"
+  test "pass environment variable"
   match proc.create ["printenv", "MYENVVAR"] ["MYENVVAR=content"]
     p fuzion.sys.process.r_processes =>
       say p.read_string
@@ -35,7 +35,7 @@ test_process =>
 
 
 
-  test "pipe to another process"
+  test "feed output of process 1 to process 2"
   say ((proc.create ["echo", "'feed me to cat'"]) | (proc.create ["cat"]))
 
 
@@ -65,7 +65,7 @@ test_process =>
 
 
 
-  test "100kb arg, piped to another process"
+  test "100kb argument, piped to another process"
   match (proc.create ["echo", "-n", (get_str 1E5)]) | (proc.create ["cat"])
     p fuzion.sys.process.r_processes =>
       say p.read_string.val.byte_length

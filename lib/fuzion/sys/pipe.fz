@@ -26,6 +26,8 @@
 public pipe is
 
 
+  # returns -1 on error, 0 on end_of_file, number of read bytes otherwise.
+  #
   private read(
     # the descriptor
     desc i64,
@@ -34,7 +36,8 @@ public pipe is
     # the length of the array that represents the file bytes
     file_array_length i32) i32 is intrinsic
 
-
+  # returns -1 on error, number of written bytes otherwise.
+  #
   private write(
     # the descriptor
     desc i64,

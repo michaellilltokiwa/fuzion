@@ -1178,12 +1178,7 @@ public class Intrinsics extends ANY
           return new boolValue(FuzionThread.current()._effects.get(cl) != null /* NOTE not containsKey since cl may map to null! */ );
         });
 
-    put("fuzion.sys.process.create"  , (interpreter, innerClazz) -> args -> {
-      if (!ENABLE_UNSAFE_INTRINSICS)
-      {
-        System.err.println("*** error: unsafe feature "+innerClazz+" disabled");
-        System.exit(1);
-      }
+    putUnsafe("fuzion.sys.process.create"  , (interpreter, innerClazz) -> args -> {
       var process_and_args = Arrays
         .stream(((Value[])args.get(1).arrayData()._array))
         .limit(args.get(2).i32Value()-1)
@@ -1241,14 +1236,18 @@ public class Intrinsics extends ANY
         {
           try
             {
-              return new i32Value(is.read(buff));
+              var readBytes = is.read(buff);
+
+              return readBytes == -1
+               ? new i32Value(0)
+               : new i32Value(readBytes);
             }
           catch (IOException e)
             {
               return new i32Value(-1);
             }
         }
-      return new i32Value(-1);
+      throw new RuntimeException("illegal");
     });
 
     put("fuzion.sys.pipe.write"      , (interpreter, innerClazz) -> args -> {
@@ -1266,7 +1265,7 @@ public class Intrinsics extends ANY
               return new i32Value(-1);
             }
         }
-      return new i32Value(-1);
+      throw new RuntimeException("illegal");
     });
 
     put("fuzion.sys.pipe.close"      , (interpreter, innerClazz) -> args -> {
