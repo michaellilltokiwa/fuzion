@@ -35,11 +35,19 @@ import dev.flang.ast.Types; // NYI: remove dependency! Use dev.flang.fuir instea
 import dev.flang.util.ANY;
 import dev.flang.util.Errors;
 
+import java.lang.reflect.Array;
+import java.net.InetSocketAddress;
+import java.net.BindException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.RandomAccessFile;
-import java.lang.reflect.Array;
+import java.nio.ByteBuffer;
+import java.nio.channels.ByteChannel;
+import java.nio.channels.DatagramChannel;
+import java.nio.channels.ServerSocketChannel;
+import java.nio.channels.SocketChannel;
+import java.nio.channels.spi.AbstractSelectableChannel;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -82,7 +90,7 @@ public class Intrinsics extends ANY
    */
   enum SystemErrNo
   {
-    UNSPECIFIED(0), EIO(5), EACCES(13), ENOTSUP(95);
+    UNSPECIFIED(0), EIO(5), EACCES(13), ENOTSUP(95), EADDRINUSE(98), ECONNREFUSED(111);
 
     final int errno;
 
@@ -147,6 +155,13 @@ public class Intrinsics extends ANY
 
 
   private static void put(String n, IntrinsicCode c) { _intrinsics_.put(n, c); }
+  private static void putUnsafe(String n, IntrinsicCode c) { _intrinsics_.put(n, (interpreter, innerClazz) -> args -> {
+    if (!ENABLE_UNSAFE_INTRINSICS)
+      {
+        Errors.fatal("*** error: unsafe feature "+innerClazz+" disabled");
+      }
+    return c.get(interpreter, innerClazz).call(args);
+  }); }
   private static void put(String n1, String n2, IntrinsicCode c) { put(n1, c); put(n2, c); }
   private static void put(String n1, String n2, String n3, IntrinsicCode c) { put(n1, c); put(n2, c); put(n3, c); }
   private static void put(String n1, String n2, String n3, String n4, IntrinsicCode c) { put(n1, c); put(n2, c); put(n3, c); put(n4, c); }
@@ -428,8 +443,9 @@ public class Intrinsics extends ANY
           var seekResults = (long[])args.get(3).arrayData()._array;
           try
             {
-              ((RandomAccessFile)_openStreams_.get(fd)).seek(args.get(2).i16Value());
-              seekResults[0] = ((RandomAccessFile)_openStreams_.get(fd)).getFilePointer();
+              var raf = (RandomAccessFile)_openStreams_.get(fd);
+              raf.seek(args.get(2).i16Value());
+              seekResults[0] = raf.getFilePointer();
               return Value.EMPTY_VALUE;
             }
           catch (Exception e)
@@ -746,6 +762,186 @@ public class Intrinsics extends ANY
           t.start();
           return new Instance(Clazzes.c_unit.get());
         });
+
+
+    putUnsafe("fuzion.sys.net.bind0"    , (interpreter, innerClazz) -> args -> {
+      var family = args.get(1).i32Value();
+      var socketType = args.get(2).i32Value();
+      var protocol = args.get(3).i32Value();
+      var host = utf8ByteArrayDataToString(args.get(4));
+      var port = utf8ByteArrayDataToString(args.get(5));
+      var result = (long[])args.get(6).arrayData()._array;
+      if (family != 2 && family != 10)
+        {
+          throw new RuntimeException("NYI");
+        }
+      try
+        {
+          return switch (protocol)
+            {
+              case 6 ->
+                {
+                  var ss = ServerSocketChannel.open();
+                  ss.bind(new InetSocketAddress(host, Integer.parseInt(port)));
+                  result[0] = _openStreams_.add(ss);
+                  yield new i32Value(0);
+                }
+              case 17 ->
+                {
+                  var ss = DatagramChannel.open();
+                  ss.bind(new InetSocketAddress(host, Integer.parseInt(port)));
+                  result[0] = _openStreams_.add(ss);
+                  yield new i32Value(0);
+                }
+              default -> throw new RuntimeException("NYI");
+            };
+        }
+      catch(BindException e)
+        {
+          result[0] = SystemErrNo.EADDRINUSE.errno;
+          return new i32Value(-1);
+        }
+      catch(IOException e)
+        {
+          result[0] = -1;
+          return new i32Value(-1);
+        }
+    });
+
+    putUnsafe("fuzion.sys.net.listen"  , (interpreter, innerClazz) -> args -> {
+      return new i32Value(0);
+    });
+
+    putUnsafe("fuzion.sys.net.accept"  , (interpreter, innerClazz) -> args -> {
+      try
+        {
+          var asc = _openStreams_.get(args.get(1).i64Value());
+          if(asc instanceof ServerSocketChannel ssc)
+            {
+              var socket = ssc.accept();
+              ((long[])args.get(2).arrayData()._array)[0] = _openStreams_.add(socket);
+              return new boolValue(true);
+            }
+          else if(asc instanceof DatagramChannel dc)
+            {
+              ((long[])args.get(2).arrayData()._array)[0] = args.get(1).i64Value();
+              return new boolValue(true);
+            }
+          throw new RuntimeException("NYI");
+        }
+      catch(IOException e)
+        {
+          return new boolValue(false);
+        }
+    });
+
+    putUnsafe("fuzion.sys.net.connect0" , (interpreter, innerClazz) -> args -> {
+      var family = args.get(1).i32Value();
+      var socketType = args.get(2).i32Value();
+      var protocol = args.get(3).i32Value();
+      var host = utf8ByteArrayDataToString(args.get(4));
+      var port = utf8ByteArrayDataToString(args.get(5));
+      var result = (long[])args.get(6).arrayData()._array;
+      if (family != 2 && family != 10)
+        {
+          throw new RuntimeException("NYI");
+        }
+      try
+        {
+          return switch (protocol)
+            {
+              case 6 ->
+                {
+                  var socket = SocketChannel.open();
+                  socket.connect(new InetSocketAddress(host, Integer.parseInt(port)));
+                  result[0] = _openStreams_.add(socket);
+                  yield new i32Value(0);
+                }
+              case 17 ->
+                {
+                  var ss = DatagramChannel.open();
+                  ss.connect(new InetSocketAddress(host, Integer.parseInt(port)));
+                  result[0] = _openStreams_.add(ss);
+                  yield new i32Value(0);
+                }
+              default -> throw new RuntimeException("NYI");
+            };
+        }
+      catch(IOException e)
+        {
+          result[0] = SystemErrNo.ECONNREFUSED.errno;
+          return new i32Value(-1);
+        }
+    });
+
+    putUnsafe("fuzion.sys.net.read" , (interpreter, innerClazz) -> args -> {
+      try
+        {
+          byte[] buff = (byte[])args.get(2).arrayData()._array;
+          var desc = _openStreams_.get(args.get(1).i64Value());
+          // NYI blocking / none blocking read
+          long bytesRead;
+          if (desc instanceof DatagramChannel dc)
+            {
+              bytesRead = dc.receive(ByteBuffer.wrap(buff)) == null
+                ? 0
+                // NYI how to determine datagram length?
+                : buff.length;
+            }
+          else if (desc instanceof ByteChannel sc)
+            {
+              bytesRead = sc.read(ByteBuffer.wrap(buff));
+            }
+          else
+            {
+              throw new RuntimeException("NYI");
+            }
+          ((long[])args.get(4).arrayData()._array)[0] = bytesRead;
+          return new boolValue(bytesRead != -1);
+        }
+      catch(IOException e) //SocketTimeoutException and others
+        {
+          // unspecified error
+          ((long[])args.get(4).arrayData()._array)[0] = -1;
+          return new boolValue(false);
+        }
+    });
+
+    putUnsafe("fuzion.sys.net.write" , (interpreter, innerClazz) -> args -> {
+      try
+        {
+          var fileContent = (byte[])args.get(2).arrayData()._array;
+          var sc = (ByteChannel)_openStreams_.get(args.get(1).i64Value());
+          sc.write(ByteBuffer.wrap(fileContent));
+          return new i32Value(0);
+        }
+      catch(IOException e)
+        {
+          return new i32Value(-1);
+        }
+    });
+
+    putUnsafe("fuzion.sys.net.close0" , (interpreter, innerClazz) -> args -> {
+      long fd = args.get(1).i64Value();
+      return _openStreams_.remove(fd)
+        ? new i32Value(0)
+        : new i32Value(-1);
+    });
+
+    putUnsafe("fuzion.sys.net.set_blocking0" , (interpreter, innerClazz) -> args -> {
+      var asc = (AbstractSelectableChannel)_openStreams_.get(args.get(1).i64Value());
+      var blocking = args.get(2).i32Value();
+      try
+        {
+          asc.configureBlocking(blocking == 1);
+          return new i32Value(0);
+        }
+      catch(IOException e)
+        {
+          return new i32Value(-1);
+        }
+    });
+
     put("safety"                , (interpreter, innerClazz) -> args -> new boolValue(Interpreter._options_.fuzionSafety()));
     put("debug"                 , (interpreter, innerClazz) -> args -> new boolValue(Interpreter._options_.fuzionDebug()));
     put("debugLevel"            , (interpreter, innerClazz) -> args -> new i32Value(Interpreter._options_.fuzionDebugLevel()));
