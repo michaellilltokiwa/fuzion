@@ -404,7 +404,7 @@ int fzE_process_create(char * args[], size_t argsLen, char * env[], size_t envLe
       TEXT(args_str),                // command line
       NULL,                          // process security attributes
       NULL,                          // primary thread security attributes
-      TRUE,                          // handles are inherited
+      FALSE,                         // handles are not inherited
       0,                             // creation flags
       env_str,                       // environment
       NULL,                          // use parent's current directory
