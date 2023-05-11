@@ -110,10 +110,11 @@ uint32_t fzE_process_wait(int64_t p){
 // zero on success, -1 error
 int fzE_process_create(char * args[], size_t argsLen, char * env[], size_t envLen, int64_t * result, char * args_str, char * env_str) {
 
-// Describes the how and why
-// of making file descriptors, handlers, sockets
-// none inheritable (CLOEXEC, HANDLE_FLAG_INHERIT):
-// https://peps.python.org/pep-0446/
+  // NYI
+  // Describes the how and why
+  // of making file descriptors, handlers, sockets
+  // none inheritable (CLOEXEC, HANDLE_FLAG_INHERIT):
+  // https://peps.python.org/pep-0446/
 
 #if _WIN32
   // create stdIn, stdOut, stdErr pipes
