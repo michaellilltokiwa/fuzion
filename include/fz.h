@@ -372,13 +372,6 @@ int fzE_process_create(char * args[], size_t argsLen, char * env[], size_t envLe
     return -1;
   }
 
-  // without this, process reading from stdin
-  // hang even when stdin is closed by parent process
-  DWORD mode = PIPE_NOWAIT;
-  SetNamedPipeHandleState(stdIn[0], &mode, NULL, NULL);
-  SetNamedPipeHandleState(stdOut[1], &mode, NULL, NULL);
-  SetNamedPipeHandleState(stdErr[1], &mode, NULL, NULL);
-
   // prepare create process args
   PROCESS_INFORMATION processInfo;
   ZeroMemory( &processInfo, sizeof(PROCESS_INFORMATION) );
