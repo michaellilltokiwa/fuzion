@@ -271,11 +271,31 @@ public abstract class Module extends ANY
             AstErrors.repeatedInheritanceCannotBeResolved(outer.pos(), outer, fn, existing, f);
           }
       }
-    // NYI this currently breaks e.g. markUsed/isUsed, findRedfinition()
-    // if (typeVisible(pos.pos()._sourceFile, f))
-    //   {
+    if ((!f.definesType() && featureVisible(pos.pos()._sourceFile, f)) || typeVisible(pos.pos()._sourceFile, f))
+      {
         set.put(fn, f);
-    // }
+      }
+  }
+
+
+  /**
+   * Is feature `af` visible in file `usedIn`?
+   * @param usedIn
+   * @param af
+   * @return
+   */
+  protected boolean featureVisible(SourceFile usedIn, AbstractFeature af)
+  {
+    var m = (af instanceof LibraryFeature lf) ? lf._libModule : this;
+    var definedIn = af.pos()._sourceFile;
+    var v = af.visibility();
+
+          // in same file
+    return ((usedIn.sameAs(definedIn)
+          // at least module visible and in same module
+          || v.ordinal() >= Visi.MOD.ordinal() && this == m
+          // publicly visible
+          || v == Visi.PUB));
   }
 
 

@@ -1058,27 +1058,6 @@ public class SourceModule extends Module implements SrcModule, MirModule
 
 
   /**
-   * Is feature `af` visible in file `usedIn`?
-   * @param usedIn
-   * @param af
-   * @return
-   */
-  private boolean featureVisible(SourceFile usedIn, AbstractFeature af)
-  {
-    var m = (af instanceof LibraryFeature lf) ? lf._libModule : this;
-    var definedIn = af.pos()._sourceFile;
-    var v = af.visibility();
-
-          // in same file
-    return ((usedIn.sameAs(definedIn)
-          // at least module visible and in same module
-          || v.ordinal() >= Visi.MOD.ordinal() && this == m
-          // publicly visible
-          || v == Visi.PUB));
-  }
-
-
-  /**
    * Lookup the feature that is referenced in a non-generic type.  There might
    * be several features with the given name and different argument counts.
    * Then, only the feature that is a constructor defines the type.
