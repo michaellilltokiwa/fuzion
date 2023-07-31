@@ -646,6 +646,7 @@ public class C extends ANY
        "#include <stdint.h>\n"+
        "#include <string.h>\n"+
        "#include <math.h>\n"+
+       "#include <fenv.h>\n" +
        "#include <float.h>\n"+
        "#include <assert.h>\n"+
        "#include <time.h>\n"+
@@ -738,6 +739,7 @@ public class C extends ANY
     cf.println(" _setmode( _fileno( stdout ), _O_BINARY ); // reopen stdout in binary mode");
     cf.println(" _setmode( _fileno( stderr ), _O_BINARY ); // reopen stderr in binary mode");
     cf.println("#endif");
+    cf.println("fesetround(FE_TONEAREST);");
 
     cf.println(" {\n" +
                "  pthread_mutexattr_t attr;\n" +
