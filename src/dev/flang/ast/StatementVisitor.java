@@ -43,7 +43,7 @@ public interface StatementVisitor
   /**
    * action is to be called an all Stmnt's encountered.
    */
-  abstract void action (Stmnt s);
+  abstract void action (Expr s);
 
   /**
    * action is to be called an all AbstractCase's encountered.

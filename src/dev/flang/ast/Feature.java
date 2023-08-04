@@ -2008,7 +2008,7 @@ public class Feature extends AbstractFeature
    * @return in case we found a feature visible in the call's or assign's scope,
    * this is the feature.
    */
-  public Feature findFieldDefInScope(String name, Stmnt use, AbstractFeature inner)
+  public Feature findFieldDefInScope(String name, Expr use, AbstractFeature inner)
   {
     if (PRECONDITIONS) require
       (name != null,

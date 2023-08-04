@@ -236,7 +236,7 @@ public class AstErrors extends ANY
   }
 
 
-  public static void statementNotAllowedOutsideOfFeatureDeclaration(Stmnt s)
+  public static void statementNotAllowedOutsideOfFeatureDeclaration(Expr s)
   {
     error(s.pos(),
           "Statements other than feature declarations not allowed here",
@@ -257,7 +257,7 @@ public class AstErrors extends ANY
   }
 
 
-  public static void featureOfMustContainOnlyDeclarations(Stmnt s, SourcePosition ofPos)
+  public static void featureOfMustContainOnlyDeclarations(Expr s, SourcePosition ofPos)
   {
     error(s.pos(),
           "Feature implementation using " + code("of") + " must contain only feature declarations. ",

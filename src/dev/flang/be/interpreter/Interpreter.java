@@ -62,7 +62,6 @@ import dev.flang.ast.Expr; // NYI: remove dependency! Use dev.flang.fuir instead
 import dev.flang.ast.If; // NYI: remove dependency! Use dev.flang.fuir instead.
 import dev.flang.ast.InlineArray; // NYI: remove dependency! Use dev.flang.fuir instead.
 import dev.flang.ast.Nop; // NYI: remove dependency! Use dev.flang.fuir instead.
-import dev.flang.ast.Stmnt; // NYI: remove dependency! Use dev.flang.fuir instead.
 import dev.flang.ast.Tag; // NYI: remove dependency! Use dev.flang.fuir instead.
 import dev.flang.ast.Types; // NYI: remove dependency! Use dev.flang.fuir instead.
 import dev.flang.ast.Unbox; // NYI: remove dependency! Use dev.flang.fuir instead.
@@ -285,7 +284,7 @@ public class Interpreter extends ANY
    * binding and it uses way too much stack since recursion keeps this giant
    * stack frame alive.
    */
-  public Value execute(Stmnt s, Clazz staticClazz, Value cur)
+  public Value execute(Expr s, Clazz staticClazz, Value cur)
   {
     Value result;
     if (s instanceof AbstractCall c)
@@ -383,7 +382,7 @@ public class Interpreter extends ANY
     else if (s instanceof AbstractBlock b)
       {
         result = Value.NO_VALUE;
-        for (Stmnt stmnt : b._statements)
+        for (Expr stmnt : b._statements)
           {
             result = execute(stmnt, staticClazz, cur);
           }

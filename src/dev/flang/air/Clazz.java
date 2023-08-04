@@ -48,12 +48,10 @@ import dev.flang.ast.Env; // NYI: remove dependency!
 import dev.flang.ast.Expr; // NYI: remove dependency!
 import dev.flang.ast.Feature; // NYI: remove dependency!
 import dev.flang.ast.If; // NYI: remove dependency!
-import dev.flang.ast.Impl; // NYI: remove dependency!
 import dev.flang.ast.InlineArray; // NYI: remove dependency!
 import dev.flang.ast.ResolvedNormalType; // NYI: remove dependency!
 import dev.flang.ast.SrcModule; // NYI: remove dependency!
 import dev.flang.ast.StatementVisitor; // NYI: remove dependency!
-import dev.flang.ast.Stmnt; // NYI: remove dependency!
 import dev.flang.ast.Tag; // NYI: remove dependency!
 import dev.flang.ast.Types; // NYI: remove dependency!
 import dev.flang.ast.Unbox; // NYI: remove dependency!
@@ -1541,7 +1539,7 @@ public class Clazz extends ANY implements Comparable<Clazz>
         var f = feature();
         inspectCode(new StatementVisitor()
           {
-            public void action (Stmnt s)
+            public void action (Expr s)
             {
               if      (s instanceof Unbox            u) { Clazzes.findClazzes(u, Clazz.this); }
               else if (s instanceof AbstractAssign   a) { Clazzes.findClazzes(a, Clazz.this); }

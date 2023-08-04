@@ -32,20 +32,15 @@ import dev.flang.ast.AbstractCall; // NYI: remove dependency
 import dev.flang.ast.AbstractConstant; // NYI: remove dependency
 import dev.flang.ast.AbstractCurrent; // NYI: remove dependency
 import dev.flang.ast.AbstractMatch; // NYI: remove dependency
-import dev.flang.ast.Block; // NYI: remove dependency
 import dev.flang.ast.Box; // NYI: remove dependency
 import dev.flang.ast.Check; // NYI: remove dependency
 import dev.flang.ast.Env; // NYI: remove dependency
 import dev.flang.ast.Expr; // NYI: remove dependency
-import dev.flang.ast.Feature; // NYI: remove dependency
 import dev.flang.ast.If; // NYI: remove dependency
-import dev.flang.ast.Impl; // NYI: remove dependency
 import dev.flang.ast.InlineArray; // NYI: remove dependency
 import dev.flang.ast.NumLiteral; // NYI: remove dependency
 import dev.flang.ast.Nop; // NYI: remove dependency
-import dev.flang.ast.Stmnt; // NYI: remove dependency
 import dev.flang.ast.Tag; // NYI: remove dependency
-import dev.flang.ast.Types; // NYI: remove dependency
 import dev.flang.ast.Unbox; // NYI: remove dependency
 import dev.flang.ast.Universe; // NYI: remove dependency
 
@@ -166,7 +161,7 @@ public class IR extends ANY
    *
    * @return list of ExprKind created from s.
    */
-  private List<Object> toStack(Stmnt s)
+  private List<Object> toStack(Expr s)
   {
     List<Object> result = new List<>();
     toStack(result, s);
@@ -182,7 +177,7 @@ public class IR extends ANY
    *
    * @param s a statement.
    */
-  protected void toStack(List<Object> l, Stmnt s)
+  protected void toStack(List<Object> l, Expr s)
   {
     toStack(l, s, false);
   }
@@ -198,7 +193,7 @@ public class IR extends ANY
    *
    * @param dumpResult flag indicating that we are not interested in the result.
    */
-  private void toStack(List<Object> l, Stmnt s, boolean dumpResult)
+  private void toStack(List<Object> l, Expr s, boolean dumpResult)
   {
     if (PRECONDITIONS) require
       (l != null,

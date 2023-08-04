@@ -388,7 +388,7 @@ field       : returnType
    * @param v the visiblity to be used for the features defined in of <block>
    *
    */
-  private void addFeaturesFromBlock(boolean first, List<Feature> list, Stmnt s, List<AbstractType> g, Impl p, Visi v)
+  private void addFeaturesFromBlock(boolean first, List<Feature> list, Expr s, List<AbstractType> g, Impl p, Visi v)
   {
     if (s instanceof Block b)
       {

@@ -467,22 +467,6 @@ public class Resolution extends ANY
 
 
   /**
-   * Resolve the type of statement s within outer
-   *
-   * @param s a statement
-   *
-   * @param outer the outer feature that contains s
-   *
-   * @return s or a new statement that replaces s after type resolution.
-   */
-  Stmnt resolveType(Stmnt s, AbstractFeature outer)
-  {
-    var rt = new Feature.ResolveTypes(this);
-    return s.visit(rt, outer);
-  }
-
-
-  /**
    * Resolve the type of expression s within outer
    *
    * @param s an expression

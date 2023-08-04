@@ -50,11 +50,9 @@ import dev.flang.ast.Env;
 import dev.flang.ast.Expr;
 import dev.flang.ast.Feature;
 import dev.flang.ast.FormalGenerics;
-import dev.flang.ast.Generic;
 import dev.flang.ast.If;
 import dev.flang.ast.InlineArray;
 import dev.flang.ast.Nop;
-import dev.flang.ast.Stmnt;
 import dev.flang.ast.Tag;
 import dev.flang.ast.Types;
 import dev.flang.ast.Unbox;
@@ -63,7 +61,6 @@ import dev.flang.ast.Universe;
 import dev.flang.ir.IR;
 
 import dev.flang.util.ANY;
-import dev.flang.util.DataOut;
 import dev.flang.util.Errors;
 import dev.flang.util.FuzionConstants;
 import dev.flang.util.List;
@@ -625,7 +622,7 @@ class LibraryOut extends ANY
    *
    * @param s the statement to write
    */
-  SourcePosition expressions(Stmnt s, SourcePosition lastPos)
+  SourcePosition expressions(Expr s, SourcePosition lastPos)
   {
     return expressions(s, false, lastPos);
   }
@@ -662,7 +659,7 @@ class LibraryOut extends ANY
    *
    * @param dumpResult true to add a 'Pop' to ignore the result produced by s.
    */
-  SourcePosition expressions(Stmnt s, boolean dumpResult, SourcePosition lastPos)
+  SourcePosition expressions(Expr s, boolean dumpResult, SourcePosition lastPos)
   {
     if (s instanceof AbstractAssign a)
       {

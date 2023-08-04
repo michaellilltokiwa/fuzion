@@ -159,7 +159,7 @@ public abstract class AbstractBlock extends Expr
   public boolean containsOnlyDeclarations()
   {
     boolean result = true;
-    for (Stmnt s : _statements)
+    for (Expr s : _statements)
       {
         result = result && s.containsOnlyDeclarations();
       }
