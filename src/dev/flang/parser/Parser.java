@@ -1395,6 +1395,7 @@ actuals     : actualArgs
   {
     SourcePosition pos = tokenSourcePos();
     var n = name();
+    var i = tokenPos();
     Call result;
     var skippedDot = false;
     if (skipDot())
@@ -1427,7 +1428,30 @@ actuals     : actualArgs
         result = new ParsedCall(target, n, l);
       }
     result = callTail(skippedDot, result);
+
+    if (line() > pos.line())
+      {
+        checkIndentation(pos, i);
+      }
+
     return result;
+  }
+
+
+  /**
+   * for calls spawning more than one line
+   * check indentation of the following line.
+   * if unexpected indentation, show indentation problem.
+   */
+  private void checkIndentation(SourcePosition pos, int i)
+  {
+    var f = fork();
+    while(f.skip(Token.t_rparen)){}
+    var tPos = f.tokenSourcePos();
+    if (tPos.line() > pos.line() && tPos.column() > pos.column())
+      {
+        Errors.indentationProblemEncountered(tPos, sourcePos(i), parserDetail("call"));
+      }
   }
 
 
@@ -2770,11 +2794,11 @@ stmnts      : stmnt semiOrFlatLF stmnts (semiOrFlatLF | )
   /**
    * Parse stmnt
    *
-stmnt       : feature
+stmnt       : checkstmnt
             | assign
             | destructure
+            | feature
             | exprInLine
-            | checkstmnt
             ;
    */
   Expr stmnt()
