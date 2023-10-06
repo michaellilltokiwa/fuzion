@@ -1470,29 +1470,6 @@ public class Feature extends AbstractFeature
 
 
   /**
-   * Does this expression consist of nothing but declarations? I.e., it has no
-   * code that actually would be executed at runtime.
-   */
-  public boolean containsOnlyDeclarations()
-  {
-    return switch (_impl._kind)
-      {
-      case FieldInit,    // a field with initialization syntactic sugar
-           FieldDef      // a field with implicit type
-        -> false;
-      case Field,        // a field
-           FieldActual,  // a field with implicit type taken from actual argument to call
-           RoutineDef,   // normal feature with code and implicit result type
-           Routine,      // normal feature with code
-           Intrinsic,    // intrinsic feature
-           Abstract      // abstract feature
-        -> true;
-      default -> throw new Error("missing case "+_impl._kind);
-      };
-  }
-
-
-  /**
    * For a choice feature, perform compile time checks for validity and add
    * internal fields for the type tag and the values.
    *
@@ -1539,7 +1516,7 @@ public class Feature extends AbstractFeature
         }
       case Routine:      // normal feature with code
         {
-          if (!_impl.containsOnlyDeclarations())
+          if (!containsOnlyDeclarations())
             {
               AstErrors.choiceMustNotContainCode(_pos);
             }

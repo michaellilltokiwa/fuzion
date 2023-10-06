@@ -176,6 +176,23 @@ public abstract class AbstractBlock extends Expr
   }
 
 
+  @Override
+  public AbstractConstant asCompileTimeConstant()
+  {
+    if (PRECONDITIONS) require
+      (isCompileTimeConst());
+
+    return resultExpression().asCompileTimeConstant();
+  }
+
+
+  @Override
+  public boolean isCompileTimeConst()
+  {
+    return _expressions.size() == 1 && resultExpression().isCompileTimeConst();
+  }
+
+
   /**
    * toString
    *

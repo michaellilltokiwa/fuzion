@@ -736,7 +736,14 @@ should be avoided as much as possible.
     _names = new Names(fuir);
     _types = new Types(fuir, _names);
     _tailCall = new TailCall(fuir);
-    _ai = new AbstractInterpreter<>(fuir, new CodeGen(this));
+    _ai = new AbstractInterpreter<>(fuir, new CodeGen(this))
+      {
+        @Override
+        public boolean replaceCallsByConstants()
+        {
+          return true;
+        }
+      };
     _numLocalsForCode         = new int[_fuir.clazzId2num(_fuir.lastClazz())+1];
     _numLocalsForPrecondition = new int[_fuir.clazzId2num(_fuir.lastClazz())+1];
 

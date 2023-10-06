@@ -121,7 +121,7 @@ public class BoolConst extends Constant
   }
 
 
-  boolean isCompileTimeConst()
+  public boolean isCompileTimeConst()
   {
     return true;
   }

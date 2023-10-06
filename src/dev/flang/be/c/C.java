@@ -254,11 +254,33 @@ public class C extends ANY
           }
           default ->
           {
-            Errors.error("Unsupported constant in C backend.",
-            "Backend cannot handle constant of clazz '" + _fuir.clazzAsString(constCl) + "' ");
-            yield new Pair<>(CExpr.dummy(_fuir.clazzAsString(constCl)), CStmnt.EMPTY);
+            var sb = new StringBuilder();
+            var offset = 0;
+            var argCount = _fuir.clazzArgCount(constCl);
+
+            for (int i = 0; i < argCount; i++)
+              {
+                var arg = _fuir.clazzArg(constCl, i);
+                int bytes = _fuir.clazzArgBytes(constCl, i);
+                sb.append("." + _names.fieldName(arg).code());
+                sb.append(" = ");
+                sb.append(getData(constCl, arg, Arrays.copyOfRange(d, offset, offset + bytes)));
+                if (i + 1 != argCount)
+                  {
+                    sb.append(",");
+                  }
+                offset += bytes;
+              }
+
+            yield new Pair<>(CExpr.compoundLiteral(_types.clazz(constCl), sb.toString()), CStmnt.EMPTY);
           }
         };
+    }
+
+
+    private String getData(int constCl, int arg, byte[] d)
+    {
+      return constData(_fuir.clazzResultClazz(arg), d)._v0.code();
     }
 
 
@@ -493,7 +515,14 @@ public class C extends ANY
     fuir = opt._Xdfa ?  new DFA(opt, fuir).new_fuir() : fuir;
     _fuir = fuir;
     _tailCall = new TailCall(fuir);
-    _ai = new AbstractInterpreter<>(fuir, new CodeGen());
+    _ai = new AbstractInterpreter<>(fuir, new CodeGen())
+      {
+        @Override
+        public boolean replaceCallsByConstants()
+        {
+          return true;
+        }
+      };
 
     _names = new CNames(fuir);
     _types = new CTypes(fuir, _names);

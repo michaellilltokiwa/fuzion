@@ -279,6 +279,16 @@ public abstract class AbstractFeature extends Expr implements Comparable<Abstrac
 
 
   /**
+   * Does this expression consist of nothing but declarations? I.e., it has no
+   * code that actually would be executed at runtime.
+   */
+  public boolean containsOnlyDeclarations()
+  {
+    return !isRoutine() || code().containsOnlyDeclarations();
+  }
+
+
+  /**
    * is this the outermost feature?
    */
   public boolean isUniverse()
@@ -1754,7 +1764,7 @@ public abstract class AbstractFeature extends Expr implements Comparable<Abstrac
       featureName().baseName() +
       (arguments().isEmpty() ? "" : "("+arguments()+")") + " " +
       (state().atLeast(State.RESOLVED_TYPES) ? resultType() : "***not yet known***") + " " +
-      (inherits().isEmpty() ? "" : ": " + inherits() + " ") +
+      (": " + inherits() + " ") +
       ((contract() == Contract.EMPTY_CONTRACT) ? "" : "🤝 ")
        +  "is " + kind();
 

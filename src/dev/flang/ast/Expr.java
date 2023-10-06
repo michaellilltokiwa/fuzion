@@ -563,7 +563,7 @@ public abstract class Expr extends ANY implements HasSourcePosition
   /**
    * Is this a compile-time constant?
    */
-  boolean isCompileTimeConst()
+  public boolean isCompileTimeConst()
   {
     return false;
   }
@@ -616,6 +616,12 @@ public abstract class Expr extends ANY implements HasSourcePosition
     return toString().contains(" ")
            ? "(" + toString() + ")"
            : toString();
+  }
+
+
+  public AbstractConstant asCompileTimeConstant()
+  {
+    throw new Error("This expr is not a compile time constant: " + this.getClass());
   }
 
 

@@ -56,6 +56,19 @@ public abstract class AbstractConstant extends Expr
   public abstract byte[] data();
 
 
+  @Override
+  public boolean isCompileTimeConst()
+  {
+    return !type().isRef(); // String is ref but NYI
+  }
+
+
+  @Override
+  public AbstractConstant asCompileTimeConstant()
+  {
+    return this;
+  }
+
 }
 
 /* end of file */

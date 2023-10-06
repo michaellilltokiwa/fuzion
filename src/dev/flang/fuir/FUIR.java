@@ -672,6 +672,16 @@ public class FUIR extends IR
   }
 
 
+  public int clazzArgBytes(int cl, int arg)
+  {
+    return clazz(cl)
+      .argumentFields()[arg]
+      .resultClazz()
+      ._type
+      .bytes();
+  }
+
+
   /**
    * is the given clazz a choice clazz
    *
@@ -1753,7 +1763,8 @@ hw25 is
     if (PRECONDITIONS) require
       (ix >= 0,
        withinCode(c, ix),
-       codeAt(c, ix) == ExprKind.Const);
+       codeAt(c, ix) == ExprKind.Const || codeAt(c, ix) == ExprKind.Call
+       );
 
     Clazz clazz;
     var ic = _codeIds.get(c).get(ix);
@@ -1774,6 +1785,10 @@ hw25 is
       {
         clazz = Clazzes.clazz(t);
       }
+    else if (ic instanceof AbstractCall ac && ac.isCompileTimeConst())
+      {
+        return id(Clazzes.clazz(ac.asCompileTimeConstant().type()));
+      }
     else if (ic instanceof InlineArray)
       {
         throw new Error("NYI: FUIR support for InlineArray still missing");
@@ -1792,10 +1807,15 @@ hw25 is
     if (PRECONDITIONS) require
       (ix >= 0,
        withinCode(c, ix),
-       codeAt(c, ix) == ExprKind.Const);
+       codeAt(c, ix) == ExprKind.Const || codeAt(c, ix) == ExprKind.Call
+       );
 
     var ic = _codeIds.get(c).get(ix);
     if      (ic instanceof AbstractConstant co) { return co.data(); }
+    else if (ic instanceof AbstractCall ac && ac.isCompileTimeConst())
+      {
+        return ac.asCompileTimeConstant().data();
+      }
     else if (ic instanceof InlineArray)
       {
         throw new Error("NYI: FUIR support for InlineArray still missing");
@@ -2408,6 +2428,17 @@ hw25 is
   {
     return clazzContract(cl, FUIR.ContractKind.Pre, 0) != -1;
   }
+
+
+  public boolean isConstant(int cl, int c, int ix)
+  {
+    var e = _codeIds.get(c).get(ix);
+    var ac = (AbstractCall)e;
+    return ac.isCompileTimeConst() && cl != -1 && clazzOuterRef(id((Clazz) clazz(cl).getRuntimeData(ac._sid + 0))) == -1;
+  }
+
+
+
 
 
 }

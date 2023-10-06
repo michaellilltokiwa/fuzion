@@ -26,6 +26,8 @@ Fuzion language implementation.  If not, see <https://www.gnu.org/licenses/>.
 
 package dev.flang.ast;
 
+import java.util.stream.Collectors;
+
 import dev.flang.util.List;
 
 
@@ -123,6 +125,37 @@ public abstract class AbstractCall extends Expr
     return
       !(target() instanceof AbstractCurrent) &&
       !isInheritanceCall();
+  }
+
+
+  public AbstractConstant asCompileTimeConstant()
+  {
+    if (PRECONDITIONS) require
+      (isCompileTimeConst());
+
+    return new ValueConstant(pos(), this.actuals().map2(x -> x.asCompileTimeConstant()), type());
+  }
+
+
+  @Override
+  public boolean isCompileTimeConst()
+  {
+    var result =
+      !isInheritanceCall() &&
+      calledFeature().outer().isUniverse() &&
+      calledFeature().isConstructor() &&
+      // // NYI handle contract
+      // contract() == Contract.EMPTY_CONTRACT &&
+      // no fields
+      calledFeature().containsOnlyDeclarations() &&
+      // we are calling a value type feature
+      !calledFeature().selfType().isRef() &&
+      // NYI handle inheritance
+      // calledFeature().inherits().stream().allMatch(c -> c.type().compareTo(Types.resolved.t_any) == 0) &&
+      // no unit
+      this.actuals().size() > 0 &&
+      this.actuals().stream().allMatch(x -> x.isCompileTimeConst());
+    return result;
   }
 
 }
