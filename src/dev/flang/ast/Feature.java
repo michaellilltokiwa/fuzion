@@ -2269,7 +2269,10 @@ public class Feature extends AbstractFeature
       {
         if (CHECKS) check
           (!state().atLeast(State.TYPES_INFERENCED));
-        result = _impl.inferredType(res, this);
+
+        result = hasTypeFromRedefined()
+          ? typeFromRedefined()
+          : _impl.inferredType(res, this);
 
         var from = _impl._kind == Impl.Kind.RoutineDef ? _impl._code
                                                        : _impl._initialValue;
@@ -2300,6 +2303,26 @@ public class Feature extends AbstractFeature
       }
 
     return result;
+  }
+
+
+  /**
+   * The union of result types of the features that are redefined by this feature.
+   */
+  private AbstractType typeFromRedefined()
+  {
+    return redefines().stream().map(af -> af == this ? selfType() : af.resultType()).reduce(Types.resolved.t_void, (a,b) -> a.union(b));
+  }
+
+
+  /**
+   * @return can we use type from features being redefined?
+   */
+  private boolean hasTypeFromRedefined()
+  {
+    return !redefines().isEmpty()
+      && redefines().stream().allMatch(af -> af.state().atLeast(State.TYPES_INFERENCED) && !af.resultType().isThisType() && !af.resultType().dependsOnGenerics())
+      && typeFromRedefined() != Types.t_UNDEFINED;
   }
 
 

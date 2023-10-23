@@ -1,0 +1,21 @@
+ex is
+
+  ex_1 is
+    a String is
+      ref : String
+        utf8 => (list u8).type.empty
+
+    say a
+
+  ex_2 is
+    b is
+      as_i64 i64 is abstract
+
+    c : b is
+      as_i64 =>
+        2
+
+    say c.as_i64
+
+  ex_1
+  _ := ex_2
