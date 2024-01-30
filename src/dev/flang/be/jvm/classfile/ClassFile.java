@@ -27,23 +27,26 @@ Fuzion language implementation.  If not, see <https://www.gnu.org/licenses/>.
 package dev.flang.be.jvm.classfile;
 
 
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.Comparator;
+import java.util.Map;
+import java.util.Set;
+import java.util.Stack;
+import java.util.TreeMap;
+import java.util.TreeSet;
+import java.util.jar.JarEntry;
+import java.util.jar.JarOutputStream;
+
 import dev.flang.util.ANY;
 import dev.flang.util.Errors;
 import dev.flang.util.FuzionOptions;
 import dev.flang.util.List;
-
-import java.io.ByteArrayOutputStream;
-import java.io.DataOutputStream;
-import java.io.IOException;
-
-import java.nio.charset.StandardCharsets;
-
-import java.nio.file.Files;
-import java.nio.file.Path;
-
-import java.util.TreeMap;
-import java.util.jar.JarEntry;
-import java.util.jar.JarOutputStream;
+import dev.flang.util.Pair;
 
 
 /**
@@ -497,6 +500,9 @@ public class ClassFile extends ANY implements ClassFileConstants
       var result = _cpool._entries.get(this);
       if (result == null)
         {
+          if (CHECKS) check
+            (!_finished);
+
           _cpool._entries.put(this, this);
           _cpool._entriesList.add(this);
           _index = _cpool._totalSlots;
@@ -538,7 +544,7 @@ public class ClassFile extends ANY implements ClassFileConstants
     /**
      * The index of this entry.
      */
-    int index()
+    public int index()
     {
       if (PRECONDITIONS) require
         (_index >= 0);
@@ -584,7 +590,6 @@ public class ClassFile extends ANY implements ClassFileConstants
         (str != null);
 
       _str = str;
-      add();
     }
 
     CPoolTag tag() { return CPoolTag.tag_utf8; }
@@ -609,13 +614,12 @@ public class ClassFile extends ANY implements ClassFileConstants
   /**
    * Class reference
    */
-  class CPClass extends CPEntry
+  public class CPClass extends CPEntry
   {
     final CPUtf8 _utf8;
     CPClass(CPUtf8 utf8)
     {
       _utf8 = utf8;
-      add();
     }
 
     CPClass(String name)
@@ -659,7 +663,6 @@ public class ClassFile extends ANY implements ClassFileConstants
     CPString(CPUtf8 utf8)
     {
       _utf8 = utf8;
-      add();
     }
 
     CPString(String name)
@@ -699,7 +702,6 @@ public class ClassFile extends ANY implements ClassFileConstants
     {
       _name = name;
       _type = type;
-      add();
     }
 
     CPNameAndType(String name, String type)
@@ -743,7 +745,6 @@ public class ClassFile extends ANY implements ClassFileConstants
     {
       _class = c;
       _nat = nat;
-      add();
     }
 
     CPoolTag tag() { return CPoolTag.tag_field_ref; }
@@ -781,7 +782,6 @@ public class ClassFile extends ANY implements ClassFileConstants
     {
       _class = c;
       _nat = nat;
-      add();
     }
 
     CPoolTag tag() { return CPoolTag.tag_method_ref; }
@@ -820,7 +820,6 @@ public class ClassFile extends ANY implements ClassFileConstants
     {
       _class = c;
       _nat = nat;
-      add();
     }
 
     CPoolTag tag() { return CPoolTag.tag_interface_method_ref; }
@@ -856,7 +855,6 @@ public class ClassFile extends ANY implements ClassFileConstants
     CPInteger(int value)
     {
       _value = value;
-      add();
     }
 
     CPoolTag tag() { return CPoolTag.tag_integer; }
@@ -888,7 +886,6 @@ public class ClassFile extends ANY implements ClassFileConstants
     CPLong(long value)
     {
       _value = value;
-      add();
     }
 
     CPoolTag tag() { return CPoolTag.tag_long; }
@@ -922,7 +919,6 @@ public class ClassFile extends ANY implements ClassFileConstants
     {
       _value = value;
       _bits  = bits;
-      add();
     }
     CPFloat(float value) { this(value, Float.floatToIntBits(value)); }
     CPFloat(int   value) { this(Float.intBitsToFloat(value), value);  }
@@ -959,7 +955,6 @@ public class ClassFile extends ANY implements ClassFileConstants
     {
       _value = value;
       _bits  = bits;
-      add();
     }
     CPDouble(double value) { this(value, Double.doubleToLongBits(value)); }
     CPDouble(long   value) { this(Double.longBitsToDouble(value), value); }
@@ -986,24 +981,24 @@ public class ClassFile extends ANY implements ClassFileConstants
   /**
    * Method to create instances of CPEntry and directly add them to this class' _cpool:
    */
-  CPUtf8            cpUtf8           (byte[] u                  ) { return (CPUtf8           ) (new CPUtf8           (u)         ).add(); }
-  CPUtf8            cpUtf8           (String s                  ) { return (CPUtf8           ) (new CPUtf8           (s)         ).add(); }
-  CPInteger         cpInteger        (int    v                  ) { return (CPInteger        ) (new CPInteger        (v)         ).add(); }
-  CPLong            cpLong           (long   v                  ) { return (CPLong           ) (new CPLong           (v)         ).add(); }
-  CPFloat           cpFloat          (float  v                  ) { return (CPFloat          ) (new CPFloat          (v)         ).add(); }
-  CPFloat           cpFloat          (int    v                  ) { return (CPFloat          ) (new CPFloat          (v)         ).add(); }
-  CPDouble          cpDouble         (double v                  ) { return (CPDouble         ) (new CPDouble         (v)         ).add(); }
-  CPDouble          cpDouble         (long   v                  ) { return (CPDouble         ) (new CPDouble         (v)         ).add(); }
-  CPString          cpString         (String s                  ) { return (CPString         ) (new CPString         (s)         ).add(); }
-  CPString          cpString         (byte[] s                  ) { return (CPString         ) (new CPString         (s)         ).add(); }
-  CPNameAndType     cpNameAndType    (CPUtf8 name, CPUtf8 type  ) { return (CPNameAndType    ) (new CPNameAndType    (name, type)).add(); }
-  CPNameAndType     cpNameAndType    (String name, String type  ) { return (CPNameAndType    ) (new CPNameAndType    (name, type)).add(); }
-  CPClass           cpClass          (CPUtf8 name               ) { return (CPClass          ) (new CPClass          (name      )).add(); }
-  CPClass           cpClass          (String name               ) { return (CPClass          ) (new CPClass          (name      )).add(); }
-  CPClass           cpClass          (AType  t                  ) { return (CPClass          ) (new CPClass          (t         )).add(); }
-  CPField           cpField          (CPClass c, CPNameAndType n) { return (CPField          ) (new CPField          (c, n      )).add(); }
-  CPMethod          cpMethod         (CPClass c, CPNameAndType n) { return (CPMethod         ) (new CPMethod         (c, n      )).add(); }
-  CPInterfaceMethod cpInterfaceMethod(CPClass c, CPNameAndType n) { return (CPInterfaceMethod) (new CPInterfaceMethod(c, n      )).add(); }
+  public CPUtf8            cpUtf8           (byte[] u                  ) { return (CPUtf8           ) (new CPUtf8           (u)         ).add(); }
+  public CPUtf8            cpUtf8           (String s                  ) { return (CPUtf8           ) (new CPUtf8           (s)         ).add(); }
+  public CPInteger         cpInteger        (int    v                  ) { return (CPInteger        ) (new CPInteger        (v)         ).add(); }
+  public CPLong            cpLong           (long   v                  ) { return (CPLong           ) (new CPLong           (v)         ).add(); }
+  public CPFloat           cpFloat          (float  v                  ) { return (CPFloat          ) (new CPFloat          (v)         ).add(); }
+  public CPFloat           cpFloat          (int    v                  ) { return (CPFloat          ) (new CPFloat          (v)         ).add(); }
+  public CPDouble          cpDouble         (double v                  ) { return (CPDouble         ) (new CPDouble         (v)         ).add(); }
+  public CPDouble          cpDouble         (long   v                  ) { return (CPDouble         ) (new CPDouble         (v)         ).add(); }
+  public CPString          cpString         (String s                  ) { return (CPString         ) (new CPString         (s)         ).add(); }
+  public CPString          cpString         (byte[] s                  ) { return (CPString         ) (new CPString         (s)         ).add(); }
+  public CPNameAndType     cpNameAndType    (CPUtf8 name, CPUtf8 type  ) { return (CPNameAndType    ) (new CPNameAndType    (name, type)).add(); }
+  public CPNameAndType     cpNameAndType    (String name, String type  ) { return (CPNameAndType    ) (new CPNameAndType    (name, type)).add(); }
+  public CPClass           cpClass          (CPUtf8 name               ) { return (CPClass          ) (new CPClass          (name      )).add(); }
+  public CPClass           cpClass          (String name               ) { return (CPClass          ) (new CPClass          (name      )).add(); }
+  public CPClass           cpClass          (AType  t                  ) { return (CPClass          ) (new CPClass          (t         )).add(); }
+  public CPField           cpField          (CPClass c, CPNameAndType n) { return (CPField          ) (new CPField          (c, n      )).add(); }
+  public CPMethod          cpMethod         (CPClass c, CPNameAndType n) { return (CPMethod         ) (new CPMethod         (c, n      )).add(); }
+  public CPInterfaceMethod cpInterfaceMethod(CPClass c, CPNameAndType n) { return (CPInterfaceMethod) (new CPInterfaceMethod(c, n      )).add(); }
 
 
   /**
@@ -1088,7 +1083,7 @@ public class ClassFile extends ANY implements ClassFileConstants
   /**
    * Abstract attribute
    */
-  abstract class Attribute
+  public abstract class Attribute
   {
     final CPUtf8 _name;
 
@@ -1106,6 +1101,140 @@ public class ClassFile extends ANY implements ClassFileConstants
       o.writeU4(d.length);
       o.write(d);
     }
+  }
+
+
+  /**
+   * StackMapTable
+   *
+   * https://docs.oracle.com/javase/specs/jvms/se21/jvms21.pdf #4.7.4
+   *
+   */
+  public class StackMapTable extends Attribute
+  {
+
+    /**
+     * The stackmap frames of this table.
+     */
+    Set<StackMapFullFrame> stackMapFrames;
+
+    final Map<Integer, Stack<VerificationTypeInfo>> stacks = new TreeMap<>()
+    {
+      @Override
+      public Stack<VerificationTypeInfo> put(Integer key, java.util.Stack<VerificationTypeInfo> value)
+      {
+        // NYI
+        // if (PRECONDITIONS) require
+        //   (!this.containsKey(key) || this.get(key).size() == value.size());
+
+        return !this.containsKey(key) || value.size() < this.get(key).size()
+          ? super.put(key, value)
+          : this.get(key);
+      }
+    };
+    final List<Pair<Integer, List<VerificationTypeInfo>>> locals = new List<>();
+
+    private Expr _code;
+
+    StackMapTable(List<VerificationTypeInfo> initialLocals, Expr code)
+    {
+      super("StackMapTable");
+      this._code = code;
+      stacks.put(0, new Stack<VerificationTypeInfo>() {
+        @Override
+        public VerificationTypeInfo push(VerificationTypeInfo item)
+        {
+          return item == null ? null: super.push(item);
+        }
+      });
+      locals.add(new Pair<>(0, initialLocals));
+    }
+
+    // u2 number_of_entries;
+    // stack_map_frame entries[number_of_entries];
+    @Override
+    byte[] data()
+    {
+      build();
+      var o = new Kaku();
+      o.writeU2(stackMapFrames.size());
+      for (var s : stackMapFrames)
+        {
+          s.write(o, offset(s), locals(s), stacks.get(s.byteCodePos));
+        }
+      return o._b.toByteArray();
+    }
+
+    private void build()
+    {
+      if (stackMapFrames == null)
+        {
+          stackMapFrames = new TreeSet<>();
+          stackMapFrames.add(new StackMapFullFrame(0));
+          _code.buildStackMapTable(
+            ClassFile.this,
+            this,
+            (Stack)stacks.get(0).clone(),
+            locals.get(0)._v1.clone()
+          );
+        }
+    }
+
+    private List<VerificationTypeInfo> locals(StackMapFullFrame s)
+    {
+      var result = locals
+        .stream()
+        .filter(x -> x._v0 == s.byteCodePos)
+        .map(x -> x._v1)
+        .reduce(null, (a, b) -> a == null ? b : VerificationTypeInfo.union(a, b));
+
+      if (POSTCONDITIONS) ensure
+        (result != null);
+
+      return result;
+    }
+
+    /*
+     * The offset of this frame in the set of stackmap frames.
+     */
+    private int offset(StackMapFullFrame s)
+    {
+      return s.byteCodePos == 0
+        ? 0
+        : s.byteCodePos
+          - stackMapFrames
+            .stream()
+            .filter(x -> x.byteCodePos < s.byteCodePos)
+            .max(Comparator.comparingInt(x -> x.byteCodePos))
+            .get()
+            .byteCodePos
+          - 1;
+    }
+
+    /**
+     * @param cf
+     * @return
+     */
+    public static StackMapTable empty(ClassFile cf)
+    {
+      return cf.new StackMapTable(new List<>(), Expr.UNIT)
+        {
+          @Override
+          byte[] data()
+          {
+            var o = new Kaku();
+            o.writeU2(0);
+            return o._b.toByteArray();
+          }
+        };
+    }
+
+    public static StackMapTable fromCode(ClassFile cf, List<VerificationTypeInfo> argsLocals, Expr code)
+    {
+      return cf.new StackMapTable(argsLocals, code);
+    }
+
+
   }
 
 
@@ -1383,10 +1512,13 @@ public class ClassFile extends ANY implements ClassFileConstants
    * create a code attribute to be used in this class file.
    */
   public CodeAttribute codeAttribute(String where,
-                                     ByteCode code,
+                                     Expr code,
                                      List<ExceptionTableEntry> exception_table,
                                      List<Attribute> attributes)
   {
+    if (PRECONDITIONS) require
+      (!attributes.isEmpty() /* at least stackmaptable */);
+
     return new CodeAttribute(where,
                              code.max_locals(),
                              code,
@@ -1400,10 +1532,13 @@ public class ClassFile extends ANY implements ClassFileConstants
    */
   public CodeAttribute codeAttribute(String where,
                                      int num_locals,
-                                     ByteCode code,
+                                     Expr code,
                                      List<ExceptionTableEntry> exception_table,
                                      List<Attribute> attributes)
   {
+    if (PRECONDITIONS) require
+      (!attributes.isEmpty() /* at least stackmaptable */);
+
     return new CodeAttribute(where,
                              num_locals,
                              code,
@@ -1460,16 +1595,33 @@ public class ClassFile extends ANY implements ClassFileConstants
     if (PRECONDITIONS) require
       (!_finished);
 
-    _finished = true;
     var bc_clinit = _clinitCode;
     if (bc_clinit != null)
       {
         bc_clinit = bc_clinit
           .andThen(Expr.RETURN);
         var code_clinit = codeAttribute("<clinit> in class for " + _name,
-                                        bc_clinit, new List<>(), new List<>());
+                                        bc_clinit, new List<>(), new List<>(StackMapTable.empty(this)));
         method(ACC_PUBLIC | ACC_STATIC, "<clinit>", "()V", new List<>(code_clinit));
       }
+
+    // Doing this for the sake of side effects.
+    // This will sometimes add things to constant pool
+    // for description of stackmapframe.
+    // NYI we could only evaluate for stackmapframes...
+    // instead of simulating writing of whole bytecode
+    var ak = new Kaku();
+    for (var m : _methods)
+      {
+        m.write(ak);
+      }
+    ak.writeU2(_attributes.size());
+    for (var a : _attributes)
+      {
+        a.write(ak);
+      }
+
+    _finished = true;
   }
 
 
@@ -1480,6 +1632,7 @@ public class ClassFile extends ANY implements ClassFileConstants
   {
     return "ClassFile instance for class '" + _name + "' to be saved to '" + classFile() + "'";
   }
+
 
 }
 

@@ -26,7 +26,11 @@ Fuzion language implementation.  If not, see <https://www.gnu.org/licenses/>.
 
 package dev.flang.be.jvm.classfile;
 
+import java.util.Stack;
 
+import dev.flang.be.jvm.classfile.ClassFile.StackMapTable;
+import dev.flang.util.List;
+import dev.flang.util.Pair;
 
 /**
  * Label is a symbolic label in byte code. A Label is an Expr that produces
@@ -105,6 +109,15 @@ public class Label extends Expr
    * String representation of this label:
    */
   public String toString() { return "label:"; }
+
+
+  @Override
+  public void buildStackMapTable(ClassFile cf, StackMapTable smt, Stack<VerificationTypeInfo> stack,
+    List<VerificationTypeInfo> locals)
+  {
+    smt.stacks.put(_posFinal, (Stack<VerificationTypeInfo>)stack.clone());
+    smt.locals.add(new Pair<>(_posFinal, locals.clone()));
+  }
 
 
 }
