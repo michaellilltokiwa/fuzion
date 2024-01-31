@@ -1628,6 +1628,10 @@ public abstract class Expr extends ByteCode
   {
     return new Expr()
       {
+        // NYI checkcasts where isRedundant=true should
+        // not be present in the first place...
+        private boolean isRedundant = false;
+
         public String toString() { return "checkcast"; }
         public JavaType type()
         {
@@ -1635,7 +1639,22 @@ public abstract class Expr extends ByteCode
         }
         public void code(ClassFile.ByteCodeWriter ba, ClassFile cf)
         {
-          code(ba, O_checkcast, cf.cpClass(type.refDescriptor()));
+          if (!isRedundant)
+            {
+              code(ba, O_checkcast, cf.cpClass(type.refDescriptor()));
+            }
+          else
+            {
+              NOP.code(ba, cf);
+              NOP.code(ba, cf);
+              NOP.code(ba, cf);
+            }
+        }
+        @Override
+        public void buildStackMapTable(ClassFile cf, StackMapTable smt, Stack<VerificationTypeInfo> stack,
+          List<VerificationTypeInfo> locals)
+        {
+          isRedundant = type().vti(cf).compareTo(stack.peek()) == 0;
         }
     };
   }
