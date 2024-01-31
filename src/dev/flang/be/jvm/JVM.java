@@ -1213,7 +1213,15 @@ should be avoided as much as possible.
         var at = _types.resultType(ot);
         if (at != PrimitiveType.type_void)
           {
-            result.add(_types.resultType(_fuir.clazzResultClazz(_fuir.clazzOuterRef(cl))).vti(cf));
+            var vti = _types.resultType(_fuir.clazzResultClazz(_fuir.clazzOuterRef(cl))).vti(cf);
+            if (vti.needsTwoSlots())
+              {
+                result.addAll(vti, vti);
+              }
+            else
+              {
+                result.add(vti);
+              }
           }
       }
     for (var i = 0; i < _fuir.clazzArgCount(cl); i++)
@@ -1222,7 +1230,15 @@ should be avoided as much as possible.
         var ft = _types.resultType(at);
         if (ft != PrimitiveType.type_void)
           {
-            result.add(_types.resultType(_fuir.clazzArgClazz(cl, i)).vti(cf));
+            var vti = _types.resultType(_fuir.clazzArgClazz(cl, i)).vti(cf);
+            if (vti.needsTwoSlots())
+              {
+                result.addAll(vti, vti);
+              }
+            else
+              {
+                result.add(vti);
+              }
           }
       }
     result.freeze();

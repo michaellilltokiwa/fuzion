@@ -397,27 +397,17 @@ public abstract class Expr extends ByteCode
     {
       stack.pop();
 
-      while (locals.size() <= index(locals, local()._v0))
+      while (locals.size() <= (local()._v0 + (local()._v1.needsTwoSlots() ? 1 : 0)))
         {
           locals.add(VerificationTypeInfo.Top);
         }
-
-      // if (CHECKS) check
-      //   (locals.get(index(locals, local()._v0)) == VerificationTypeInfo.Top
-      //    || locals.get(index(locals, local()._v0)).compareTo(local()._v1) == 0);
-
-      locals.set(index(locals, local()._v0), local()._v1);
+      locals.set(local()._v0, local()._v1);
+      if (local()._v1.needsTwoSlots())
+        {
+          locals.set(local()._v0+1, local()._v1);
+        }
     }
 
-    private int index(List<VerificationTypeInfo> locals, Integer idx)
-    {
-      return idx -
-        locals
-          .stream()
-          .limit(idx)
-          .mapToInt(x -> x ==  VerificationTypeInfo.Double || x ==  VerificationTypeInfo.Long ? 1 : 0)
-          .sum();
-    }
   }
 
 

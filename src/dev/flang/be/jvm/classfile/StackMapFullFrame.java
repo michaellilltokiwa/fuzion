@@ -52,8 +52,9 @@ public class StackMapFullFrame extends ANY implements Comparable<StackMapFullFra
     // u2 number_of_stack_items;
     // verification_type_info stack[number_of_stack_items];
     o.writeU2(offset);
-    o.writeU2(locals.size());
-    for (var l : locals)
+    var locals0 = VerificationTypeInfo.thinOutTwoSlotTypes(locals);
+    o.writeU2(locals0.size());
+    for (var l : locals0)
       {
         l.write(o);
       }

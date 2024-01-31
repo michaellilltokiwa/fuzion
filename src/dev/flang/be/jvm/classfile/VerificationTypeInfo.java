@@ -166,5 +166,39 @@ public class VerificationTypeInfo extends ANY implements Comparable<Verification
     return r;
   }
 
+  public boolean needsTwoSlots()
+  {
+    return this == VerificationTypeInfo.Double
+      || this == VerificationTypeInfo.Long;
+  }
+
+  public static List<VerificationTypeInfo> thinOutTwoSlotTypes(List<VerificationTypeInfo> locals)
+  {
+    var result = new List<VerificationTypeInfo>();
+    boolean skipNext = false;
+    for (int index = 0; index < locals.size(); index++)
+      {
+        if (skipNext)
+          {
+            if (CHECKS)
+              check(locals.get(index).needsTwoSlots());
+            skipNext = false;
+          }
+        else
+          {
+            var l = locals.get(index);
+            result.add(l);
+            if (l.needsTwoSlots())
+              {
+                skipNext = true;
+              }
+          }
+      }
+    if (CHECKS)
+      check(skipNext == false);
+
+    return result;
+  }
+
 
 }
