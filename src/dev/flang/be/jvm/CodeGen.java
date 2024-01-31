@@ -559,8 +559,7 @@ class CodeGen
         _types.classFile(tt).addImplements(intfc._name);
         addStub(tt, cc, dn, ds, isCall);
       }
-    if (CHECKS) check(isCall);
-    return Expr.invokeInterface(intfc._name, dn, ds, dr, isCall ? _types.argCount(false, cc0) : 0);
+    return Expr.invokeInterface(intfc._name, dn, ds, dr, isCall ? _types.argCount(false, cc0) : 1 /* NYI is this always one? or can this be zero? */);
   }
 
 
