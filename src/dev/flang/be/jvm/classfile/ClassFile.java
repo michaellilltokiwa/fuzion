@@ -1156,6 +1156,15 @@ public class ClassFile extends ANY implements ClassFileConstants
       build();
       var o = new Kaku();
       o.writeU2(stackMapFrames.size());
+      // NYI optimization potential
+      // currently we write full frames only
+      // we could use the other frame types as well:
+      // - same_frame
+      // - same_locals_1_stack_item_frame
+      // - same_locals_1_stack_item_frame_extended
+      // - chop_frame
+      // - same_frame_extended
+      // - append_frame
       for (var s : stackMapFrames)
         {
           s.write(o, offset(s), locals(s), stacks.get(s.byteCodePos));
