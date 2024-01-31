@@ -287,7 +287,7 @@ public class Choices extends ANY implements ClassFileConstants
                           var bc_tag = Expr.iconst(tagNum)
                             .andThen(Expr.IRETURN);
                           var code_tag = hcf.codeAttribute(gtn + "in interface for "+_fuir.clazzAsString(cl),
-                                                           bc_tag, new List<>(), new List<Attribute>(ClassFile.StackMapTable.empty(cf)));
+                                                           bc_tag, new List<>(), new List<Attribute>(ClassFile.StackMapTable.empty(hcf)));
                           hcf.method(ACC_PUBLIC, gtn, "()I", new List<>(code_tag));
                         }
                     }
