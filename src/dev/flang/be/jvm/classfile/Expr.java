@@ -85,8 +85,18 @@ public abstract class Expr extends ByteCode
     {
       smt.stackMapFrames.add(new StackMapFullFrame(from._posFinal));
       smt.stackMapFrames.add(new StackMapFullFrame(to._posFinal));
-      smt.stacks.put(from._posFinal,(Stack) stack.clone());
-      smt.stacks.put(to._posFinal,  (Stack) stack.clone());
+
+      // this is the case if a goto jumping to another goto
+      if (smt.stacks.containsKey(from._posFinal))
+        {
+          smt.stacks.put(to._posFinal, smt.stacks.get(from._posFinal));
+        }
+      else
+        {
+          smt.stacks.put(from._posFinal,(Stack) stack.clone());
+          smt.stacks.put(to._posFinal,  (Stack) stack.clone());
+        }
+
       smt.locals.add(new Pair<>(from._posFinal , locals.clone()));
       smt.locals.add(new Pair<>(to._posFinal , locals.clone()));
 
@@ -96,19 +106,20 @@ public abstract class Expr extends ByteCode
         (from._posFinal >= to._posFinal
          || smt.stacks.containsKey(positionNextByteCode));
 
-      if (from._posFinal < to._posFinal)
+      if (!smt.stacks.containsKey(positionNextByteCode) && from._posFinal != to._posFinal)
+        {
+          stack.clear();
+        }
+
+      if (smt.stacks.containsKey(positionNextByteCode))
         {
           locals.clear();
           stack.clear();
           smt.stacks
             .get(positionNextByteCode)
             .forEach(vti -> stack.add(vti));
-          smt.locals
-            .stream()
-            .filter(x -> x._v0 == positionNextByteCode)
-            .findFirst()
-            .get()
-            ._v1
+          smt
+            .locals(positionNextByteCode)
             .forEach(vti -> locals.add(vti));
         }
     }
@@ -1355,7 +1366,8 @@ public abstract class Expr extends ByteCode
         @Override
         public Pair<Integer, VerificationTypeInfo> local()
         {
-          return new Pair<Integer,VerificationTypeInfo>(n, vti);
+          // vti is null if we store a void-like type.
+          return new Pair<Integer,VerificationTypeInfo>(n, vti == null ? VerificationTypeInfo.Top : vti);
         }
     };
   }

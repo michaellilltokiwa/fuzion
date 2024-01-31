@@ -115,7 +115,15 @@ public class Label extends Expr
   public void buildStackMapTable(ClassFile cf, StackMapTable smt, Stack<VerificationTypeInfo> stack,
     List<VerificationTypeInfo> locals)
   {
-    smt.stacks.put(_posFinal, (Stack<VerificationTypeInfo>)stack.clone());
+    // this is a jump target of a goto or branch
+    if (smt.stacks.containsKey(_posFinal))
+      {
+        stack.clear();
+        for (int index = 0; index < smt.stacks.get(_posFinal).size(); index++)
+          {
+            stack.push(smt.stacks.get(_posFinal).get(index));
+          }
+      }
     smt.locals.add(new Pair<>(_posFinal, locals.clone()));
   }
 

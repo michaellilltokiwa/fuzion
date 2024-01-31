@@ -1124,12 +1124,10 @@ public class ClassFile extends ANY implements ClassFileConstants
       public Stack<VerificationTypeInfo> put(Integer key, java.util.Stack<VerificationTypeInfo> value)
       {
         // NYI
-        // if (PRECONDITIONS) require
-        //   (!this.containsKey(key) || this.get(key).size() == value.size());
+        if (PRECONDITIONS) require
+          (!this.containsKey(key) || this.get(key).size() == value.size());
 
-        return !this.containsKey(key) || value.size() < this.get(key).size()
-          ? super.put(key, value)
-          : this.get(key);
+        return super.put(key, value);
       }
     };
     final List<Pair<Integer, List<VerificationTypeInfo>>> locals = new List<>();
@@ -1180,11 +1178,11 @@ public class ClassFile extends ANY implements ClassFileConstants
         }
     }
 
-    private List<VerificationTypeInfo> locals(StackMapFullFrame s)
+    public List<VerificationTypeInfo> locals(int byteCodePos)
     {
       var result = locals
         .stream()
-        .filter(x -> x._v0 == s.byteCodePos)
+        .filter(x -> x._v0 == byteCodePos)
         .map(x -> x._v1)
         .reduce(null, (a, b) -> a == null ? b : VerificationTypeInfo.union(a, b));
 
@@ -1192,6 +1190,11 @@ public class ClassFile extends ANY implements ClassFileConstants
         (result != null);
 
       return result;
+    }
+
+    private List<VerificationTypeInfo> locals(StackMapFullFrame s)
+    {
+      return locals(s.byteCodePos);
     }
 
     /*
