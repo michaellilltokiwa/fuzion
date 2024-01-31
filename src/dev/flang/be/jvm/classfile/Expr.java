@@ -354,6 +354,8 @@ public abstract class Expr extends ByteCode
         {
           // value1, value2 → result
           stack.pop();
+          stack.pop();
+          stack.push(VerificationTypeInfo.Integer);
         }
       else if (_bc == BC_MONITORENTER ||
         _bc == BC_MONITOREXIT)

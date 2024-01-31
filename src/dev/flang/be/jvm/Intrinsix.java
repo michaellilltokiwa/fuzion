@@ -188,7 +188,7 @@ public class Intrinsix extends ANY implements ClassFileConstants
           var v = jvm._fuir.lookupAtomicValue(ac);
           var rc  = jvm._fuir.clazzResultClazz(v);
           var tt = tvalue.type();
-          var jt = jvm._types.javaType(rc);
+          var jt = jvm._types.resultType(rc);
           int tslot  = jvm.allocLocal(cl, pre, 1);                  // local var slot for target
           int nvslot = jvm.allocLocal(cl, pre, jt.stackSlots());    // local var slot for arg(1), new value, not casted
           int vslot  = jvm.allocLocal(cl, pre, jt.stackSlots());    // local var slot for old value, not casted.
