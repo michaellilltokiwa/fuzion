@@ -26,12 +26,10 @@ Fuzion language implementation.  If not, see <https://www.gnu.org/licenses/>.
 
 package dev.flang.be.jvm.classfile;
 
-import dev.flang.be.jvm.classfile.ClassFile.CPClass;
-import dev.flang.be.jvm.classfile.VerificationTypeInfo.type;
+import java.util.stream.Stream;
+
 import dev.flang.util.ANY;
 import dev.flang.util.List;
-
-import java.util.stream.Stream;
 
 
 /**
@@ -77,8 +75,7 @@ public interface ClassFileConstants
   public static byte[] VERSION_JDK_21  = new byte[] { 0, 0, 0, 65 };   // LTS
 
 
-  // public static byte[] DEFAULT_VERSION = VERSION_JDK_5;  // NYI: should be LTS version 17, using 5 only to avoid need for stack frame info entries
-  public static byte[] DEFAULT_VERSION = VERSION_JDK_7;
+  public static byte[] DEFAULT_VERSION = VERSION_JDK_17;
 
   public enum CPoolTag
   {
