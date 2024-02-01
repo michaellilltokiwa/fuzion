@@ -732,7 +732,7 @@ class CodeGen
                     }
 
                   // perform tail call by goto startLabel
-                  code = code.andThen(Expr.gotoLabel(_jvm.startLabel(cl)));
+                  code = code.andThen(Expr.goBacktoLabel(_jvm.startLabel(cl)));
 
                   res = new Pair(null,  // result is void, we do not return from this path.
                                  code);

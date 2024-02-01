@@ -75,7 +75,8 @@ public abstract class Expr extends ByteCode
     public void code(ClassFile.ByteCodeWriter ba, ClassFile cf)
     {
       if (CHECKS) check
-        (isInfiniteLoop() || from._posFinal == -1 || to._posFinal == -1 || from._posFinal != to._posFinal);
+        (from._posFinal == -1 || to._posFinal == -1 || (to._posFinal <= from._posFinal == isJumpBackwards()));
+
       code(ba, O_goto, from, to);
     }
 
@@ -1672,7 +1673,7 @@ public abstract class Expr extends ByteCode
     return new GoTo(l, l)
       {
         @Override
-        protected boolean isInfiniteLoop()
+        protected boolean isJumpBackwards()
         {
           return true;
         }
@@ -1680,13 +1681,23 @@ public abstract class Expr extends ByteCode
   }
 
 
-  /**
-   */
   public static Expr gotoLabel(Label to)
   {
     Label from = new Label();
-    return from.andThen
-      (new GoTo(to, from));
+    return from.andThen(new GoTo(to, from));
+  }
+
+
+  public static Expr goBacktoLabel(Label to)
+  {
+    Label from = new Label();
+    return from.andThen(new GoTo(to, from) {
+      @Override
+      protected boolean isJumpBackwards()
+      {
+        return true;
+      }
+    });
   }
 
 
@@ -1726,7 +1737,7 @@ public abstract class Expr extends ByteCode
             public void code(ClassFile.ByteCodeWriter ba, ClassFile cf)
             {
               Expr.this.code(ba, cf);
-              if (!Expr.this.isInfiniteLoop())
+              if (!Expr.this.isJumpBackwards())
                 {
                   s.code(ba, cf);
                 }
@@ -1735,22 +1746,27 @@ public abstract class Expr extends ByteCode
             public void buildStackMapTable(ClassFile cf, StackMapTable smt, Stack<VerificationTypeInfo> stack, List<VerificationTypeInfo> locals)
             {
               Expr.this.buildStackMapTable(cf, smt, stack, locals);
-              if (!Expr.this.isInfiniteLoop())
+              if (!Expr.this.isJumpBackwards())
                 {
                   s.buildStackMapTable(cf, smt, stack, locals);
                 }
             }
             @Override
-            protected boolean isInfiniteLoop()
+            protected boolean isJumpBackwards()
             {
-              return s.isInfiniteLoop();
+              return s.isJumpBackwards();
             }
           };
       }
   }
 
 
-  protected boolean isInfiniteLoop()
+  /**
+   * In case we encounter a jump backwards we stop writing
+   * byte code. This is necessary since otherwise a stackmapframe
+   * would be required at the bytecode following the jump.
+   */
+  protected boolean isJumpBackwards()
   {
     return false;
   }
