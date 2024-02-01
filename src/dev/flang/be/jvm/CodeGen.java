@@ -843,7 +843,6 @@ class CodeGen
 
     var cf = _types.classFile(cl);
 
-    var jt = _types.javaType(_fuir.clazzOuterClazz(cl));
     return new Pair<>(_types.javaType(_fuir.clazzOuterClazz(cl)).load(0, cf),
                       Expr.UNIT);
   }

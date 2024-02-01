@@ -27,7 +27,6 @@ Fuzion language implementation.  If not, see <https://www.gnu.org/licenses/>.
 package dev.flang.be.jvm.classfile;
 
 import java.util.Stack;
-import java.util.function.Consumer;
 
 import dev.flang.be.jvm.classfile.ClassFile.StackMapTable;
 import dev.flang.util.Errors;
