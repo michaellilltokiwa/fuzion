@@ -1622,15 +1622,12 @@ public class ClassFile extends ANY implements ClassFileConstants
     // for description of stackmapframe.
     // NYI we could only evaluate for stackmapframes...
     // instead of simulating writing of whole bytecode
-    var ak = new Kaku();
     for (var m : _methods)
       {
-        m.write(ak);
-      }
-    ak.writeU2(_attributes.size());
-    for (var a : _attributes)
-      {
-        a.write(ak);
+        for (var a : m._attributes)
+        {
+          a.data();
+        }
       }
 
     _finished = true;
