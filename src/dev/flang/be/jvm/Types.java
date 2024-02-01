@@ -166,7 +166,7 @@ public class Types extends ANY implements ClassFileConstants
                       boxSignature(cl),
                       new List<>(code_box));
           }
-        var bc_init = Expr.aload(0, resultType(cl), VerificationTypeInfo.UninitializedThis)
+        var bc_init = Expr.aload(0, javaType(cl), VerificationTypeInfo.UninitializedThis)
           .andThen(Expr.invokeSpecial(cf._super,"<init>","()V"))
           .andThen(cod)
           .andThen(Expr.RETURN);
