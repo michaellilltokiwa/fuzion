@@ -2083,9 +2083,11 @@ public class Clazz extends ANY implements Comparable<Clazz>
   public String typeName()
   {
     if (PRECONDITIONS) require
-      (feature().isTypeFeature());
+      (feature().isTypeFeature() || feature() == Types.resolved.f_Type);
 
-    return _type.generics().get(0).asString();
+    return feature() == Types.resolved.f_Type
+      ? Types.resolved.f_Type.qualifiedName()
+      : _type.generics().get(0).asString();
   }
 
 
