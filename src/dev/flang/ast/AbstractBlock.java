@@ -190,6 +190,16 @@ public abstract class AbstractBlock extends Expr
   }
 
 
+  @Override
+  protected AbstractType typeForCallTarget(Resolution res)
+  {
+    Expr resExpr = resultExpression();
+    return resExpr == null
+      ? Types.resolved.t_unit
+      : resExpr.typeForCallTarget(res);
+  }
+
+
   /**
    * toString
    *

@@ -473,7 +473,7 @@ public class Call extends AbstractCall
     if (PRECONDITIONS) require
       (_target != null);
 
-    var result = _target.typeForCallTarget();
+    var result = _target.typeForCallTarget(res);
     if (result.isGenericArgument())
       {
         result = result.genericArgument().constraint(res);
@@ -832,6 +832,10 @@ public class Call extends AbstractCall
             AstErrors.cannotCallChoice(pos(), fos.get(0)._feature);
             setToErrorState();
           }
+        if (_calledFeature == null)
+          {
+            findTypeFeature(res, targetFeature, thiz);
+          }
 
         if (_calledFeature == null &&                 // nothing found, so flag error
             (Types.resolved == null ||                // may happen when building bad base.fum
@@ -879,6 +883,57 @@ public class Call extends AbstractCall
        Errors.any() || _target        != null || _pendingError != null);
 
     return !targetVoid;
+  }
+
+
+  /**
+   * type returns the type of this expression if used as a target of a
+   * call. Since this might eventually not be used as a target of a call, but as
+   * an actual argument, this type will not be fixed yet.
+   *
+   * @return this Expr's type or t_UNDEFINED in case it is not known yet.
+   */
+  protected AbstractType typeForCallTarget(Resolution res)
+  {
+    if (_type == null)
+      {
+        return res._module
+          .lookup(_target == null ? Types.resolved.universe : _target.typeForCallTarget().featureOfType(), _name, this, _target == null, false)
+          .stream()
+          .filter(x -> x._feature.isConstructor())
+          .map(x -> x._feature.selfType())
+          .findFirst()
+          .orElse(Types.t_ERROR);
+      }
+    return super.typeForCallTarget();
+  }
+
+
+  protected void findTypeFeature(Resolution res, AbstractFeature targetFeature, AbstractFeature thiz)
+  {
+    var ttf = targetFeature.typeFeature(res);
+    var fos = res._module.lookup(ttf, _name, this, _target == null, false);
+    for (var fo : fos)
+      {
+        if (fo._feature instanceof Feature ff && ff.state().atLeast(State.RESOLVED_DECLARATIONS))
+          {
+            ff.resolveArgumentTypes(res);
+          }
+      }
+    var fo = FeatureAndOuter.filter(fos, pos(), FeatureAndOuter.Operation.CALL, FeatureName.get(_name, _actuals.size()), ff -> mayMatchArgList(ff, false));
+    if (fo != null && _target instanceof Call ct)
+      {
+        _calledFeature = fo._feature;
+        _target = new DotType(_pos, ct.typeForInferencing(false) != null ? ct.typeForInferencing(false) : targetFeature.selfType()).resolveTypes(res, thiz);
+        _targetFrom = fo;
+      }
+    if (_calledFeature != null &&
+        _generics.isEmpty() &&
+        _actuals.size() != fo._feature.valueArguments().size() &&
+        !fo._feature.hasOpenGenericsArgList(res))
+      {
+        splitOffTypeArgs(res, fo._feature, thiz);
+      }
   }
 
 
@@ -1461,7 +1516,23 @@ public class Call extends AbstractCall
    */
   AbstractType typeForInferencing()
   {
-    reportPendingError();
+    return typeForInferencing(true);
+  }
+
+
+  /**
+   * typeForInferencing returns the type of this expression or null if the type is
+   * still unknown, i.e., before or during type resolution.  This is redefined
+   * by sub-classes of Expr to provide type information.
+   *
+   * @return this Expr's type or null if not known.
+   */
+  AbstractType typeForInferencing(boolean reportError)
+  {
+    if (reportError)
+      {
+        reportPendingError();
+      }
     return (_calledFeature instanceof Feature f) && f.isAnonymousInnerFeature() && f.inherits().getFirst().typeForInferencing() != null && f.inherits().getFirst().typeForInferencing().isRef()
       ? f.inherits().getFirst().typeForInferencing()
       : _type;

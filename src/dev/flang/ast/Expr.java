@@ -720,6 +720,12 @@ public abstract class Expr extends HasGlobalIndex implements HasSourcePosition
   }
 
 
+  protected AbstractType typeForCallTarget(Resolution res)
+  {
+    return typeForCallTarget();
+  }
+
+
 }
 
 /* end of file */
