@@ -780,6 +780,19 @@ public class Call extends AbstractCall
           }
       }
 
+    if (_calledFeature == null && _target != null && thiz.state().atLeast(State.RESOLVED_INHERITANCE))
+      {
+        var tt = _target.asUnresolvedType();
+        if (tt != null && tt instanceof UnresolvedType ut)
+          {
+            tt = ut.tryResolve(res, thiz);
+          }
+        if (tt != null && tt != Types.t_ERROR && !tt.isGenericArgument())
+          {
+            findTypeFeature(res, tt, thiz);
+          }
+      }
+
     AbstractFeature targetFeature = null;
     if (_calledFeature == null)
       {
@@ -879,6 +892,26 @@ public class Call extends AbstractCall
        Errors.any() || _target        != null || _pendingError != null);
 
     return !targetVoid;
+  }
+
+
+  protected void findTypeFeature(Resolution res, AbstractType tt, AbstractFeature thiz)
+  {
+    var ttf = tt.featureOfType().typeFeature(res);
+    var ff = res._module.lookup(ttf, _name, this, false, false);
+    var f = ff.size() == 1 ? ff.get(0)._feature : null;
+    if (f != null  && f.outer() != null && f.outer().isTypeFeature())
+      {
+        _calledFeature = f;
+        _target = new DotType(_pos, tt).resolveTypes(res, thiz);
+      }
+    if (_calledFeature != null &&
+        _generics.isEmpty() &&
+        _actuals.size() != f.valueArguments().size() &&
+        !f.hasOpenGenericsArgList(res))
+      {
+        splitOffTypeArgs(res, f, thiz);
+      }
   }
 
 
@@ -1319,36 +1352,6 @@ public class Call extends AbstractCall
     _actuals = a;
   }
 
-
-  /**
-   * Check if this expression can also be parsed as a type and return that type. Otherwise,
-   * report an error (AstErrors.expectedActualTypeInCall).
-   *
-   * @param outer the outer feature containing this expression
-   *
-   * @param tp the type parameter this expression is assigned to
-   *
-   * @return the Type corresponding to this, Type.t_ERROR in case of an error.
-   */
-  AbstractType asType(Resolution res, AbstractFeature outer, AbstractFeature tp)
-  {
-    var g = _generics;
-    if (!_actuals.isEmpty())
-      {
-        g = new List<AbstractType>();
-        g.addAll(_generics);
-        for (var a : _actuals)
-          {
-            g.add(a.asType(res, outer, tp));
-          }
-      }
-    AbstractType result = new ParsedType(pos(), _name, g,
-                                         _target == null             ||
-                                         _target instanceof Universe ||
-                                         _target instanceof Current     ? null
-                                                                        : _target.asType(res, outer, tp));
-    return result.resolve(res, outer);
-  }
 
 
   /**

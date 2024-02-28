@@ -243,6 +243,12 @@ public class This extends ExprWithPos
                     {
                       return isAdr ? t : _type;
                     }
+                    @Override
+                    public AbstractType asUnresolvedType()
+                    {
+                      // NYI this is technically correct only for the outermost call
+                      return This.this.asUnresolvedType();
+                    }
                   }.resolveTypes(res, outer);
 
                 getOuter = c;

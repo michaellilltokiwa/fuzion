@@ -456,28 +456,8 @@ public abstract class Expr extends HasGlobalIndex implements HasSourcePosition
   }
 
 
-  /**
-   * Check if this expression can also be parsed as a type and return that type. Otherwise,
-   * report an error (AstErrors.expectedActualTypeInCall).
-   *
-   * @param outer the outer feature containing this expression
-   *
-   * @param tp the type parameter this expression is assigned to, null if used
-   * in 'xyz.type' expression.
-   *
-   * @return the Type corresponding to this, Type.t_ERROR in case of an error.
-   */
-  AbstractType asType(Resolution res, AbstractFeature outer, AbstractFeature tp)
-  {
-    if (tp == null)
-      {
-        AstErrors.expectedTypeExpression(pos(), this);
-      }
-    else
-      {
-        AstErrors.expectedActualTypeInCall(pos(), tp);
-      }
-    return Types.t_ERROR;
+  public AbstractType asUnresolvedType(){
+    return null;
   }
 
 
