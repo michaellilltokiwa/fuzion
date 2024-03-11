@@ -374,7 +374,7 @@ public class Instance extends ValueWithClazz
    *
    * @param size the size of the data to be stored
    */
-  void storeNonRef(LValue slot, int size)
+  public void storeNonRef(LValue slot, int size)
   {
     if (PRECONDITIONS) require
       (size == Layout.get(_clazz).size());
@@ -392,7 +392,7 @@ public class Instance extends ValueWithClazz
    *
    * @param voffset the offset the value to be stored within this
    */
-  void storeNonRef(LValue slot, int size, int voffset)
+  public void storeNonRef(LValue slot, int size, int voffset)
   {
     Instance cur    = slot.container;
     int      offset = slot.offset;
@@ -453,7 +453,7 @@ public class Instance extends ValueWithClazz
    * Return the instance this value contains.  If this is an Instance, return
    * this, if this is an LValue containing an instance, get that instance.
    */
-  Instance instance()
+  public Instance instance()
   {
     return this;
   }

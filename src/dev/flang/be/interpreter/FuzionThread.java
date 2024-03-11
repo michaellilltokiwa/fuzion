@@ -61,7 +61,7 @@ public class FuzionThread extends ANY
   /**
    * Get current thread.
    */
-  static FuzionThread current()
+  public static FuzionThread current()
   {
     return _current_.get();
   }
@@ -80,7 +80,7 @@ public class FuzionThread extends ANY
   /**
    * Currently installed effects.
    */
-  TreeMap<Clazz, Value> _effects = new TreeMap<>();
+  public TreeMap<Clazz, Value> _effects = new TreeMap<>();
 
 }
 

@@ -66,7 +66,7 @@ public class DynamicBinding extends ANY
    *
    * NYI: like _offsets, this should use a more efficient lookup table.
    */
-  Map<FeatureAndActuals, Clazz> _inner = new TreeMap<>();
+  public Map<FeatureAndActuals, Clazz> _inner = new TreeMap<>();
 
 
   /**
@@ -74,7 +74,7 @@ public class DynamicBinding extends ANY
    *
    * NYI: like _offsets, this should use a more efficient lookup table.
    */
-  Map<FeatureAndActuals, Clazz> _outer = new TreeMap<>();
+  public Map<FeatureAndActuals, Clazz> _outer = new TreeMap<>();
 
 
   /*--------------------------  constructors  ---------------------------*/
@@ -113,8 +113,8 @@ public class DynamicBinding extends ANY
     if (PRECONDITIONS) require
       (f != null);
 
-    var callable = be.callable(false, inner, outer);
-    _callables.put(f, callable);
+    // var callable = be.callable(false, inner, outer);
+    // _callables.put(f, callable);
     _inner.put(f, inner);
     _outer.put(f, outer);
 

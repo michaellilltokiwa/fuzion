@@ -95,7 +95,7 @@ public class f32Value extends Value
    *
    * @param size the size of the data to be stored
    */
-  void storeNonRef(LValue slot, int size)
+  public void storeNonRef(LValue slot, int size)
   {
     if (PRECONDITIONS) require
       (size == 1);

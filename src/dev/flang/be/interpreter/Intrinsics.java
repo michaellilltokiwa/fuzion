@@ -1540,7 +1540,7 @@ public class Intrinsics extends ANY
       }
   }
 
-  static ArrayData fuzionSysArrayAlloc(int sz,
+  public static ArrayData fuzionSysArrayAlloc(int sz,
                                        Clazz arrayClazz)
   {
     // NYI: Properly determine generic argument type of array

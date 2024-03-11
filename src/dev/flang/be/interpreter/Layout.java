@@ -43,7 +43,7 @@ import dev.flang.util.ANY;
  *
  * @author Fridtjof Siebert (siebert@tokiwa.software)
  */
-class Layout extends ANY
+public class Layout extends ANY
 {
 
 
@@ -53,7 +53,7 @@ class Layout extends ANY
   /**
    * Determine the size of an instance of the given clazz.
    */
-  static synchronized Layout get(Clazz c)
+  public static synchronized Layout get(Clazz c)
   {
     var l = (Layout) c._backendData; // _layouts_.get(c);
     if (l == null)
@@ -209,7 +209,7 @@ class Layout extends ANY
   /**
    * The size of instances for _clazz.
    */
-  int size()
+  public int size()
   {
     if (PRECONDITIONS) require
       (sizeAvailable());
@@ -223,7 +223,7 @@ class Layout extends ANY
    *
    * NYI: Remove, replace by offset(Clazz)
    */
-  int offset0(AbstractFeature f, int select)
+  public int offset0(AbstractFeature f, int select)
   {
     if (PRECONDITIONS) require
       (_clazz.isRoutine() || _clazz.isChoice(),
@@ -241,7 +241,7 @@ class Layout extends ANY
   /**
    * Offset of field f within instances of _clazz.
    */
-  int offset(Clazz f)
+  public int offset(Clazz f)
   {
     if (PRECONDITIONS) require
       (_clazz.isRoutine() || _clazz.isChoice(),

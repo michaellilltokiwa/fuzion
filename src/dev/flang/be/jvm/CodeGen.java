@@ -259,6 +259,7 @@ class CodeGen
    *
    * @param avalue the new value to be assigned to the field.
    */
+  @Override
   public Expr assign(int cl, boolean pre, int c, int i, Expr tvalue, Expr avalue)
   {
     var p = access(cl, pre, c, i, tvalue, new List<>(avalue));
@@ -323,6 +324,7 @@ class CodeGen
    *
    * @param args the arguments of this call.
    */
+  @Override
   public Pair<Expr, Expr> call(int cl, boolean pre, int c, int i, Expr tvalue, List<Expr> args)
   {
     var p = combinePreconditionAndCall(cl, pre, c, i, tvalue, args);

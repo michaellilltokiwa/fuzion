@@ -47,7 +47,13 @@ public abstract class Value extends ANY
    * Dummy value to be returned by Expr.execute for the case that the
    * expression does not produce a value
    */
-  public static Value NO_VALUE = new Value() { };
+  public static Value NO_VALUE = new Value() {
+    @Override
+    public String toString()
+    {
+      return "NO_VALUE";
+    }
+  };
 
 
   /**
@@ -55,9 +61,15 @@ public abstract class Value extends ANY
    */
   public static Value EMPTY_VALUE = new Value()
     {
-      void storeNonRef(LValue slot, int size)
+      public void storeNonRef(LValue slot, int size)
       {
         // treat as NOP.
+      }
+
+      @Override
+      public String toString()
+      {
+        return "EMPTY_VALUE";
       }
     };
 
@@ -240,7 +252,7 @@ public abstract class Value extends ANY
    *
    * @param size the size of the data to be stored
    */
-  void storeNonRef(LValue slot, int size)
+  public void storeNonRef(LValue slot, int size)
   {
     throw new Error("Cannot store " + getClass() + " as non-ref");
   }
@@ -279,7 +291,7 @@ public abstract class Value extends ANY
    * Return the instance this value contains.  If this is an Instance, return
    * this, if this is an LValue containing an instance, get that instance.
    */
-  Instance instance()
+  public Instance instance()
   {
     throw new Error("value "+ this + " of class " + getClass() + " is not an instance");
   }

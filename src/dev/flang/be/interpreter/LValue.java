@@ -245,7 +245,7 @@ public class LValue extends ValueWithClazz
    *
    * @param size the size of the data to be stored
    */
-  void storeNonRef(LValue slot, int size)
+  public void storeNonRef(LValue slot, int size)
   {
     if (PRECONDITIONS) require
       (size == Layout.get(_clazz).size());
@@ -294,7 +294,7 @@ public class LValue extends ValueWithClazz
    * Return the instance this value contains.  If this is an Instance, return
    * this, if this is an LValue containing an instance, get that instance.
    */
-  Instance instance()
+  public Instance instance()
   {
     if (PRECONDITIONS) require
       (_clazz.isRef());

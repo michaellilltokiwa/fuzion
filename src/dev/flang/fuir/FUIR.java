@@ -232,7 +232,7 @@ public class FUIR extends IR
   /**
    * Get Clazz that given id maps to
    */
-  private Clazz clazz(int id)
+  public Clazz clazz(int id)
   {
     return _clazzIds.get(id);
   }

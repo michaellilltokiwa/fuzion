@@ -95,7 +95,7 @@ public class u32Value extends Value
    *
    * @param size the size of the data to be stored
    */
-  void storeNonRef(LValue slot, int size)
+  public void storeNonRef(LValue slot, int size)
   {
     if (size != 1) System.out.println("Assigning "+this);
     if (PRECONDITIONS) require
