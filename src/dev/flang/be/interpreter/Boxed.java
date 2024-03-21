@@ -58,6 +58,10 @@ public class Boxed extends ValueWithClazz
 
   /**
    * Constructor
+   *
+   * @param clazz
+   *
+   * @param outer
    */
   public Boxed(Clazz clazz, Clazz valueClazz, Value contents)
   {
@@ -268,16 +272,6 @@ public class Boxed extends ValueWithClazz
   public String toString()
   {
     return "boxed[" + _clazz + "]" + this.hashCode();
-  }
-
-
-  /**
-   * dump
-   */
-  public void dump()
-  {
-    System.out.print("BOXED: ");
-    if (this._contents instanceof Instance i) i.dump();
   }
 
 }

@@ -51,7 +51,7 @@ public abstract class ValueWithClazz extends Value
   /**
    * The clazz of this value.
    */
-  protected final Clazz _clazz;
+  public final Clazz _clazz;
 
 
   /*--------------------------  constructors  ---------------------------*/
@@ -59,6 +59,10 @@ public abstract class ValueWithClazz extends Value
 
   /**
    * Constructor for a value with the given clazz.
+   *
+   * @param clazz
+   *
+   * @param outer
    */
   ValueWithClazz(Clazz clazz)
   {
