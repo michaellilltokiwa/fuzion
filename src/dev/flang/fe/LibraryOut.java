@@ -152,6 +152,7 @@ class LibraryOut extends ANY
             moduleRef(m);
           }
         allDeclFeatures(sm);
+        feature(sm._universe);
         sourceFiles();
         _data.fixUps(this);
         sm._options.verbosePrintln(2, "" +
@@ -255,6 +256,9 @@ class LibraryOut extends ANY
    */
   void declFeatures(AbstractFeature outer)
   {
+    if (PRECONDITIONS) require
+      (outer != null);
+
     featureIndexOrZeroForUniverse(outer);
     innerFeatures(outer);
   }
@@ -267,7 +271,11 @@ class LibraryOut extends ANY
    */
   void featureIndexOrZeroForUniverse(AbstractFeature f)
   {
-    if (f.isUniverse())
+    if (f == null)
+      {
+        _data.writeInt(-1);
+      }
+    else if (f.isUniverse())
       {
         _data.writeInt(0);
       }
@@ -501,7 +509,14 @@ class LibraryOut extends ANY
       {
         code(f.code());
       }
-    innerFeatures(f);
+    if (f.isUniverse())
+      {
+        _data.writeInt(0);
+      }
+    else
+      {
+        innerFeatures(f);
+      }
   }
 
 
@@ -724,9 +739,12 @@ class LibraryOut extends ANY
         _data.writeInt(d.length);
         _data.write(d);
       }
-    else if (e instanceof AbstractCurrent)
+    else if (e instanceof AbstractCurrent ac)
       {
-        lastPos = exprKindAndPos(IR.ExprKind.Current, lastPos, e.pos());
+        if (!ac.type().featureOfType().isUniverse())
+          {
+            lastPos = exprKindAndPos(IR.ExprKind.Current, lastPos, e.pos());
+          }
       }
     else if (e instanceof If i)
       {

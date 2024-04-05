@@ -321,7 +321,7 @@ public class Fuzion extends Tool
       void processFrontEnd(Fuzion f, FrontEnd fe)
       {
         /*
-         * Save _module to a module file
+         * Save module to a fum-file
          */
         if (!Errors.any())
           {
@@ -332,7 +332,7 @@ public class Fuzion extends Tool
               {
                 n = n.substring(0, n.length() - sfx.length());
               }
-            var data = fe.module().data(n);
+            var data = fe.sourceModule().data(n);
             if (data != null)
               {
                 say(" + " + p);

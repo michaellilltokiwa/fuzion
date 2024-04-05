@@ -107,8 +107,8 @@ public abstract class LibraryCall extends AbstractCall
     g.freeze();
     Expr target = null;
     var feat = lib.callCalledFeature(index);
-    var f = lib.libraryFeature(feat);
-    if (f.outer().isUniverse())
+    _calledFeature = lib.libraryFeature(feat);
+    if (_calledFeature.outer().isUniverse())
       {
         target = new Universe();
       }
@@ -117,8 +117,7 @@ public abstract class LibraryCall extends AbstractCall
         target = s.pop();
       }
     _target = target;
-    _calledFeature = f;
-    _select = f.resultType().isOpenGeneric() ? lib.callSelect(index) : -1;
+    _select = _calledFeature.resultType().isOpenGeneric() ? lib.callSelect(index) : -1;
   }
 
 
