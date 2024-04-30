@@ -57,6 +57,7 @@ JAVA_FILES_FUIR_CFG          = $(wildcard $(SRC)/dev/flang/fuir/cfg/*.java      
 JAVA_FILES_OPT               = $(wildcard $(SRC)/dev/flang/opt/*.java           )
 JAVA_FILES_BE_INTERPRETER    = $(wildcard $(SRC)/dev/flang/be/interpreter/*.java)
 JAVA_FILES_BE_C              = $(wildcard $(SRC)/dev/flang/be/c/*.java          )
+JAVA_FILES_BE_DIAG           = $(wildcard $(SRC)/dev/flang/be/diag/*.java          )
 JAVA_FILES_BE_EFFECTS        = $(wildcard $(SRC)/dev/flang/be/effects/*.java    )
 JAVA_FILES_BE_JVM            = $(wildcard $(SRC)/dev/flang/be/jvm/*.java        )
 JAVA_FILES_BE_JVM_CLASSFILE  = $(wildcard $(SRC)/dev/flang/be/jvm/classfile/*.java)
@@ -82,6 +83,7 @@ CLASS_FILES_FUIR_CFG          = $(CLASSES_DIR)/dev/flang/fuir/cfg/__marker_for_m
 CLASS_FILES_OPT               = $(CLASSES_DIR)/dev/flang/opt/__marker_for_make__
 CLASS_FILES_BE_INTERPRETER    = $(CLASSES_DIR)/dev/flang/be/interpreter/__marker_for_make__
 CLASS_FILES_BE_C              = $(CLASSES_DIR)/dev/flang/be/c/__marker_for_make__
+CLASS_FILES_BE_DIAG           = $(CLASSES_DIR)/dev/flang/be/diag/__marker_for_make__
 CLASS_FILES_BE_EFFECTS        = $(CLASSES_DIR)/dev/flang/be/effects/__marker_for_make__
 CLASS_FILES_BE_JVM            = $(CLASSES_DIR)/dev/flang/be/jvm/__marker_for_make__
 CLASS_FILES_BE_JVM_CLASSFILE  = $(CLASSES_DIR)/dev/flang/be/jvm/classfile/__marker_for_make__
@@ -535,6 +537,11 @@ $(CLASS_FILES_BE_C): $(JAVA_FILES_BE_C) $(CLASS_FILES_FUIR) $(CLASS_FILES_FUIR_A
 	$(JAVAC) -cp $(CLASSES_DIR) -d $(CLASSES_DIR) $(JAVA_FILES_BE_C)
 	touch $@
 
+$(CLASS_FILES_BE_DIAG): $(JAVA_FILES_BE_DIAG) $(CLASS_FILES_FUIR) $(CLASS_FILES_FUIR_ANALYSIS_DFA)
+	mkdir -p $(CLASSES_DIR)
+	$(JAVAC) -cp $(CLASSES_DIR) -d $(CLASSES_DIR) $(JAVA_FILES_BE_DIAG)
+	touch $@
+
 $(CLASS_FILES_BE_EFFECTS): $(JAVA_FILES_BE_EFFECTS) $(CLASS_FILES_FUIR_CFG)
 	mkdir -p $(CLASSES_DIR)
 	$(JAVAC) -cp $(CLASSES_DIR) -d $(CLASSES_DIR) $(JAVA_FILES_BE_EFFECTS)
@@ -555,7 +562,7 @@ $(CLASS_FILES_BE_JVM_RUNTIME): $(JAVA_FILES_BE_JVM_RUNTIME) $(CLASS_FILES_UTIL)
 	$(JAVAC) -cp $(CLASSES_DIR) -d $(CLASSES_DIR) $(JAVA_FILES_BE_JVM_RUNTIME)
 	touch $@
 
-$(CLASS_FILES_TOOLS): $(JAVA_FILES_TOOLS) $(CLASS_FILES_FE) $(CLASS_FILES_ME) $(CLASS_FILES_OPT) $(CLASS_FILES_BE_C) $(CLASS_FILES_FUIR_ANALYSIS_DFA) $(CLASS_FILES_BE_EFFECTS) $(CLASS_FILES_BE_JVM) $(CLASS_FILES_BE_JVM_RUNTIME) $(CLASS_FILES_BE_INTERPRETER)
+$(CLASS_FILES_TOOLS): $(JAVA_FILES_TOOLS) $(CLASS_FILES_FE) $(CLASS_FILES_ME) $(CLASS_FILES_OPT) $(CLASS_FILES_BE_C) $(CLASS_FILES_BE_DIAG) $(CLASS_FILES_FUIR_ANALYSIS_DFA) $(CLASS_FILES_BE_EFFECTS) $(CLASS_FILES_BE_JVM) $(CLASS_FILES_BE_JVM_RUNTIME) $(CLASS_FILES_BE_INTERPRETER)
 	mkdir -p $(CLASSES_DIR)
 	$(JAVAC) -cp $(CLASSES_DIR) -d $(CLASSES_DIR) $(JAVA_FILES_TOOLS)
 	touch $@
@@ -1303,6 +1310,7 @@ lint/java:
 		$(JAVA_FILES_OPT) \
 		$(JAVA_FILES_BE_INTERPRETER) \
 		$(JAVA_FILES_BE_C) \
+		$(JAVA_FILES_BE_DIAG) \
 		$(JAVA_FILES_BE_EFFECTS) \
 		$(JAVA_FILES_BE_JVM) \
 		$(JAVA_FILES_BE_JVM_CLASSFILE) \
@@ -1330,6 +1338,7 @@ lint/javadoc:
 		$(JAVA_FILES_OPT) \
 		$(JAVA_FILES_BE_INTERPRETER) \
 		$(JAVA_FILES_BE_C) \
+		$(JAVA_FILES_BE_DIAG) \
 		$(JAVA_FILES_BE_EFFECTS) \
 		$(JAVA_FILES_BE_JVM) \
 		$(JAVA_FILES_BE_JVM_CLASSFILE) \

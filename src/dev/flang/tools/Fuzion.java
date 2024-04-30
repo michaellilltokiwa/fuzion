@@ -42,6 +42,8 @@ import java.util.TreeMap;
 import dev.flang.be.c.C;
 import dev.flang.be.c.COptions;
 
+import dev.flang.be.diag.Diagram;
+
 import dev.flang.be.effects.Effects;
 
 import dev.flang.be.interpreter.Interpreter;
@@ -100,6 +102,14 @@ public class Fuzion extends Tool
    */
   static enum Backend
   {
+    diagram("-diag")
+    {
+      void process(FuzionOptions options, FUIR fuir)
+      {
+        new Diagram(_xdfa_ ? new DFA(options, fuir).new_fuir() : fuir);
+      }
+    },
+
     interpreter("-interpreter")
     {
       boolean takesApplicationArgs()
