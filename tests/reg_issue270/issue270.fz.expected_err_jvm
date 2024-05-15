@@ -1,6 +1,0 @@
-
-error 1: CONTRACT FAILED: pre-condition on call to 'issue270'
-Call stack:
-precondition of issue270
-
-*** fatal errors encountered, stopping.

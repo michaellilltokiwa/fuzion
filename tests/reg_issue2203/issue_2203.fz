@@ -1,4 +1,0 @@
-a (some u32) is
-ex =>
-  say (a 4294967295).some
-ex
