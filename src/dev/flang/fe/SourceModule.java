@@ -1144,62 +1144,74 @@ A post-condition of a feature that does not redefine an inherited feature must s
     List<FeatureAndOuter> result = new List<>();
     var curOuter = outer;
     AbstractFeature inner = null;
-    var foundFieldInScope = false;
-    var lookingUpType = use == null;
+    // do not add fields if we already
+    // found a matching field
+    var foundField = false;
+    var isTypeLookup = use == null;
     do
       {
-        var foundFieldInThisScope = foundFieldInScope;
         var fs = FeatureName.getAll(declaredOrInheritedFeatures(curOuter), name);
-        if (fs.size() >= 1 && !lookingUpType && traverseOuter)
-          { // try to disambiguate fields as in
-            //
-            //  x := a
-            //  x := x + 1
-            //  x := 2 * x
-            List<FeatureName> fields = new List<>();
-            for (var e : fs.entrySet())
-              {
-                var fn = e.getKey();
-                for (var f : e.getValue())
+        if (isTypeLookup)
+          {
+            var o = curOuter; var i = inner;
+            result.addAll(
+              fs.values().stream().flatMap(x -> x.stream()).map(v -> new FeatureAndOuter(v, o, i)).iterator()
+            );
+          }
+        else
+          {
+            var foundFieldInThisScope = false;
+            if (!fs.isEmpty() && !foundField && traverseOuter)
+              { // try to disambiguate fields as in
+                //
+                //  x := a
+                //  x := x + 1
+                //  x := 2 * x
+                List<FeatureName> fields = new List<>();
+                for (var e : fs.entrySet())
                   {
-                    if (f.isField() && (f.outer()==null || f.outer().resultField() != f))
+                    var fn = e.getKey();
+                    for (var f : e.getValue())
                       {
-                        fields.add(fn);
-                      }
-                  }
-              }
-            if (!fields.isEmpty())
-              {
-                var f = curOuter instanceof Feature of
-                  ? of.findFieldDefInScope(name, use, inner)
-                  : null;
-                fs = new TreeMap<>(fs);
-                // if we found f in scope, remove all other entries, otherwise remove all entries within this since they are not in scope.
-                for (var fn : fields)
-                  {
-                    for (var fi : get(fs, fn))
-                      {
-                        if (f != null || fi.outer() == outer && (!(fi instanceof Feature fif) || !fif.isArtificialField()))
+                        if (f.isField() && (f.outer()==null || f.outer().resultField() != f))
                           {
-                            fs.remove(fn);
+                            fields.add(fn);
                           }
                       }
                   }
-                if (f != null)
+                if (!fields.isEmpty())
                   {
-                    add(fs, f.featureName(), f);
-                    foundFieldInThisScope = true;
+                    var f = curOuter instanceof Feature of
+                      ? of.findFieldDefInScope(name, use, inner)
+                      : null;
+                    fs = new TreeMap<>(fs);
+                    // if we found f in scope, remove all other entries, otherwise remove all entries within this since they are not in scope.
+                    for (var fn : fields)
+                      {
+                        for (var fi : get(fs, fn))
+                          {
+                            if (f != null || fi.outer() == outer && !(fi instanceof Feature fif && fif.isArtificialField()))
+                              {
+                                fs.remove(fn);
+                              }
+                          }
+                      }
+                    if (f != null)
+                      {
+                        add(fs, f.featureName(), f);
+                        foundFieldInThisScope = true;
+                      }
                   }
               }
-          }
 
-        for (var v : fs.values().stream().flatMap(x -> x.stream()).toList())
-          {
-            if ((lookingUpType || hidden != featureVisible(use.pos()._sourceFile, v)) &&
-                (!v.isField() || !foundFieldInScope))
+            for (var v : fs.values().stream().flatMap(x -> x.stream()).toList())
               {
-                result.add(new FeatureAndOuter(v, curOuter, inner));
-                foundFieldInScope = foundFieldInScope || v.isField() && foundFieldInThisScope;
+                if (hidden != featureVisible(use.pos()._sourceFile, v) &&
+                    !(v.isField() && foundField))
+                  {
+                    result.add(new FeatureAndOuter(v, curOuter, inner));
+                    foundField = foundField || v.isField() && foundFieldInThisScope;
+                  }
               }
           }
 
