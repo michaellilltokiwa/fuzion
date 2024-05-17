@@ -1145,11 +1145,12 @@ A post-condition of a feature that does not redefine an inherited feature must s
     var curOuter = outer;
     AbstractFeature inner = null;
     var foundFieldInScope = false;
+    var lookingUpType = use == null;
     do
       {
         var foundFieldInThisScope = foundFieldInScope;
         var fs = FeatureName.getAll(declaredOrInheritedFeatures(curOuter), name);
-        if (fs.size() >= 1 && use != null && traverseOuter)
+        if (fs.size() >= 1 && !lookingUpType && traverseOuter)
           { // try to disambiguate fields as in
             //
             //  x := a
@@ -1194,7 +1195,7 @@ A post-condition of a feature that does not redefine an inherited feature must s
 
         for (var v : fs.values().stream().flatMap(x -> x.stream()).toList())
           {
-            if ((use == null || (hidden != featureVisible(use.pos()._sourceFile, v))) &&
+            if ((lookingUpType || hidden != featureVisible(use.pos()._sourceFile, v)) &&
                 (!v.isField() || !foundFieldInScope))
               {
                 result.add(new FeatureAndOuter(v, curOuter, inner));
