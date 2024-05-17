@@ -45,10 +45,12 @@ import dev.flang.ast.AbstractCall;
 import dev.flang.ast.AbstractCase;
 import dev.flang.ast.AbstractFeature;
 import dev.flang.ast.AbstractType;
+import dev.flang.ast.Assign;
 import dev.flang.ast.AstErrors;
 import dev.flang.ast.Block;
 import dev.flang.ast.Call;
 import dev.flang.ast.Current;
+import dev.flang.ast.Destructure;
 import dev.flang.ast.Expr;
 import dev.flang.ast.Feature;
 import dev.flang.ast.FeatureName;
@@ -1119,7 +1121,7 @@ A post-condition of a feature that does not redefine an inherited feature must s
    * @param name the name of the feature
    *
    * @param use the call, assign or destructure we are trying to resolve, used
-   * to find field in scope, or null if fields should not be checked for scope
+   * to find field in scope, or null if we are looking up a type.
    *
    * @param traverseOuter true to collect all the features found in outer and
    * outer's outer (i.e., use is unqualified), false to search in outer only
@@ -1134,7 +1136,10 @@ A post-condition of a feature that does not redefine an inherited feature must s
   private List<FeatureAndOuter> lookup0(AbstractFeature outer, String name, Expr use, boolean traverseOuter, boolean hidden)
   {
     if (PRECONDITIONS) require
-      (outer.state().atLeast(State.RESOLVING_DECLARATIONS) || outer.isUniverse());
+      (use == null || use instanceof AbstractCall || use instanceof Assign || use instanceof Destructure);
+
+    // make sure declarations are resolved for all outers
+    _res.resolveDeclarations(outer);
 
     List<FeatureAndOuter> result = new List<>();
     var curOuter = outer;
@@ -1142,10 +1147,6 @@ A post-condition of a feature that does not redefine an inherited feature must s
     var foundFieldInScope = false;
     do
       {
-        if (!curOuter.state().atLeast(State.RESOLVING_DECLARATIONS))
-          {
-            _res.resolveDeclarations(curOuter);
-          }
         var foundFieldInThisScope = foundFieldInScope;
         var fs = FeatureName.getAll(declaredOrInheritedFeatures(curOuter), name);
         if (fs.size() >= 1 && use != null && traverseOuter)
@@ -1191,16 +1192,13 @@ A post-condition of a feature that does not redefine an inherited feature must s
               }
           }
 
-        for (var e : fs.entrySet())
+        for (var v : fs.values().stream().flatMap(x -> x.stream()).toList())
           {
-            for (var v : e.getValue())
+            if ((use == null || (hidden != featureVisible(use.pos()._sourceFile, v))) &&
+                (!v.isField() || !foundFieldInScope))
               {
-                if ((use == null || (hidden != featureVisible(use.pos()._sourceFile, v))) &&
-                    (!v.isField() || !foundFieldInScope))
-                  {
-                    result.add(new FeatureAndOuter(v, curOuter, inner));
-                    foundFieldInScope = foundFieldInScope || v.isField() && foundFieldInThisScope;
-                  }
+                result.add(new FeatureAndOuter(v, curOuter, inner));
+                foundFieldInScope = foundFieldInScope || v.isField() && foundFieldInThisScope;
               }
           }
 
@@ -1250,7 +1248,6 @@ A post-condition of a feature that does not redefine an inherited feature must s
     FeatureAndOuter result = FeatureAndOuter.ERROR;
     if (outer != Types.f_ERROR && name != Types.ERROR_NAME)
       {
-        _res.resolveDeclarations(outer);
         var type_fs = new List<AbstractFeature>();
         var nontype_fs = new List<AbstractFeature>();
         var fs = lookup(outer, name, null, traverseOuter, false);

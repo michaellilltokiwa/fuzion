@@ -501,7 +501,8 @@ public class Resolution extends ANY
 
 
   /**
-   * Make sure feature f is in state RESOLVED_DECLARATIONS. This is used for
+   * Make sure feature f and all its outers are
+   * in state RESOLVED_DECLARATIONS. This is used for
    * recursive resolution during RESOLVING_TYPES when declarations in a
    * referenced feature are needed.
    *
@@ -515,6 +516,11 @@ public class Resolution extends ANY
 
     if (af instanceof Feature f)
       {
+        var outer = f.outer();
+        if (outer != null && !outer.state().atLeast(State.RESOLVED_DECLARATIONS))
+          {
+            resolveDeclarations(outer);
+          }
         f.scheduleForResolution(this);
         f.resolveInheritance(this);
         f.resolveDeclarations(this);
