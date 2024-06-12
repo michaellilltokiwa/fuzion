@@ -80,28 +80,53 @@ int fzE_unsetenv(const char *name){
   return -1;
 }
 
+struct fzE_dir_info
+{
+  WIN32_FIND_DATA findFileData;
+  HANDLE hFind;
+}
+
 
 // NYI
 void fzE_opendir(const char *pathname, int64_t * result) {
-  result[0] = 0;
-  result[1] = -1;
+
+  fzE_dir_info* dir_info = fzE_malloc_safe(sizeof(pthread_t));
+
+  char dirSpec[MAX_PATH];
+  snprintf(dirSpec, MAX_PATH, "%s\\*", directory);
+  dir_info.hFind = FindFirstFile(dirSpec, &(dir_info.findFileData));
+
+  if (dir_info.hFind == INVALID_HANDLE_VALUE) {
+    fzE_free(dir_info);
+    result[0] = 0;
+    result[1] = -1;
+  }
+  else {
+    result[0] = dir_info;
+    result[1] = 0;
+  }
 }
 
 
 // NYI
 char * fzE_readdir(intptr_t * dir) {
-  return NULL;
+  // NYI memcopy
+  char * result = dir.findFileData.cFileName;
+  // NYI free old
+  FindNextFile(dir.hFind, &(dir.findFileData));
+  return result;
 }
 
 
 // NYI
 int fzE_read_dir_has_next(intptr_t * dir) {
-  return 1;
+  return dir.hFind == INVALID_HANDLE_VALUE;
 }
 
 
 // NYI
 int fzE_closedir(intptr_t * dir) {
+  FindClose(hFind);
   return -1;
 }
 
