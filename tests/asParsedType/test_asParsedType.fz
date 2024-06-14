@@ -24,6 +24,7 @@
 
 say (f64.exp 1.0)
 say (f64.ℇ)
+say (f64.ℇ = f64.exp 1.0)
+say (f64.exp 1.0).cast_to_u64
+say f64.ℇ.cast_to_u64
 
-say (f32.exp 1.0)
-say (f32.ℇ)
