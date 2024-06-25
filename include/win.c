@@ -808,3 +808,18 @@ void fzE_file_open(char * file_name, int64_t * open_results, int8_t mode)
   }
   open_results[1] = (int64_t)errno;
 }
+
+void * fzE_stdin()
+{
+  return GetStdHandle(STD_INPUT_HANDLE);
+}
+
+void * fzE_stdout()
+{
+  return GetStdHandle(STD_OUTPUT_HANDLE);
+}
+
+void * fzE_stderr()
+{
+  return GetStdHandle(STD_ERROR_HANDLE);
+}

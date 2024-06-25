@@ -745,3 +745,18 @@ void fzE_file_open(char * file_name, int64_t * open_results, int8_t mode)
     }
   open_results[1] = (int64_t)errno;
 }
+
+void * fzE_stdin()
+{
+  return stdin;
+}
+
+void * fzE_stdout()
+{
+  return stdout;
+}
+
+void * fzE_stderr()
+{
+  return stderr;
+}

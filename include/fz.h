@@ -264,6 +264,22 @@ int fzE_pipe_close(int64_t desc);
 void fzE_file_open(char * file_name, int64_t * open_results, int8_t mode);
 
 
+/**
+ * get a pointer to stdin
+ */
+void * fzE_stdin();
+
+/**
+ * get a pointer to stdout
+ */
+void * fzE_stdout();
+
+/**
+ * get a pointer to stderr
+ */
+void * fzE_stderr();
+
+
 #ifdef FUZION_LINK_JVM
 
 #include <jni.h>

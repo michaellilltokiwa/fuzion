@@ -434,7 +434,7 @@ public class Intrinsics extends ANY
         );
 
     put("fuzion.sys.fileio.mmap"  , (c,cl,outer,in) -> CExpr.call("fzE_mmap", new List<CExpr>(
-      A0.castTo("FILE * "),   // file
+      A0.castTo("FILE *"),   // file
       A1.castTo("off_t"),     // offset
       A2.castTo("size_t"),    // size
       A3.castTo("int *")      // int[1] contains success=0 or error=-1
@@ -475,11 +475,11 @@ public class Intrinsics extends ANY
                    CExpr.exit(1)));
 
     put("fuzion.sys.stdin.stdin0"      , (c,cl,outer,in) ->
-      new CIdent("stdin").castTo("fzT_1i64").ret());
+      CExpr.call("fzE_stdin", new List<>()).castTo("fzT_1i64").ret());
     put("fuzion.sys.out.stdout"      , (c,cl,outer,in) ->
-      new CIdent("stdout").castTo("fzT_1i64").ret());
+      CExpr.call("fzE_stdout", new List<>()).castTo("fzT_1i64").ret());
     put("fuzion.sys.err.stderr"      , (c,cl,outer,in) ->
-      new CIdent("stderr").castTo("fzT_1i64").ret());
+      CExpr.call("fzE_stderr", new List<>()).castTo("fzT_1i64").ret());
 
     put("fuzion.sys.process.create", (c,cl,outer,in) ->
       CExpr.call("fzE_process_create", new List<>(
