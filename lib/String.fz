@@ -228,12 +228,12 @@ public String ref : property.equatable, property.hashable, property.orderable is
       if t ≥ base
         parse_error "invalid integer digit for base $base"
       else
-        hi := hi *? base;
-        v := if (neg) hi -? t
-              else     hi +? t
+        hi1 := hi *? base;
+        v := if (neg) hi1 -? t
+              else     hi1 +? t
         match s
-          c Cons =>
-            parse_integer T base neg v c.head c.tail
+          c1 Cons =>
+            parse_integer T base neg v c1.head c1.tail
           nil =>
             v ? nil => parse_error "numerical overflow"
               | u T => u

@@ -991,29 +991,7 @@ A post-condition of a feature that does not redefine an inherited feature must s
           }
         else
           {
-            boolean error = true;
-            if (f.isField() && existing.isField())
-              {
-                error = false;
-                var existingFields = FeatureName.getAll(df, fn.baseName(), 0);
-                for (var e : existingFields.values())
-                  {
-                    // NYI: set error if e.declaredInBlock() == f.declaredInBlock()
-                    if (((Feature)e).isDeclaredInMainBlock() && f.isDeclaredInMainBlock()) // NYI: Cast!
-                      {
-                        error = true;
-                      }
-                  }
-                if (!error)
-                  {
-                    fn = FeatureName.get(fn.baseName(), 0, existingFields.size());
-                    f.setFeatureName(fn);
-                  }
-              }
-            if (error)
-              {
-                AstErrors.duplicateFeatureDeclaration(f.pos(), f, existing);
-              }
+            AstErrors.duplicateFeatureDeclaration(f.pos(), f, existing);
           }
       }
     df.put(fn, f);
@@ -1169,68 +1147,22 @@ A post-condition of a feature that does not redefine an inherited feature must s
     List<FeatureAndOuter> result = new List<>();
     var curOuter = outer;
     AbstractFeature inner = null;
-    var foundFieldInScope = false;
     do
       {
         if (!curOuter.state().atLeast(State.RESOLVING_DECLARATIONS))
           {
             _res.resolveDeclarations(curOuter);
           }
-        var foundFieldInThisScope = foundFieldInScope;
         var fs = FeatureName.getAll(declaredOrInheritedFeatures(curOuter), name);
-        if (fs.size() >= 1 && use != null && traverseOuter)
-          { // try to disambiguate fields as in
-            //
-            //  x := a
-            //  x := x + 1
-            //  x := 2 * x
-            List<FeatureName> fields = new List<>();
-            for (var e : fs.entrySet())
-              {
-                var fn = e.getKey();
-                for (var f : e.getValue())
-                  {
-                    if (f.isField() && (f.outer()==null || f.outer().resultField() != f))
-                      {
-                        fields.add(fn);
-                      }
-                  }
-              }
-            if (!fields.isEmpty())
-              {
-                var f = curOuter instanceof Feature of
-                  ? of.findFieldDefInScope(name, use, inner)
-                  : null;
-                fs = new TreeMap<>(fs);
-                // if we found f in scope, remove all other entries, otherwise remove all entries within this since they are not in scope.
-                for (var fn : fields)
-                  {
-                    for (var fi : get(fs, fn))
-                      {
-                        if (f != null || fi.outer() == outer && (!(fi instanceof Feature fif) || !fif.isArtificialField()))
-                          {
-                            fs.remove(fn);
-                          }
-                      }
-                  }
-                if (f != null)
-                  {
-                    add(fs, f.featureName(), f);
-                    foundFieldInThisScope = true;
-                  }
-              }
-          }
 
         for (var e : fs.entrySet())
           {
             for (var v : e.getValue())
               {
                 if ((use == null || (hidden != featureVisible(use.pos()._sourceFile, v))) &&
-                    (!v.isField() || !foundFieldInScope) &&
                     (use == null || /* NYI: do we have to evaluate inScope for all possible outers? */ inScope(use, v)))
                   {
                     result.add(new FeatureAndOuter(v, curOuter, inner));
-                    foundFieldInScope = foundFieldInScope || v.isField() && foundFieldInThisScope;
                   }
               }
           }
@@ -1284,10 +1216,13 @@ A post-condition of a feature that does not redefine an inherited feature must s
                 definition.add((Stack)stacks.get(0).clone());
               }
             // fields are visited by their outers
-            if (usage.isEmpty() && f2.isRoutine())
+            if (usage.isEmpty())
               {
                 stacks.get(0).push(f2);
-                f2.impl().visit(this, outer);
+                if (f2.impl().expr() != null)
+                  {
+                    f2.impl().expr().visit(this, outer);
+                  }
                 stacks.get(0).pop();
               }
             return f2;
@@ -1322,6 +1257,10 @@ A post-condition of a feature that does not redefine an inherited feature must s
           }
 
         // NYI: check(usage.size() == 1, definition.size() == 1);
+        if (usage.isEmpty() || definition.isEmpty())
+          {
+            return false;
+          }
 
         var u = new ArrayList<>(usage.get(0));
         var d = new ArrayList<>(definition.get(0));

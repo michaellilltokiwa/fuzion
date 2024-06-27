@@ -1806,7 +1806,7 @@ public abstract class AbstractFeature extends Expr implements Comparable<Abstrac
       (state().atLeast(State.RESOLVED_TYPES) ? resultType() : "***not yet known***") + " " +
       (inherits().isEmpty() ? "" : ": " + inherits() + " ") +
       ((contract() == Contract.EMPTY_CONTRACT) ? "" : "🤝 ")
-       +  "is " + kind();
+       +  "is " + kind() + (isRoutine() ? code().toString() : "");
 
   }
 

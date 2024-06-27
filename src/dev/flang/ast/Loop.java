@@ -27,6 +27,8 @@ Fuzion language implementation.  If not, see <https://www.gnu.org/licenses/>.
 package dev.flang.ast;
 
 import java.util.Iterator;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import dev.flang.util.ANY;
 import dev.flang.util.FuzionConstants;
@@ -187,6 +189,9 @@ public class Loop extends ANY
   private final SourcePosition _elsePos;
 
 
+  private final Set<String> _indexVarNames;
+
+
   /*----------------------------  variables  ----------------------------*/
 
 
@@ -209,6 +214,9 @@ public class Loop extends ANY
    * routines, the first for the prolog, the other for the rest of the loop.
    */
   private Feature[] _loopElse;
+
+
+
 
 
   /*--------------------------  constructors  ---------------------------*/
@@ -273,6 +281,7 @@ public class Loop extends ANY
       {
         AstErrors.loopElseBlockRequiresWhileOrIterator(pos, _elseBlock0);
       }
+    _indexVarNames = _indexVars.stream().map(x -> x.featureName().baseName()).collect(Collectors.toSet());
 
     var hasImplicitResult = defaultSuccessAndElseBlocks(whileCond, untilCond);
     // if there are no iteratees then else block may access every loop var.
@@ -312,6 +321,7 @@ public class Loop extends ANY
         block = Block.fromExpr(new If(whileCond.pos(), whileCond, block, _elseBlock0));
       }
     var p = block.pos();
+    fullyQualifyCallsToIndexVars(block);
     Feature loop = new Feature(p,
                                Visi.PRIV,
                                0,
@@ -331,6 +341,31 @@ public class Loop extends ANY
 
 
   /*-----------------------------  methods  -----------------------------*/
+
+
+  private void fullyQualifyCallsToIndexVars(Expr expr)
+  {
+    if (expr != null)
+      {
+        expr.visit(new FeatureVisitor() {
+          @Override
+          public Expr action(Call c, AbstractFeature outer)
+          {
+            if (c.target() == null && c.actuals().size() == 0 && _indexVarNames.contains(c.name()))
+              {
+                c._target = new This(new List<>(new ParsedName(SourcePosition.notAvailable, _rawLoopName)));
+              }
+            return c;
+          }
+          @Override
+          public Expr action(Feature f, AbstractFeature outer)
+          {
+            fullyQualifyCallsToIndexVars(f.impl().expr());
+            return f;
+          }
+        }, null);
+      }
+  }
 
 
   /**
@@ -506,10 +541,12 @@ public class Loop extends ANY
     int i = -1;
     int iteratorCount = 0;
     Iterator<Feature> ivi = _indexVars.iterator();
+    Iterator<Feature> nvi = _nextValues.iterator();
     while (ivi.hasNext())
       {
         i++;
         Feature f = ivi.next();
+        Feature n = nvi.next();
 
         // iterators should have been replaced by FieldDef in `addIterators`
         if (CHECKS) check
@@ -517,7 +554,9 @@ public class Loop extends ANY
 
         var p = f.pos();
         var ia = new Call(p, f.featureName().baseName());
-        var na = new Call(p, f.featureName().baseName());
+        var na = n.impl()._kind == Impl.Kind.FieldIter
+          ? new Call(p, new Call(p, _rawLoopName + "list" + iteratorCount + "cons"), "head")
+          : n.impl().expr();
         var type = (f.impl()._kind == Impl.Kind.FieldDef)
           ? null        // index var with type inference from initial actual
           : _indexVars.get(i).returnType().functionReturnType();
@@ -556,11 +595,9 @@ public class Loop extends ANY
     boolean mustDeclareLoopElse = _loopElse != null;
     int iteratorCount = 0;
     var ivi = _indexVars .iterator();
-    var nvi = _nextValues.iterator();
     while (ivi.hasNext())
       {
         Feature f = ivi.next();
-        Feature n = nvi.next();
         if (f.impl()._kind == Impl.Kind.FieldIter)
           {
             if (mustDeclareLoopElse)
@@ -587,7 +624,6 @@ public class Loop extends ANY
             ParsedType nilType = new ParsedType(p, "nil", new List<>(), null);
             ParsedType consType = new ParsedType(p, "Cons", new List<>(), null);
             Call next1    = new Call(p, new Call(p, listName + "cons"), "head");
-            Call next2    = new Call(p, new Call(p, listName + "cons"), "head");
             List<Expr> prolog2 = new List<>();
             List<Expr> nextIt2 = new List<>();
             Case match1c = new Case(p, consType, listName + "cons", new Block(prolog2));
@@ -601,16 +637,11 @@ public class Loop extends ANY
             prologBlock = prolog2;
             nextItBlock = nextIt2;
             f.setImpl(new Impl(f.impl().pos, next1, Impl.Kind.FieldDef));
-            n.setImpl(new Impl(n.impl().pos, next2, Impl.Kind.FieldDef));
             f._isLoopIterator = true;
             f._loopIteratorListName = listName;
-            n._isLoopIterator = true;
-            n._loopIteratorListName = listName;
           }
         prologBlock.add(f);
-        nextItBlock.add(n);
         f._isIndexVarUpdatedByLoop = true;
-        n._isIndexVarUpdatedByLoop = true;
       }
     return new Pair<>(prologBlock, nextItBlock);
   }

@@ -53,10 +53,10 @@ private:public Mutable_Linked_List(# mutate effect to be used to create mutable 
 
   # append an element to the linked list
   #
-  public append(data T) =>
+  public append(el T) =>
     match n.get
-      nil => n <- Mutable_Linked_List LM T data
-      ll Mutable_Linked_List => ll.append data
+      nil => n <- Mutable_Linked_List LM T el
+      ll Mutable_Linked_List => ll.append el
 
 
   # append an entire list to this linked list

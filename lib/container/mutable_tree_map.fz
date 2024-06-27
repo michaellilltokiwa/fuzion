@@ -107,8 +107,8 @@ is
     # is called first. then the AVL rebalancing is done
     #
     put_recursively(node option Entry) tuple (option Entry) (option VAL) =>
-      (new_node, old_val) := insert_or_modify_entries node
-      (rebalance new_node, old_val)
+      (new_node, o) := insert_or_modify_entries node
+      (rebalance new_node, o)
 
 
     # helper feature to add a mapping to this map. this feature
@@ -126,19 +126,19 @@ is
           (option new_node, option VAL nil)
         e Entry =>
           if k < e.key
-            (node, old_val) := put_recursively e.left.get
-            e.left <- node
-            (option e, old_val)
+            (n, o) := put_recursively e.left.get
+            e.left <- n
+            (option e, o)
           else if e.key < k
-            (node, old_val) := put_recursively e.right.get
-            e.right <- node
-            (option e, old_val)
+            (n, o) := put_recursively e.right.get
+            e.right <- n
+            (option e, o)
           else
-            old_val := e.val
+            o := e.val
             new_node := Entry k v
             new_node.left <- e.left.get
             new_node.right <- e.right.get
-            (option new_node, option old_val)
+            (option new_node, option o)
 
 
     (new_root, old_val) := put_recursively root.get
@@ -151,7 +151,7 @@ is
   # returns the value that k previously mapped to, or nil if
   # no mapping was actually removed
   #
-  public remove(k KEY) option VAL =>
+  public remove(key KEY) option VAL =>
     # helper feature to remove a mapping from this map. this feature
     # additionally takes the node we are currently working at, and
     # also returns the reference to the node that was worked on.
@@ -160,8 +160,8 @@ is
     # mapping is called first. then the AVL rebalancing is done
     #
     remove_recursively(k KEY, node option Entry) tuple (option Entry) (option VAL) =>
-      (new_node, old_val) := remove_or_modify_entries k node
-      (rebalance new_node, old_val)
+      (new_node, o) := remove_or_modify_entries k node
+      (rebalance new_node, o)
 
 
     # search the subtree whose root is the given node for its minimal
@@ -189,32 +189,32 @@ is
         nil => (option Entry nil, option VAL nil)
         e Entry =>
           if k < e.key
-            (node, old_val) := remove_recursively k e.left.get
-            e.left <- node
-            (option e, old_val)
+            (n, o) := remove_recursively k e.left.get
+            e.left <- n
+            (option e, o)
           else if e.key < k
-            (node, old_val) := remove_recursively k e.right.get
-            e.right <- node
-            (option e, old_val)
+            (n, o) := remove_recursively k e.right.get
+            e.right <- n
+            (option e, o)
           else
-            old_val := e.val
+            o := e.val
             match e.left.get
-              nil => (e.right.get, option old_val)
+              nil => (e.right.get, option o)
               l Entry =>
                 match e.right.get
-                  nil => (option l, option old_val)
+                  nil => (option l, option o)
                   r Entry =>
                     m := minimum e.right.get
 
                     new_node := Entry m.get.key m.get.val
                     new_node.left <- l
 
-                    (nr, old_val) := remove_recursively m.get.key e.right.get
+                    (nr, o1) := remove_recursively m.get.key e.right.get
                     new_node.right <- nr
-                    (option new_node, option old_val)
+                    (option new_node, option o1)
 
 
-    (new_root, old_val) := remove_recursively k root.get
+    (new_root, old_val) := remove_recursively key root.get
     root <- new_root
     old_val
 
@@ -228,8 +228,8 @@ is
     # returns the height of the subtree whose root is the given
     # node, or -1 if an empty subtree is given
     #
-    height(node option Entry) i32 =>
-      match node
+    height(n option Entry) i32 =>
+      match n
         nil => -1
         e Entry => e.height.get
 
@@ -237,8 +237,8 @@ is
     # returns the (AVL) balance factor of the given node, or
     # 0 if a nil node is given
     #
-    balance_factor(node option Entry) i32 =>
-      match node
+    balance_factor(n option Entry) i32 =>
+      match n
         nil => 0
         e Entry => (height e.right.get) - (height e.left.get)
 
@@ -246,8 +246,8 @@ is
     # recalculates and updates the heights of the subtrees in the
     # subtree whose root is the given node
     #
-    fix_height(node option Entry) =>
-      match node
+    fix_height(n option Entry) =>
+      match n
         nil =>
         e Entry =>
           lh := height e.left.get
@@ -258,16 +258,16 @@ is
 
     # rotate right at the given node
     #
-    rotate_right(node option Entry) option Entry =>
+    rotate_right(n option Entry) option Entry =>
       # because this feature is only called when the tree is out of balance,
       # i.e. the left subtree has more nodes than the right one, we can safely
       # assume here that node and node.left are not nil.
-      l := node.get.left.get
+      l := n.get.left.get
 
-      node.get.left <- l.get.right.get
-      l.get.right <- node
+      n.get.left <- l.get.right.get
+      l.get.right <- n
 
-      fix_height node
+      fix_height n
       fix_height l
 
       l
@@ -275,14 +275,14 @@ is
 
     # rotate left at the given node
     #
-    rotate_left(node option Entry) option Entry =>
+    rotate_left(n option Entry) option Entry =>
       # because this feature is only called when the tree is out of balance,
       # i.e. the right subtree has more nodes than the left one, we can safely
       # assume here that node and node.right are not nil.
-      r := node.get.right.get
+      r := n.get.right.get
 
-      node.get.right <- r.get.left.get
-      r.get.left <- node
+      n.get.right <- r.get.left.get
+      r.get.left <- n
 
       fix_height node
       fix_height r
@@ -325,8 +325,8 @@ is
   #
   fold(B type, init B, f (B, Entry) -> B) B =>
     fold0(init B, node option Entry) B =>
-      node ? nil => init
-           | n Entry => fold0 (f (fold0 init n.left.get) n) n.right.get
+      node ? nil => fold0.this.init
+           | n Entry => fold0 (f (fold0 fold0.this.init n.left.get) n) n.right.get
 
     fold0 init root.get
 

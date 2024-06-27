@@ -21,7 +21,7 @@ module branch is
   public alt(I, R, O type, p Sequence (Parser I R O)) Parser I R O =>
     parser I R O (input ->
       p
-        .map (p -> p.call input)
+        .map (p0 -> p0.call input)
         .filter (r -> match r
                         success => true
                         error => false)

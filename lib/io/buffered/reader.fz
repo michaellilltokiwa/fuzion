@@ -209,22 +209,21 @@ public read_delimiter (delim u8, strip_cr bool) String|io.end_of_file ! reader =
     mi.go String ()->
       res := (mutate.array u8).new mi
 
+      # trailing carriage returns are dropped
+      add_to_res(a Sequence u8) unit =>
+        if !a.is_empty
+          a1 := if strip_cr && a.last = character_encodings.ascii.cr
+                    (a.slice 0 a.count-1)
+                  else
+                    a
+          for b in a1 do
+            res.add b
+
       while
         match reader.read
           io.end_of_file =>
             false
           a array =>
-
-            # trailing carriage returns are dropped
-            add_to_res(a Sequence u8) unit =>
-              if !a.is_empty
-                a1 := if strip_cr && a.last = character_encodings.ascii.cr
-                          (a.slice 0 a.count-1)
-                        else
-                          a
-                for b in a1 do
-                  res.add b
-
             match (container.searchable_sequence a).index_of delim
               idx i32 =>
                 add_to_res (a.slice 0 idx)
@@ -278,9 +277,9 @@ public read_lines array String ! reader =>
 # or end_of_file is reached.
 #
 public read_line_while(f String -> bool) ! reader =>
-  for s := "",  s+"\n"+match rl
-                        s String => s
-                        io.end_of_file => panic "unreachable code path"
+  for s := "",  s + "\n" + match rl
+                             s1 String => s1
+                             io.end_of_file => panic "unreachable code path"
       rl := io.buffered.read_line
   while match rl
           str String => f str

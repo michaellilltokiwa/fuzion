@@ -85,14 +85,15 @@ is
       uint (data ++ zeros (other.as_i32 / 32)) unit << other % (uint 32)
     else
       shift := other.as_u32
-      (l,carry_over) := data
+      # NYI: BUG: Ambiguous targets found for call to 'carry_over'
+      (l,co) := data
         .reverse
         .reduce ((list u32).empty, u32 0) (r,t ->
           (res, carry_over) := r
           next := t<<shift | carry_over
           ([next] ++ res, t >> ((u32 32)-shift))
         )
-      uint ([carry_over] ++ l) unit
+      uint ([co] ++ l) unit
 
 
   # return two sequences of equal length
@@ -165,7 +166,8 @@ is
   =>
     two_pow_32 := ((u64 1)<<32)
     (b1, b2) := equalize other
-    (r, _) := b1
+    # NYI: BUG: Ambiguous targets found for call to 'r'
+    (r1, _) := b1
       .zip b2 (x, y -> (x,y))
       .reverse_list
       .reduce ((list u32).empty, u64 0) (r,t ->
@@ -176,7 +178,7 @@ is
 
         ([difference.low32bits] ++ res, if difference ≥ two_pow_32 then u64 0 else u64 1)
       )
-    uint r unit
+    uint r1 unit
 
 
   # return an array of length n
