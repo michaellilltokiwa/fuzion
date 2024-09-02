@@ -297,3 +297,37 @@ public effect is
     safety: effect.this.env.abortable
   =>
     abort
+
+
+  public type.using(E type : effect, T type, efct E, code ()->T) T =>
+    E.instate T efct code
+
+  public type.using(E1 type : effect, E2 type : effect, T type, efct1 E1, efct2 Lazy E2, code ()->T) T =>
+    E1.instate T efct1 ()->
+      E2.instate T efct2 code
+
+  public type.using(E1 type : effect, E2 type : effect, E3 type : effect, T type, efct1 E1, efct2 Lazy E2, efct3 Lazy E3, code ()->T) T =>
+    E1.instate T efct1 ()->
+      E2.instate T efct2 ()->
+        E3.instate T efct3 code
+
+  public type.using(E1 type : effect, E2 type : effect, E3 type : effect, E4 type : effect, T type, efct1 E1, efct2 Lazy E2, efct3 Lazy E3, efct4 Lazy E4, code ()->T) T =>
+    E1.instate T efct1 ()->
+      E2.instate T efct2 ()->
+        E3.instate T efct3 ()->
+          E4.instate T efct4 code
+
+  public type.using(E1 type : effect, E2 type : effect, E3 type : effect, E4 type : effect, E5 type : effect, T type, efct1 E1, efct2 Lazy E2, efct3 Lazy E3, efct4 Lazy E4, efct5 Lazy E5, code ()->T) T =>
+    E1.instate T efct1 ()->
+      E2.instate T efct2 ()->
+        E3.instate T efct3 ()->
+          E4.instate T efct4 ()->
+            E5.instate T efct5 code
+
+  public type.using(E1 type : effect, E2 type : effect, E3 type : effect, E4 type : effect, E5 type : effect, E6 type : effect, T type, efct1 E1, efct2 Lazy E2, efct3 Lazy E3, efct4 Lazy E4, efct5 Lazy E5, efct6 Lazy E6, code ()->T) T =>
+    E1.instate T efct1 ()->
+      E2.instate T efct2 ()->
+        E3.instate T efct3 ()->
+          E4.instate T efct4 ()->
+            E5.instate T efct5 ()->
+              E6.instate T efct6 code

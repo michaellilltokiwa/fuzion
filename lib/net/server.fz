@@ -82,18 +82,24 @@ is
             #   fuzion.sys.net.close desc
 
             lm : mutate is
-            res := lm.instate_self ()->
-              (io.buffered.reader lm (read_provider desc) 1024).with ()->
-                (io.buffered.writer lm (write_provider desc) 1024).with ()->
-                  (net.channel desc).instate_self ()->
-                    ch.handle_connection lm
+
+            res :=
+              (effect.using
+                # the types
+                lm (try (io.buffered.reader lm)) (try (io.buffered.writer lm)) (io.buffered.reader lm) (io.buffered.writer lm) net.channel T
+                # the arguments
+                lm
+                (try (io.buffered.reader lm))
+                (try (io.buffered.writer lm))
+                (io.buffered.reader lm (read_provider desc) 1024)
+                (io.buffered.writer lm (write_provider desc) 1024)
+                (net.channel desc)
+                (() -> ch.handle_connection lm))
+
 
             _ := fuzion.sys.net.close desc
 
-            res.bind T x->
-              match x
-                v T => v
-                e error => e
+            res
 
           e error =>
             # NYI we may not need to close server on every error...
