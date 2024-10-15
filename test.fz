@@ -1,0 +1,17 @@
+ex is
+
+  a option i32 := 4
+  b option i32 := nil
+
+  say (a.and_then x->x+5)
+  say (b.and_then x->x+5)
+  say (a.or ()->5)
+  _ := try (option i32) unit ()->
+    say (b.or ()->5)
+
+  # y is
+
+  #   c option y.this := y.this
+  #   say (c.and_then x->y.this)
+
+  # _ := y

@@ -1593,7 +1593,7 @@ public class Call extends AbstractCall
           (tt.feature(),
            tc);
       }
-    if (!calledFeature().isOuterRef())
+    if (!calledFeature().isOuterRef() && !(t.isChoice() && t.choiceGenerics(context).stream().allMatch(x -> !x.containsThisType()))/* NYI: this logic is likely flawed... */)
       {
         var inner = ResolvedNormalType.newType(calledFeature().selfType(),
                                           _target.type());
@@ -2088,7 +2088,7 @@ public class Call extends AbstractCall
             var i = g.index();
             var gt = _generics.get(i);
             var nt = gt == Types.t_UNDEFINED ? actualType
-                                            : gt.union(actualType, context);
+                                             : gt.union(actualType, context);
             if (nt == Types.t_ERROR)
               {
                 conflict[i] = true;

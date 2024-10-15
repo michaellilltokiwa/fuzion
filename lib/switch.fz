@@ -102,6 +102,38 @@ is
                 | B   => default
 
 
+  # synonym for infix >>=
+  #
+  public and_then (f A -> switch.this) switch.this =>
+    match switch.this
+      a A => f a
+      b B => b
+
+
+  # returns o if outcome is ok, otherwise return the outcome's own
+  # error.
+  public and (O type, o switch.this) switch.this =>
+    match switch.this
+      a A => o
+      b B => b
+
+
+  # if this switch is nil return the result of f
+  # otherwise just return this switch.
+  #
+  public or (f Lazy (switch.this)) switch.this =>
+    if ok then switch.this else f()
+
+
+  # unwraps an switch if it exists, returns default value otherwise.
+  #
+  public or_else(default Lazy A)
+  =>
+    switch.this ? v A => v
+                |   B => default
+
+
+
   # converts switch into a list of either a single element in case
   # switch.this.exists or `nil`otherwise
   #
