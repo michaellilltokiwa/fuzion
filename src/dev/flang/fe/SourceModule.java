@@ -717,12 +717,9 @@ part of the (((inner features))) declarations of the corresponding
     var d = data(outer);
     var fn = inner.featureName();
     var doi = d._declaredOrInheritedFeatures;
-    if (doi != null)
-      {
-        if (CHECKS) check
-          (!doi.containsKey(fn) || doi.get(fn).size() == 1 && doi.get(fn).getFirst() == inner);
-        add(doi, fn, inner);
-      }
+    if (CHECKS) check
+      (!doi.containsKey(fn) || doi.get(fn).size() == 1 && doi.get(fn).getFirst() == inner);
+    add(doi, fn, inner);
   }
 
 

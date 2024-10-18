@@ -112,7 +112,7 @@ public abstract class UnresolvedType extends AbstractType implements HasSourcePo
    *
    */
   List<AbstractType> _generics;
-  public final List<AbstractType> generics() { return _generics; }
+  public List<AbstractType> generics() { return _generics; }
 
 
   /**
@@ -162,6 +162,11 @@ public abstract class UnresolvedType extends AbstractType implements HasSourcePo
 
 
   /*--------------------------  constructors  ---------------------------*/
+
+  public UnresolvedType(SourcePosition pos)
+  {
+    _pos = pos;
+  }
 
 
   /**

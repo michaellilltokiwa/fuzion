@@ -107,6 +107,13 @@ public class DotType extends ExprWithPos
   }
 
 
+  @Override
+  public UnresolvedType asParsedType()
+  {
+    return new ParsedDotType(_lhs);
+  }
+
+
   /**
    * determine the static type of all expressions and declared features in this feature
    *

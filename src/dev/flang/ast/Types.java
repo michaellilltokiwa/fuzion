@@ -211,11 +211,12 @@ public class Types extends ANY
       f_id                      = universe.get(mod, "id", 2);
       f_void                    = universe.get(mod, "void", 0);
       f_choice                  = universe.get(mod, "choice", 1);
-      f_TRUE                    = universe.get(mod, "TRUE", 0);
-      f_FALSE                   = universe.get(mod, "FALSE", 0);
       f_true                    = universe.get(mod, "true", 0);
       f_false                   = universe.get(mod, "false", 0);
       f_bool                    = universe.get(mod, "bool", 0);
+      var f_boolean             = universe.get(mod, "boolean", 0);
+      f_TRUE                    = f_boolean.typeFeature().get(mod, "true");
+      f_FALSE                   = f_boolean.typeFeature().get(mod, "false");
       f_bool_NOT                = forFrontEnd ? f_bool.get(mod, FuzionConstants.PREFIX_OPERATOR_PREFIX + "!"   , 0) : null;
       f_bool_AND                = forFrontEnd ? f_bool.get(mod, FuzionConstants.INFIX_OPERATOR_PREFIX + "&&"   , 1) : null;
       f_bool_OR                 = forFrontEnd ? f_bool.get(mod, FuzionConstants.INFIX_OPERATOR_PREFIX + "||"   , 1) : null;

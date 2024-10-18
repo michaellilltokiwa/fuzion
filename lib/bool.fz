@@ -36,11 +36,25 @@
 # value of type 'bool'.
 #
 #
-public bool : choice FALSE TRUE, property.equatable is
+
+# NYI
+# can currently not be moved to bool because
+# inner true is added to boolean.type after first lookup of type boolean.type.false
+# see here:
+#     private void setOuterAndAddInnerForQualifiedRec(Feature inner, int at, AbstractFeature outer)
+#     {
+#       outer.whenResolvedDeclarations( ()->
+#       ...
+
+private:public boolean is
+  public type.false is
+  public type.true is
+
+public bool : choice boolean.type.false boolean.type.true, property.equatable is
 
   # not
   public prefix ! bool =>
-    if bool.this then FALSE else TRUE
+    if bool.this then false else true
 
   # or with lazy evaluation
   #
@@ -133,41 +147,13 @@ public bool : choice FALSE TRUE, property.equatable is
     public redef e => false
 
 
-# boolean value "false"
-#
-# Note that this value is of unit type >>FALSE<<, not of type >>bool<<, i.e.,
-# if it is used for type inference as in
-#
-#    my_boolean := FALSE
-#
-# you will get a variable of type >>FALSE<<, it will not be possible to assign
-# >>TRUE<< to it.  You can use >>false<< as an alternative to get type >>bool<<.
-#
-#
-private:public FALSE is
-
-
-# boolean value "true"
-#
-# Note that this value is of unit type >>TRUE<<, not of type >>bool<<, i.e.,
-# if it is used for type inference as in
-#
-#    my_boolean := TRUE
-#
-# you will get a variable of type >>TRUE<<, it will not be possible to assign
-# >>FALSE<< to it.  You can use >>true<< as an alternative to get type >>bool<<.
-#
-#
-private:public TRUE is
-
-
 # boolean value "false" as a constant of type >>bool<<.
 #
 #
-public false bool => FALSE
+public false bool => boolean.type.false
 
 
 # boolean value "true" as a constant of type >>bool<<.
 #
 #
-public true bool => TRUE
+public true bool => boolean.type.true

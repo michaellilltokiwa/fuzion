@@ -2406,7 +2406,7 @@ public class Call extends AbstractCall
           tt = ut.resolve(res, context, true);
           tt = tt != null && tt != Types.t_ERROR && tt.isGenericArgument() ? tt.genericArgument().constraint(res, context) : tt;
         }
-      if (tt != null && tt != Types.t_ERROR)
+      if (tt != null && tt != Types.t_ERROR && !tt.feature().isTypeFeature())
         {
           var tf = tt.feature();
           var ttf = tf.typeFeature(res);
