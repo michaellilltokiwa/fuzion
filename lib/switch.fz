@@ -103,7 +103,7 @@ is
 
   # synonym for infix >>=
   #
-  public and_then (f A -> switch.this) switch.this =>
+  public and_then (f A -> switch.this) switch A B =>
     match switch.this
       a A => f a
       b B => b
@@ -120,7 +120,7 @@ is
   # if this switch is nil return the result of f
   # otherwise just return this switch.
   #
-  public or (f Lazy (switch.this)) switch.this =>
+  public or (f Lazy switch.this) switch A B =>
     if ok then switch.this else f()
 
 
