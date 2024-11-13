@@ -459,7 +459,7 @@ part of the (((inner features))) declarations of the corresponding
 
     if (inner.isField())
       {
-        // NYI inner.isTypeFeature() does not work currently
+        // NYI inner.iscotype() does not work currently
         if (inner._qname.getFirst().equals(FuzionConstants.TYPE_NAME))
           {
             AstErrors.typeFeaturesMustNotBeFields(inner);
@@ -489,7 +489,7 @@ part of the (((inner features))) declarations of the corresponding
    */
   private void setOuterAndAddInnerForQualifiedRec(Feature inner, int at, AbstractFeature outer)
   {
-    outer.whenResolvedDeclarations( ()->
+    outer.whenResolvedDeclarations(()->
       {
         var q = inner._qname;
         var n = q.get(at);
@@ -497,11 +497,15 @@ part of the (((inner features))) declarations of the corresponding
           {
             AstErrors.mustNotDefineTypeFeatureInUniverse(inner);
           }
+        else if (n == FuzionConstants.TYPE_NAME && !outer.definesType())
+          {
+            AstErrors.typeFeaturesMustOnlyBeDeclaredInFeaturesThatDefineType(inner);
+          }
         var o =
           n != FuzionConstants.TYPE_NAME ? lookupType(inner.pos(), outer, n, at == 0,
                                                       false /* ignore ambiguous */,
                                                       false /* ignore not found */)._feature
-                                        : outer.typeFeature(_res);
+                                        : outer.cotype(_res);
         if (at < q.size()-2)
           {
             setOuterAndAddInnerForQualifiedRec(inner, at+1, o);
@@ -661,21 +665,21 @@ part of the (((inner features))) declarations of the corresponding
   /**
    * Add type new feature.
    *
-   * This is somewhat ugly since it adds typeFeature to the declaredFeatures or
+   * This is somewhat ugly since it adds cotype to the declaredFeatures or
    * declaredOrInheritedFeatures of the outer types even after those had been
    * determined already.
    *
    * @param outerType the static outer type of universe.
    *
-   * @param typeFeature the new type feature declared within outerType.
+   * @param cotype the new type feature declared within outerType.
    */
-  public void addTypeFeature(AbstractFeature outerType,
-                             Feature typeFeature)
+  public void addCotype(AbstractFeature outerType,
+                             Feature cotype)
   {
-    findDeclarations(typeFeature, outerType);
-    addDeclared(outerType, typeFeature);
-    typeFeature.scheduleForResolution(_res);
-    resolveDeclarations(typeFeature);
+    findDeclarations(cotype, outerType);
+    addDeclared(outerType, cotype);
+    cotype.scheduleForResolution(_res);
+    resolveDeclarations(cotype);
   }
   public void addTypeParameter(AbstractFeature outer,
                                Feature typeParameter)
@@ -712,7 +716,7 @@ part of the (((inner features))) declarations of the corresponding
   private void addDeclared(AbstractFeature outer, AbstractFeature inner)
   {
     if (PRECONDITIONS)
-      require(outer.isConstructor(), inner.isTypeFeature());
+      require(outer.isConstructor(), inner.isCotype());
 
     var d = data(outer);
     var fn = inner.featureName();
@@ -850,7 +854,7 @@ part of the (((inner features))) declarations of the corresponding
                 * type features, so suppress them in this case. See fuzion-lang.dev's
                 * design/examples/typ_const2.fz as an example.
                 */
-                (!Errors.any() || !f.isTypeFeature()))
+                (!Errors.any() || !f.isCotype()))
               {
                 /*
     // tag::fuzion_rule_PARS_REDEF[]
@@ -967,10 +971,11 @@ A post-condition of a feature that does not redefine an inherited feature must s
     if (existing != null)
       {
         // NYI: need to check that the scopes are disjunct
-        if (existing instanceof Feature ef && ef._scoped && f._scoped)
+        if (existing instanceof Feature ef
+            && (ef._scoped && f._scoped || visibilityPreventsConflict(f, ef)))
           {
-            var existingFields = FeatureName.getAll(df, fn.baseName(), 0);
-            fn = FeatureName.get(fn.baseName(), 0, existingFields.size());
+            var existingFeatures = FeatureName.getAll(df, fn.baseName(), 0);
+            fn = FeatureName.get(fn.baseName(), 0, existingFeatures.size());
             f.setFeatureName(fn);
           }
         else
@@ -998,6 +1003,19 @@ A post-condition of a feature that does not redefine an inherited feature must s
             addToHeirs(outer, fn, f);
           }
       }
+  }
+
+
+  /**
+   * Check if both features are fully private and
+   * in different files and thus not conflicting
+   * each other.
+   */
+  private boolean visibilityPreventsConflict(Feature f1, Feature f2)
+  {
+    return f2.visibility().typeVisibility() == Visi.PRIV
+         && f1.visibility().typeVisibility() == Visi.PRIV
+         && !f2.pos()._sourceFile._fileName.equals(f1.pos()._sourceFile._fileName);
   }
 
 
@@ -1374,9 +1392,9 @@ A post-condition of a feature that does not redefine an inherited feature must s
         var o = outer;
         while (traverseOuter && o != null)
           {
-            if (o.isTypeFeature())
+            if (o.isCotype())
               {
-                lookup(o._typeFeatureOrigin, name, null, false, false)
+                lookup(o._cotypeOrigin, name, null, false, false)
                   .stream()
                   .filter(fo -> !fo._feature.isTypeParameter())  // type parameters are duplicated in type feature and taken from there
                   .forEach(fo -> fs.add(fo));
@@ -1512,9 +1530,9 @@ A post-condition of a feature that does not redefine an inherited feature must s
        * so we allow `equatable.this.type` to become `i32`.
        */
       fixed                                &&
-      original    .outer().isTypeFeature() &&
-      redefinition.outer().isTypeFeature() &&
-      to.replace_this_type_in_type_feature(redefinition.outer())
+      original    .outer().isCotype() &&
+      redefinition.outer().isCotype() &&
+      to.replace_this_type_in_cotype(redefinition.outer())
         .compareTo(tr) == 0                                                       ||
 
       /* avoid reporting errors in case of previous errors
@@ -1578,7 +1596,7 @@ A post-condition of a feature that does not redefine an inherited feature must s
         var t1 = o.handDownNonOpen(_res, o.resultType(), f.outer())
                   .applyTypePars(o, f.generics().asActuals());    /* replace o's type pars by f's */
         var t2 = f.resultType();
-        if (o.isTypeFeaturesThisType() && f.isTypeFeaturesThisType())
+        if (o.isCoTypesThisType() && f.isCoTypesThisType())
           { // NYI: CLEANUP: #706: allow redefinition of THIS_TYPE in type features for now, these are created internally.
           }
         else if (o.isConstructor() ||
@@ -1628,13 +1646,13 @@ A feature that is a constructor, choice or a type parameter may not redefine an 
       }
 
     if (f.isTypeParameter() &&
-        !f.outer().isTypeFeature()) // reg_issue1932 shows error twice without this)
+        !f.outer().isCotype()) // reg_issue1932 shows error twice without this)
       {
         if (f.resultType().isGenericArgument())
           {
             AstErrors.constraintMustNotBeGenericArgument(f);
           }
-        if (  !f.isTypeFeaturesThisType() // NYI: CLEANUP: #706: remove special handling for 'THIS_TYPE'
+        if (  !f.isCoTypesThisType() // NYI: CLEANUP: #706: remove special handling for 'THIS_TYPE'
             && f.resultType().isChoice())
           {
             AstErrors.constraintMustNotBeChoice(f);
@@ -1651,6 +1669,22 @@ A feature that is a constructor, choice or a type parameter may not redefine an 
     checkDuplicateFeatures(f);
     checkContractAccesses(f);
     checkLegalQualThisType(f);
+    checkLegalDefinesType(f);
+  }
+
+
+  private void checkLegalDefinesType(Feature f)
+  {
+    if (f.definesUsableType() && inTypeFeature(f))
+      {
+        AstErrors.illegalFeatureDefiningType(f);
+      }
+  }
+
+
+  private boolean inTypeFeature(AbstractFeature f)
+  {
+    return f.isTypeFeature() || (f.outer() != null && inTypeFeature(f.outer()));
   }
 
 
@@ -1663,7 +1697,7 @@ A feature that is a constructor, choice or a type parameter may not redefine an 
     if (
         f.isArgument()
      && !f.outer().definesType()
-     && !f.outer().isTypeFeature()
+     && !f.outer().isCotype()
      && f.visibility() != Visi.PRIV
     )
       {
@@ -1746,7 +1780,7 @@ A feature that is a constructor, choice or a type parameter may not redefine an 
    */
   private void checkRedefVisibility(Feature f)
   {
-    if (!f.isTypeFeaturesThisType()
+    if (!f.isCoTypesThisType()
     // Function.call is public while actual lambdas-impl are not.
     // If lambda-impl were public then result-type and all arg-types
     // would have to be public as well. Hence this exception.
@@ -1820,7 +1854,7 @@ A feature that is a constructor, choice or a type parameter may not redefine an 
   {
     for (AbstractFeature arg : f.arguments())
       {
-        if (!arg.isTypeFeaturesThisType())
+        if (!arg.isCoTypesThisType())
           {
             var s = arg.resultType().moreRestrictiveVisibility(effectiveFeatureVisibility(f));
             if (!s.isEmpty())

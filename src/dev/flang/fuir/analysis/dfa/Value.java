@@ -28,6 +28,9 @@ package dev.flang.fuir.analysis.dfa;
 
 import static dev.flang.ir.IR.NO_SITE;
 
+import dev.flang.fuir.FUIR;
+
+import dev.flang.util.Errors;
 import dev.flang.util.IntMap;
 
 import java.util.Comparator;
@@ -272,12 +275,25 @@ public class Value extends Val
 
 
   /**
+   * Does this Value cover the values in other?
+   */
+  boolean contains(Value other)
+  {
+    return this == other;
+  }
+
+
+  /**
    * Add v to the set of values of given field within this instance.
    */
   public void setField(DFA dfa, int field, Value v)
   {
-    throw new Error("Value.setField for '"+dfa._fuir.clazzAsString(field)+"' called on class " +
-                    this + " (" + getClass() + "), expected " + Instance.class);
+    var rt = dfa._fuir.clazzResultClazz(field);
+    if (!dfa._fuir.clazzIsUnitType(rt) && !Errors.any())
+      {
+        throw new Error("Value.setField for '"+dfa._fuir.clazzAsString(field)+"' called on class " +
+                        this + " (" + getClass() + "), expected " + Instance.class);
+      }
   }
 
 
@@ -288,8 +304,16 @@ public class Value extends Val
   public Val readField(DFA dfa, int field, int site, Context why)
   {
     var rt = dfa._fuir.clazzResultClazz(field);
-    var res = dfa._fuir.clazzIsUnitType(rt) ? Value.UNIT
-                                            : readFieldFromInstance(dfa, field, site, why);
+    var res =
+      dfa._fuir.clazzIsUnitType(rt)                                                                 ||
+      // NYI: UNDER DEVELOPMENT: intrinsics create instances like
+      // `fuzion.java.Array`. These intrinsics currently do not set the outer
+      // refs correctly, so we handle them here for now by just assuming they
+      // are unit type values:
+      dfa._fuir.clazzIsOuterRef(field) && (rt == dfa._fuir.clazz(FUIR.SpecialClazzes.c_java  ) ||
+                                           rt == dfa._fuir.clazz(FUIR.SpecialClazzes.c_fuzion)    )
+      ? Value.UNIT
+      : readFieldFromInstance(dfa, field, site, why);
     return res;
   }
 
@@ -311,7 +335,7 @@ public class Value extends Val
                }
              else
                {
-                 resa[0] = resa[0].joinVal(dfa, r);
+                 resa[0] = resa[0].joinVal(dfa, r, dfa._fuir.clazzResultClazz(cc));
                }
            });
     return resa[0];
@@ -323,14 +347,27 @@ public class Value extends Val
    */
   Val readFieldFromInstance(DFA dfa, int field, int site, Context why)
   {
-    throw new Error("Value.readField '"+dfa._fuir.clazzAsString(field)+"' called on class " + this + " (" + getClass() + "), expected " + Instance.class);
+    var rt = dfa._fuir.clazzResultClazz(field);
+    if (!dfa._fuir.clazzIsUnitType(rt) && !Errors.any())
+      {
+        throw new Error("Value.readField '"+dfa._fuir.clazzAsString(field)+"' called on class " + this + " (" + getClass() + "), expected " + Instance.class +
+                        " field type " + dfa._fuir.clazzAsString(rt) + " in "+this);
+      }
+    return Value.UNIT;
   }
 
 
   /**
    * Create the union of the values 'this' and 'v'.
+   *
+   * @param dfa the current analysis context.
+   *
+   * @param v the value this value should be joined with.
+   *
+   * @param clazz the clazz of the resulting value. This is usually the same as
+   * the clazz of `this` or `v`, unless we are joining `ref` type values.
    */
-  public Value join(DFA dfa, Value v)
+  public Value join(DFA dfa, Value v, int clazz)
   {
     if (this == v)
       {
@@ -346,7 +383,7 @@ public class Value extends Val
       }
     else
       {
-        return joinInstances(dfa, v);
+        return joinInstances(dfa, v, clazz);
       }
   }
 
@@ -354,10 +391,17 @@ public class Value extends Val
   /**
    * Create the union of the values 'this' and 'v'. This is called by join()
    * after common cases (same instance, UNDEFINED) have been handled.
+   *
+   * @param dfa the current analysis context.
+   *
+   * @param v the value this value should be joined with.
+   *
+   * @param clazz the clazz of the resulting value. This is usually the same as
+   * the clazz of `this` or `v`, unless we are joining `ref` type values.
    */
-  public Value joinInstances(DFA dfa, Value v)
+  public Value joinInstances(DFA dfa, Value v, int clazz)
   {
-    return dfa.newValueSet(this, v);
+    return dfa.newValueSet(this, v, clazz);
   }
 
 

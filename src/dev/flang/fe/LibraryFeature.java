@@ -166,13 +166,13 @@ public class LibraryFeature extends AbstractFeature
     _index = index;
     _kind = lib.featureKindEnum(index);
 
-    var tf = existingTypeFeature();
+    var tf = existingCotype();
     if (tf != null)
       {
         // NYI: HACK: This is somewhat ugly, would be nicer if the type feature
         // in the fum file would contain a reference to the origin such that we
         // do not need to patch this into the type feature's field.
-        tf._typeFeatureOrigin = this;
+        tf._cotypeOrigin = this;
       }
   }
 
@@ -211,7 +211,7 @@ public class LibraryFeature extends AbstractFeature
   /**
    * Is this a constructor returning a reference result?
    */
-  public boolean isThisRef()
+  public boolean isRef()
   {
     return _libModule.featureIsThisRef(_index);
   }
@@ -353,9 +353,9 @@ public class LibraryFeature extends AbstractFeature
    * If we have an existing type feature (store in a .fum library file), return that
    * type feature. return null otherwise.
    */
-  public AbstractFeature existingTypeFeature()
+  public AbstractFeature existingCotype()
   {
-    return _libModule.featureHasTypeFeature(_index) ? _libModule.featureTypeFeature(_index) : null;
+    return _libModule.featureHasCotype(_index) ? _libModule.featureCotype(_index) : null;
   }
 
 
@@ -408,13 +408,13 @@ public class LibraryFeature extends AbstractFeature
     var o = outer();
     var ot = o == null ? null : o.selfType();
     AbstractType result = new NormalType(_libModule, -1, this,
-                                         isThisRef() ? FuzionConstants.MIR_FILE_TYPE_IS_REF
+                                         isRef() ? FuzionConstants.MIR_FILE_TYPE_IS_REF
                                                      : FuzionConstants.MIR_FILE_TYPE_IS_VALUE,
                                          generics().asActuals(), ot);
 
     if (POSTCONDITIONS) ensure
       (result != null,
-       Errors.any() || result.isRef() == isThisRef(),
+       Errors.any() || result.isRef() == isRef(),
        // does not hold if feature is declared repeatedly
        Errors.any() || result.feature() == this);
 
@@ -784,22 +784,6 @@ public class LibraryFeature extends AbstractFeature
   private SourcePosition pos(int pos, int posEnd)
   {
     return _libModule.pos(pos, posEnd);
-  }
-
-
-  /**
-   * Read a list a n conditions at given position in _libModule.
-   */
-  private List<Cond> condList(int n, int at)
-  {
-    var result = new List<Cond>();
-    for (var i = 0; i < n; i++)
-      {
-        var x = code1(at);
-        result.add(new Cond(x));
-        at = _libModule.codeNextPos(at);
-      }
-    return result;
   }
 
 

@@ -281,15 +281,17 @@ public abstract class AbstractAssign extends Expr
         var frmlT = f.resultType();
 
         if (CHECKS) check
-          (Errors.any() || frmlT != Types.t_ERROR);
+          (Errors.any() || frmlT != Types.t_ERROR,
+           Errors.any() || _value.type() != Types.t_ERROR);
 
-        if (!frmlT.isAssignableFrom(_value.type(), context))
+        if (_value.type() != Types.t_ERROR && !frmlT.isDirectlyAssignableFrom(_value.type(), context))
           {
             AstErrors.incompatibleTypeInAssignment(pos(), f, frmlT, _value, context);
           }
 
         if (CHECKS) check
-          (res._module.lookupFeature(this._target.type().feature(), f.featureName(), f) == f || Errors.any());
+          (Errors.any() || res._module.lookupFeature(this._target.type().feature(), f.featureName(), f) == f,
+           Errors.any() || (_value.type().isVoid() || _value.needsBoxing(frmlT, context) == null || _value.isBoxed()));
       }
   }
 

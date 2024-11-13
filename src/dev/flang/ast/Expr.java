@@ -543,6 +543,16 @@ public abstract class Expr extends HasGlobalIndex implements HasSourcePosition
   }
 
 
+  /*
+   * Returns either result of asParsedType()
+   * or Types.t_UNDEFINED in case types name is '_'.
+   */
+  public AbstractType asType()
+  {
+    return asParsedType();
+  }
+
+
   /**
    * Return this expression as a simple name.  This is null by default except
    * for calls that without an explicit target and without any actual arguments
@@ -728,7 +738,7 @@ public abstract class Expr extends HasGlobalIndex implements HasSourcePosition
    *
    * @return the type after boxing or null if boxing is not needed
    */
-  private AbstractType needsBoxing(AbstractType frmlT, Context context)
+  protected AbstractType needsBoxing(AbstractType frmlT, Context context)
   {
     var t = type();
     if (frmlT.isGenericArgument() || frmlT.isThisType() && !frmlT.isChoice())
@@ -853,6 +863,15 @@ public abstract class Expr extends HasGlobalIndex implements HasSourcePosition
   public String toStringWrapped()
   {
     return StringHelpers.wrapInParentheses(toString());
+  }
+
+
+  /**
+   * Is the result of this expression boxed?
+   */
+  public boolean isBoxed()
+  {
+    return false;
   }
 
 

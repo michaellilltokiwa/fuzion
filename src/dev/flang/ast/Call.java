@@ -104,7 +104,7 @@ public class Call extends AbstractCall
   public List<AbstractType> actualTypeParameters()
   {
     var res = _generics;
-    if (needsToInferTypeParametersFromArgs())
+    if (_generics == NO_GENERICS && needsToInferTypeParametersFromArgs())
       {
         res = new List<>();
         for (Generic g : _calledFeature.generics().list)
@@ -371,6 +371,8 @@ public class Call extends AbstractCall
        AbstractType type)
   {
     this(pos, target, calledFeature.featureName().baseName(), -1, generics, actuals, calledFeature, type);
+    if (PRECONDITIONS) check
+      (calledFeature.generics().sizeMatches(generics));
   }
 
 
@@ -454,10 +456,7 @@ public class Call extends AbstractCall
         result = Types.t_UNDEFINED;
       }
 
-    if (result.isGenericArgument())
-      {
-        result = result.genericArgument().constraint(res, context);
-      }
+    result = result.selfOrConstraint(res, context);
 
     if (POSTCONDITIONS) ensure
       (!result.isGenericArgument());
@@ -746,6 +745,15 @@ public class Call extends AbstractCall
       {
         _actuals = new List<>();
       }
+
+    // example where this is relevenant:
+    // (fails when trying to resolve `zip` but does not know fibs result type yet)
+    // fz -e "fibs => { 0 : (1 : fibs.zip (fibs.drop 1) (+))}; say fibs"
+    if (_calledFeature == null && _target instanceof Call c && c.calledFeatureKnown() && targetFeature(res, context) == null)
+      {
+        AstErrors.failedToInferType(c);
+      }
+
     resolveTypesOfActuals(res, context);
 
     if (POSTCONDITIONS) ensure
@@ -1342,7 +1350,7 @@ public class Call extends AbstractCall
                 Generic g = frmlT.genericArgument();
                 var frmlTs = g.replaceOpen(g.feature() == _calledFeature
                                            ? _generics
-                                           : _target.type().generics());
+                                           : heir.selfOrConstraint(res, context).generics()); // see for example #1919
                 addToResolvedFormalArgumentTypes(res, argnum + i, frmlTs.toArray(new AbstractType[frmlTs.size()]), frml);
                 i   = i   + frmlTs.size() - 1;
                 cnt = cnt + frmlTs.size() - 1;
@@ -1476,8 +1484,7 @@ public class Call extends AbstractCall
    */
   protected void setActualResultType(Resolution res, Context context, AbstractType frmlT)
   {
-    var tt =
-      targetIsTypeParameter() && frmlT.isThisTypeInTypeFeature()
+    var tt = targetIsTypeParameter() && frmlT.isThisTypeInCotype()
       ? // a call B.f for a type parameter target B. resultType() is the
         // constraint of B, so we create the corresponding type feature's
         // selfType:
@@ -1490,17 +1497,7 @@ public class Call extends AbstractCall
     var t3 = tt.isGenericArgument() ? t2 : t2.resolve(res, tt.feature().context());
     var t4 = adjustThisTypeForTarget(t3, false, calledFeature(), context);
     var t5 = resolveForCalledFeature(res, t4, tt, context);
-    // call may be resolved repeatedly. In case of recursive use of FieldActual
-    // (see #2182), we may see `void` as the result type of calls to argument
-    // fields during recursion.  We use only the non-recursive (i.e., non-void)
-    // ones:
-    if (_type == null ||
-        !t5.isVoid() ||
-        !(_calledFeature instanceof Feature cf) ||
-        cf.impl()._kind != Impl.Kind.FieldActual)
-      {
-        _type = t5;
-      }
+    _type = t5;
   }
 
 
@@ -1589,7 +1586,7 @@ public class Call extends AbstractCall
         tc.calledFeature().isTypeParameter() &&
         !tt.isGenericArgument())
       {
-        t = t.replace_type_parameter_used_for_this_type_in_type_feature
+        t = t.replace_type_parameter_used_for_this_type_in_cotype
           (tt.feature(),
            tc);
       }
@@ -1629,7 +1626,7 @@ public class Call extends AbstractCall
           {
             // a type parameter's result type is the constraint's type as a type
             // feature with actual type parameters as given to the constraint.
-            var tf = t.feature().typeFeature(res);
+            var tf = t.feature().cotype(res);
             var tg = new List<AbstractType>(t); // the constraint type itself
             tg.addAll(t.generics());            // followed by the generics
             t = tf.selfType().applyTypePars(tf, tg);
@@ -1639,7 +1636,7 @@ public class Call extends AbstractCall
       {
         t = _generics.get(0);
         // we are using `.this.type` inside a type feature, see #2295
-        if (t.isThisTypeInTypeFeature())
+        if (t.isThisTypeInCotype())
           {
             t = t.genericArgument().feature().thisType();
           }
@@ -1782,31 +1779,40 @@ public class Call extends AbstractCall
           }
       }
 
-    // report missing inferred types only if there were no errors trying to find
-    // the types of the actuals:
-    if (!missing.isEmpty() &&
-        (!Errors.any() ||
-         !_actuals.stream().anyMatch(x -> x.typeForInferencing() == Types.t_ERROR)))
-      {
-        AstErrors.failedToInferActualGeneric(pos(),cf, missing);
-      }
 
-    // replace any missing type parameters or conflicting ones with t_ERROR,
-    // report errors for conflicts
-    for (Generic g : _calledFeature.generics().list)
+    var rt = cf.resultTypeIfPresentUrgent(res, false);
+    // We may be able to infer generics later
+    // via result type propagation, do not emit errors yet.
+    if ((rt == null ||
+        !rt.isGenericArgument() ||
+         rt.genericArgument().feature().outer() != cf.outer()))
       {
-        int i = g.index();
-        if (!g.isOpen() && _generics.get(i) == Types.t_UNDEFINED || conflict[i])
+        // report missing inferred types only if there were no errors trying to find
+        // the types of the actuals:
+        if (!missing.isEmpty() &&
+            (!Errors.any() ||
+            !_actuals.stream().anyMatch(x -> x.typeForInferencing() == Types.t_ERROR)))
           {
-            if (CHECKS) check
-              (Errors.any() || i < _generics.size());
-            if (conflict[i])
+            AstErrors.failedToInferActualGeneric(pos(),cf, missing);
+          }
+
+        // replace any missing type parameters or conflicting ones with t_ERROR,
+        // report errors for conflicts
+        for (Generic g : _calledFeature.generics().list)
+          {
+            int i = g.index();
+            if (!g.isOpen() && _generics.get(i) == Types.t_UNDEFINED || conflict[i])
               {
-                AstErrors.incompatibleTypesDuringTypeInference(pos(), g, foundAt.get(i));
-              }
-            if (i < _generics.size())
-              {
-                _generics = _generics.setOrClone(i, Types.t_ERROR);
+                if (CHECKS) check
+                  (Errors.any() || i < _generics.size());
+                if (conflict[i])
+                  {
+                    AstErrors.incompatibleTypesDuringTypeInference(pos(), g, foundAt.get(i));
+                  }
+                if (i < _generics.size())
+                  {
+                    _generics = _generics.setOrClone(i, Types.t_ERROR);
+                  }
               }
           }
       }
@@ -2017,8 +2023,8 @@ public class Call extends AbstractCall
     var actualType = actual == null ? null : actual.typeForInferencing();
     if (actualType != null)
       {
-        actualType = actualType.replace_type_parameters_of_type_feature_origin(context.outerFeature());
-        if (!actualType.isGenericArgument() && actualType.feature().isTypeFeature())
+        actualType = actualType.replace_type_parameters_of_cotype_origin(context.outerFeature());
+        if (!actualType.isGenericArgument() && actualType.feature().isCotype())
           {
             actualType = Types.resolved.f_Type.selfType();
           }
@@ -2078,7 +2084,7 @@ public class Call extends AbstractCall
                             List<List<Pair<SourcePosition, AbstractType>>> foundAt)
   {
     if (PRECONDITIONS) require
-      (actualType.compareTo(actualType.replace_type_parameters_of_type_feature_origin(context.outerFeature())) == 0);
+      (actualType.compareTo(actualType.replace_type_parameters_of_cotype_origin(context.outerFeature())) == 0);
 
     if (formalType.isGenericArgument())
       {
@@ -2086,15 +2092,18 @@ public class Call extends AbstractCall
         if (g.feature() == _calledFeature)
           { // we found a use of a generic type, so record it:
             var i = g.index();
-            var gt = _generics.get(i);
-            var nt = gt == Types.t_UNDEFINED ? actualType
-                                             : gt.union(actualType, context);
-            if (nt == Types.t_ERROR)
+            if (!conflict[i])
               {
-                conflict[i] = true;
+                var gt = _generics.get(i);
+                var nt = gt == Types.t_UNDEFINED ? actualType
+                                                 : gt.union(actualType, context);
+                if (nt == Types.t_ERROR)
+                  {
+                    conflict[i] = true;
+                  }
+                _generics = _generics.setOrClone(i, nt == Types.t_ERROR ? Types.t_UNDEFINED : nt);
+                addPair(foundAt, i, pos, actualType);
               }
-            _generics = _generics.setOrClone(i, nt);
-            addPair(foundAt, i, pos, actualType);
           }
       }
     else
@@ -2351,7 +2360,7 @@ public class Call extends AbstractCall
    */
   boolean needsToInferTypeParametersFromArgs()
   {
-    return _calledFeature != null && _generics == NO_GENERICS && _calledFeature.generics() != FormalGenerics.NONE;
+    return _calledFeature != null && (_generics == NO_GENERICS || _generics.contains(Types.t_UNDEFINED)) && _calledFeature.generics() != FormalGenerics.NONE;
   }
 
 
@@ -2404,12 +2413,12 @@ public class Call extends AbstractCall
           // check if this might be a
           // left hand side of dot-type-call
           tt = ut.resolve(res, context, true);
-          tt = tt != null && tt != Types.t_ERROR && tt.isGenericArgument() ? tt.genericArgument().constraint(res, context) : tt;
+          tt = tt != null && tt != Types.t_ERROR ? tt.selfOrConstraint(res, context) : tt;
         }
       if (tt != null && tt != Types.t_ERROR)
         {
           var tf = tt.feature();
-          var ttf = tf.typeFeature(res);
+          var ttf = tf.cotype(res);
           res.resolveDeclarations(tf);
           var fo = findOnTarget(res, tf, false).v1();
           var tfo = findOnTarget(res, ttf, false).v1();
@@ -2419,7 +2428,7 @@ public class Call extends AbstractCall
               /* omitting dot-type does not work when calling
                the inherited methods of `Type`. Otherwise we
                would always have an ambiguity when calling `as_string` */
-              && f.outer().isTypeFeature())
+              && f.outer().isCotype())
             {
               if (fo != null)
                 {
@@ -2543,9 +2552,9 @@ public class Call extends AbstractCall
                 cf.whenResolvedTypes
                   (() ->
                    {
-                     var raw = cf.resultType();
+                     var raw = cf.resultTypeIfPresentUrgent(res, true);
                      AbstractType rt;
-                     if (raw == Types.t_UNDEFINED)
+                     if (raw == Types.t_UNDEFINED || raw == null)
                        {
                          // Handling of cyclic type inference. It migh tbe
                          // better if this was done in `Feature.resultType`, but
@@ -2570,10 +2579,10 @@ public class Call extends AbstractCall
       }
     if (_type != null &&
         // exclude call to create type instance, it requires origin's type parameters:
-        !calledFeature().isTypeFeature()
+        !calledFeature().isCotype()
         )
       {
-        _type = _type.replace_type_parameters_of_type_feature_origin(context.outerFeature());
+        _type = _type.replace_type_parameters_of_cotype_origin(context.outerFeature());
       }
 
     resolveTypesOfActuals(res, context);
@@ -2790,7 +2799,7 @@ public class Call extends AbstractCall
         while (o != null && !o.isGenericArgument())
           {
             o = o.outer();
-            if (o != null && o.isRef() && !o.feature().isThisRef())
+            if (o != null && o.isRef() && !o.feature().isRef())
               {
                 AstErrors.illegalCallResultType(this, _type, o);
                 o = null;
@@ -2808,10 +2817,16 @@ public class Call extends AbstractCall
             for (Expr actl : _actuals)
               {
                 var frmlT = _resolvedFormalArgumentTypes[count];
-                if (frmlT != Types.t_ERROR && !frmlT.isAssignableFrom(actl.type(), context))
+                if (CHECKS) check
+                  (Errors.any() || (actl != Call.ERROR && actl != Call.ERROR_VALUE));
+                if (frmlT != Types.t_ERROR && actl != Call.ERROR && actl != Call.ERROR_VALUE && !frmlT.isDirectlyAssignableFrom(actl.type(), context))
                   {
                     AstErrors.incompatibleArgumentTypeInCall(_calledFeature, count, frmlT, actl, context);
                   }
+
+                if (CHECKS) check
+                  (Errors.any() || actl.type().isVoid() || actl.needsBoxing(frmlT, context) == null || actl.isBoxed());
+
                 count++;
               }
           }
@@ -2890,7 +2905,14 @@ public class Call extends AbstractCall
         else if (cf == Types.resolved.f_bool_OR     ) { result = newIf(_target, BoolConst.TRUE , _actuals.get(0)).propagateExpectedType(res, context, Types.resolved.t_bool); }
         else if (cf == Types.resolved.f_bool_IMPLIES) { result = newIf(_target, _actuals.get(0), BoolConst.TRUE ).propagateExpectedType(res, context, Types.resolved.t_bool); }
         else if (cf == Types.resolved.f_bool_NOT    ) { result = newIf(_target, BoolConst.FALSE, BoolConst.TRUE ).propagateExpectedType(res, context, Types.resolved.t_bool); }
-        else if (cf == Types.resolved.f_bool_TERNARY) { result = newIf(_target, _actuals.get(0), _actuals.get(1)).propagateExpectedType(res, context, _generics.get(0)); }
+        else if (cf == Types.resolved.f_bool_TERNARY)
+          {
+            result = newIf(_target, _actuals.get(0), _actuals.get(1));
+            if (!_generics.get(0).containsUndefined(false))
+              {
+                result = result.propagateExpectedType(res, context, _generics.get(0));
+              }
+          }
 
         // replace e.g. i16 7 by just the NumLiteral 7. This is necessary for syntaxSugar2 of InlineArray to work correctly.
         else if (cf == Types.resolved.t_i8 .feature()) { result = this._actuals.get(0).propagateExpectedType(res, context, Types.resolved.t_i8 ); }

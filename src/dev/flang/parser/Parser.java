@@ -85,6 +85,7 @@ public class Parser extends Lexer
 
   private boolean _nestedIf = false;
   private int _lastIfLine = -1;
+  private boolean _elif = false;
 
   /*--------------------------  constructors  ---------------------------*/
 
@@ -304,7 +305,7 @@ field       : returnType
       inh.isEmpty()       ? implFldOrRout(hasType)
                           : implRout(hasType);
     p = handleImplKindOf(pos, p, i == 0, l, inh, v);
-    l.add(new Feature(v,m,r,name,a,inh,c,p));
+    l.add(new Feature(v,m,r,name,a,inh,c,p,eff));
     return p2 == null
       ? new FList(l)
       : p2.routOrField(pos, l, v, m, n, i+1);
@@ -2510,6 +2511,7 @@ brblock     : BRACEL exprs BRACER
     return switch (currentAtMinIndent())
       {
       case
+        t_comma,
         t_indentationLimit,
         t_lineLimit,
         t_spaceOrSemiLimit,
@@ -2728,7 +2730,7 @@ loopBody    : "while" exprInLine      block
             | "while" exprInLine "do" block
             |                    "do" block
             ;
-loopEpilog  : "until" exprInLine thenPart elseBlock
+loopEpilog  : "until" exprInLine thenPart loopElseBlock
             |                             "else" block
             ;
    */
@@ -2746,9 +2748,9 @@ loopEpilog  : "until" exprInLine thenPart elseBlock
         var hasDo    = skip(true, Token.t_do     ); var b   = hasWhile || hasDo   ? block()         : null;
         var hasUntil = skip(true, Token.t_until  ); var u   = hasUntil            ? exprInLine()    : null;
                                                     var ub  = hasUntil            ? thenPart(true)  : null;
-                                                    var els1= fork().elseBlock();
-                                                    var els2= fork().elseBlock();
-                                                    var els =        elseBlock();
+                                                    var els1= fork().loopElseBlock();
+                                                    var els2= fork().loopElseBlock();
+                                                    var els =        loopElseBlock();
         setMinIndent(old);
         if (!hasWhile && !hasDo && !hasUntil && els == null)
           {
@@ -2831,8 +2833,8 @@ nextValue   : COMMA exprInLine
             p2 = new Impl(tokenSourcePos(), exprInLine(), p2._kind);
           }
       }
-    Feature f1 = new Feature(v1,m1,r1,new List<>(n1),new List<>(),new List<>(),Contract.EMPTY_CONTRACT,p1);
-    Feature f2 = new Feature(v2,m2,r2,new List<>(n2),new List<>(),new List<>(),Contract.EMPTY_CONTRACT,p2);
+    Feature f1 = new Feature(v1,m1,r1,new List<>(n1),new List<>(),new List<>(),Contract.EMPTY_CONTRACT,p1,null);
+    Feature f2 = new Feature(v2,m2,r2,new List<>(n2),new List<>(),new List<>(),Contract.EMPTY_CONTRACT,p2,null);
     indexVars.add(f1);
     nextValues.add(f2);
   }
@@ -2866,6 +2868,10 @@ ifexpr      : "if" exprInLine thenPart elseBlock
   {
     return relaxLineAndSpaceLimit(() -> {
         SourcePosition pos = tokenSourcePos();
+
+        var oldMinIdent = _elif ? null : setMinIndent(tokenPos());
+        _elif = false;
+
         match(Token.t_if, "ifexpr");
 
         _nestedIf = _lastIfLine == line();
@@ -2879,6 +2885,8 @@ ifexpr      : "if" exprInLine thenPart elseBlock
         // reset if new line
         if (_nestedIf && _lastIfLine != line()) {semiState(SemiState.CONTINUE);}
         var els = elseBlock();
+
+        if (oldMinIdent != null) { setMinIndent(oldMinIdent); }
 
         return new If(pos, e, b,
           // do no use empty blocks as else blocks since the source position
@@ -2913,6 +2921,34 @@ elseBlock   : "else" block
             ;
    */
   Block elseBlock()
+  {
+    Block result = null;
+
+    if (skip(true, Token.t_else))
+      {
+        if (current() == Token.t_if)
+          {
+            _elif = true;
+          }
+        result = block();
+      }
+
+    if (POSTCONDITIONS) ensure
+      (result == null          ||
+       result instanceof Block    );
+
+    return result;
+  }
+
+
+    /**
+   * Parse loopElseBlock
+   *
+loopElseBlock : "else" block
+              |
+              ;
+   */
+  Block loopElseBlock()
   {
     var result = skip(true, Token.t_else) ? block()
                                           : null;
@@ -3549,18 +3585,6 @@ typeOpt     : type
           }
       }
     return result;
-  }
-
-
-  /**
-   * Check if the current position starts a onetype and skip it.
-   *
-   * @return true iff the next token(s) is a onetype, otherwise no onetype was
-   * found and the parser/lexer is at an undefined position.
-   */
-  boolean skipOneType()
-  {
-    return skipOneType(false, true);
   }
 
 

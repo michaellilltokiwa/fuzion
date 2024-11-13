@@ -27,7 +27,6 @@ Fuzion language implementation.  If not, see <https://www.gnu.org/licenses/>.
 package dev.flang.be.c;
 
 import java.io.IOException;
-
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
@@ -39,10 +38,9 @@ import java.util.stream.Stream;
 import dev.flang.fuir.FUIR;
 import dev.flang.fuir.FUIR.SpecialClazzes;
 import dev.flang.fuir.analysis.AbstractInterpreter;
+import dev.flang.fuir.analysis.TailCall;
 import dev.flang.fuir.analysis.dfa.DFA;
 import dev.flang.ir.IR.FeatureKind;
-import dev.flang.fuir.analysis.TailCall;
-
 import dev.flang.util.ANY;
 import dev.flang.util.Errors;
 import dev.flang.util.List;
@@ -540,6 +538,9 @@ public class C extends ANY
       if (Arrays.binarySearch(_effectClazzes, ecl) >= 0)
         {
           res = CNames.fzThreadEffectsEnvironment.deref().field(_names.env(ecl));
+          res = CExpr.call(CNames.HEAP_CLONE._name, new List<>(res.adrOf(), res.sizeOfExpr()))
+                     .castTo(_types.clazz(ecl) + " *")
+                     .deref();
           var evi = CNames.fzThreadEffectsEnvironment.deref().field(_names.envInstalled(ecl));
           o = CStmnt.iff(evi.not(), o);
         }
@@ -661,7 +662,6 @@ public class C extends ANY
            FUIR fuir)
   {
     _options = opt;
-    fuir = opt._Xdfa ?  new DFA(opt, fuir).new_fuir() : fuir;
     _fuir = fuir;
     _tailCall = new TailCall(fuir);
     _ai = new AbstractInterpreter<>(fuir, new CodeGen());
@@ -937,6 +937,32 @@ public class C extends ANY
                      "f64.as_i64_lax",
                      "f32.cast_to_u32",
                      "f64.cast_to_u64",
+                     "f32.is_NaN",
+                     "f64.is_NaN",
+                     "f32.square_root",
+                     "f64.square_root",
+                     "f32.exp",
+                     "f64.exp",
+                     "f32.log",
+                     "f64.log",
+                     "f32.sin",
+                     "f64.sin",
+                     "f32.cos",
+                     "f64.cos",
+                     "f32.tan",
+                     "f64.tan",
+                     "f32.asin",
+                     "f64.asin",
+                     "f32.acos",
+                     "f64.acos",
+                     "f32.atan",
+                     "f64.atan",
+                     "f32.sinh",
+                     "f64.sinh",
+                     "f32.cosh",
+                     "f64.cosh",
+                     "f32.tanh",
+                     "f64.tanh",
                      "f32.type.min_exp",
                      "f32.type.max_exp",
                      "f32.type.min_positive",
@@ -946,32 +972,7 @@ public class C extends ANY
                      "f64.type.max_exp",
                      "f64.type.min_positive",
                      "f64.type.max",
-                     "f64.type.epsilon",
-                     "f32.type.is_NaN",
-                     "f32.type.square_root",
-                     "f64.type.square_root",
-                     "f32.type.exp",
-                     "f64.type.exp",
-                     "f32.type.log",
-                     "f64.type.log",
-                     "f32.type.sin",
-                     "f64.type.sin",
-                     "f32.type.cos",
-                     "f64.type.cos",
-                     "f32.type.tan",
-                     "f64.type.tan",
-                     "f32.type.asin",
-                     "f64.type.asin",
-                     "f32.type.acos",
-                     "f64.type.acos",
-                     "f32.type.atan",
-                     "f64.type.atan",
-                     "f32.type.sinh",
-                     "f64.type.sinh",
-                     "f32.type.cosh",
-                     "f64.type.cosh",
-                     "f32.type.tanh",
-                     "f64.type.tanh")
+                     "f64.type.epsilon")
       .anyMatch(_intrinsics._usedIntrinsics::contains);
   }
 
@@ -988,7 +989,9 @@ public class C extends ANY
                     "fuzion.java.array_length",
                     "fuzion.java.array_to_java_object0",
                     "fuzion.java.get_field0",
+                    "fuzion.java.set_field0",
                     "fuzion.java.get_static_field0",
+                    "fuzion.java.set_static_field0",
                     "fuzion.java.call_c0",
                     "fuzion.java.call_s0",
                     "fuzion.java.call_v0",
@@ -1584,7 +1587,8 @@ public class C extends ANY
       {
         value = value.castTo(_types.clazz(rt));
       }
-    return assign(af, value, rt);
+    return _types.fieldExists(f) ? assign(af, value, rt)
+                                 : CStmnt.lineComment("assignment to unused field " + clazzInQuotes(f));
   }
 
 
@@ -1637,6 +1641,7 @@ public class C extends ANY
       case Abstract :
         Errors.error("Call to abstract feature encountered.",
                      "Found call to  " + _fuir.clazzAsString(cc));
+        break;
       case Routine  :
       case Intrinsic:
       case Native   :
@@ -1718,10 +1723,14 @@ public class C extends ANY
     var aii = _fuir.hasData(tc) ? 1 : 0;
     for (int ai = 0; ai < ac; ai++)
       {
+        var af = _fuir.clazzArg     (vcl, ai);
         var at = _fuir.clazzArgClazz(vcl, ai);
         if (_fuir.hasData(at))
           {
-            l.add(assign(CIdent.arg(ai), a.get(aii), at));
+            if (_fuir.clazzNeedsCode(af))
+              {
+                l.add(assign(CIdent.arg(ai), a.get(aii), at));
+              }
             aii = aii + 1;
           }
       }
@@ -2106,8 +2115,8 @@ public class C extends ANY
       case c_unit :
         return expr;
       case c_Const_String :
-      case c_FALSE :
-      case c_TRUE :
+      case c_false_ :
+      case c_true_ :
       case c_sys_ptr :
       case c_u32 :
       case c_u64 :
@@ -2166,8 +2175,8 @@ public class C extends ANY
       case c_unit :
         return val;
       case c_Const_String :
-      case c_FALSE :
-      case c_TRUE :
+      case c_false_ :
+      case c_true_ :
       case c_sys_ptr :
       case c_u32 :
       case c_u64 :
@@ -2290,6 +2299,18 @@ public class C extends ANY
       .field(CNames.FIELDS_IN_REF_CLAZZ)
       .field(_names.fieldName(_fuir.clazz_fuzionJavaObject_Ref()));
   }
+
+
+  /**
+   * For debugging output
+   *
+   * @return "`<clazz c>`".
+   */
+  private String clazzInQuotes(int c)
+  {
+    return "`" + _fuir.clazzAsString(c) + "`";
+  }
+
 
 }
 

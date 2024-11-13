@@ -27,7 +27,10 @@ Fuzion language implementation.  If not, see <https://www.gnu.org/licenses/>.
 package dev.flang.fuir.analysis.dfa;
 
 import java.util.TreeMap;
+
 import dev.flang.ir.IR;
+
+import dev.flang.util.Errors;
 
 
 /**
@@ -163,7 +166,7 @@ public class Instance extends Value
     var oldv = _fields.get(field);
     if (oldv != null)
       {
-        v = oldv.join(dfa, v);
+        v = oldv.join(dfa, v, dfa._fuir.clazzResultClazz(field));
       }
     if (oldv != v)
       {
@@ -183,12 +186,12 @@ public class Instance extends Value
     if (PRECONDITIONS) require
       (_clazz == dfa._fuir.clazzAsValue(dfa._fuir.clazzOuterClazz(field)));
 
-    dfa._readFields.set(field);
+    dfa.readField(field);
     var v = _fields.get(field);
     Val res = v;
     if (v == null)
       {
-        if (dfa._reportResults)
+        if (dfa._reportResults && !Errors.any())
           {
             DfaErrors.readingUninitializedField(site == -1 ? dev.flang.util.SourcePosition.notAvailable : // NYI: REMOVE
                                                 site == IR.NO_SITE ? null : dfa._fuir.sitePos(site),

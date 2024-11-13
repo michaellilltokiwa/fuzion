@@ -375,6 +375,9 @@ public class AstErrors extends ANY
     String actlFound;
     var valAssigned = "";
     var assignableToSB = new StringBuilder();
+    var errorOrUndefinedFound =
+      frmlT     == Types.t_ERROR || frmlT     == Types.t_UNDEFINED ||
+      typeValue == Types.t_ERROR || typeValue == Types.t_UNDEFINED;
     if (value == null)
       {
         actlFound   = "actual type found   : " + s(typeValue);
@@ -383,6 +386,7 @@ public class AstErrors extends ANY
     else
       {
         var actlT = value.type();
+        errorOrUndefinedFound |=  actlT == Types.t_ERROR || actlT == Types.t_UNDEFINED;
         if (actlT.isThisType())
           {
             assignableToSB
@@ -406,7 +410,7 @@ public class AstErrors extends ANY
                   .append(st(ts));
               }
           }
-        if (remedy == null && !frmlT.isVoid() && frmlT.asRef().isAssignableFrom(actlT, context))
+        if (remedy == null && frmlT.asRef().isAssignableFrom(actlT, context))
           {
             remedy = "To solve this, you could change the type of " + ss(target) + " to a " + st("ref")+ " type like " + s(frmlT.asRef()) + ".\n";
           }
@@ -440,14 +444,17 @@ public class AstErrors extends ANY
         valAssigned = "for value assigned  : " + s(value) + "\n";
       }
 
-    error(pos,
-          "Incompatible types " + where,
-          detail +
-          "expected formal type: " + s(frmlT) + "\n" +
-          actlFound + "\n" +
-          assignableToSB + (assignableToSB.length() > 0 ? "\n" : "") +
-          valAssigned +
-          remedy);
+    if (!any() || !errorOrUndefinedFound)
+      {
+        error(pos,
+              "Incompatible types " + where,
+              detail +
+              "expected formal type: " + s(frmlT) + "\n" +
+              actlFound + "\n" +
+              assignableToSB + (assignableToSB.length() > 0 ? "\n" : "") +
+              valAssigned +
+              remedy);
+      }
   }
 
 
@@ -666,7 +673,7 @@ public class AstErrors extends ANY
   public static void argumentTypeMismatchInRedefinition(AbstractFeature originalFeature, AbstractFeature originalArg, AbstractType originalArgType,
                                                         AbstractFeature redefinedFeature, AbstractFeature redefinedArg, boolean suggestAddingFixed)
   {
-    if (!any() || !redefinedFeature.isTypeFeature() // type features generated from broken original features may cause subsequent errors
+    if (!any() || !redefinedFeature.isCotype() // cotypes generated from broken original features may cause subsequent errors
         )
       {
         error(redefinedArg.pos(),
@@ -687,7 +694,7 @@ public class AstErrors extends ANY
   {
     if (!any() || (originalType                  != Types.t_ERROR &&
                    redefinedFeature.resultType() != Types.t_ERROR &&
-                   !redefinedFeature.isTypeFeature() // type features generated from broken original features may cause subsequent errors
+                   !redefinedFeature.isCotype() // cotypes generated from broken original features may cause subsequent errors
                    )
         )
       {
@@ -757,16 +764,16 @@ public class AstErrors extends ANY
   }
   */
 
-  static void ifConditionMustBeBool(SourcePosition pos, AbstractType type)
+  static void ifConditionMustBeBool(Expr sub)
   {
     if (CHECKS) check
-      (any() || type != Types.t_ERROR);
+      (any() || sub.type() != Types.t_ERROR);
 
-    if (type != Types.t_ERROR)
+    if (sub.type() != Types.t_ERROR)
       {
-        error(pos,
+        error(sub.pos(),
               "If condition must be assignable to type " + s(Types.resolved.t_bool) + "",
-              "Actual type is " + s(type) + "");
+              "Actual type is " + s(sub.type()) + "");
       }
   }
 
@@ -970,14 +977,14 @@ public class AstErrors extends ANY
         var aa = a_declared_first ? a : b;
         var bb = a_declared_first ? b : a;
 
-        var of = aa.isTypeFeature() ? aa.typeFeatureOrigin() : aa;
+        var of = aa.isCotype() ? aa.cotypeOrigin() : aa;
         error(bb.pos(),
               "Duplicate feature declaration",
               "Feature that was declared repeatedly: " + s(of) + "\n" +
               "originally declared at " + aa.pos().show() + "\n" +
               "To solve this, consider renaming one of these two features, e.g., as " + sbn(of.featureName().baseNameHuman() + "ʼ") +
               " (using a unicode modifier letter apostrophe " + sbn("ʼ")+ " U+02BC) "+
-              (aa.isTypeFeature()
+              (aa.isCotype()
                ? ("or changing it into a routine by returning a " +
                   sbn("unit") + " result, i.e., adding " + sbn("unit") + " before " + code("is") + " or using " + code("=>") +
                   " instead of "+ code("is") + ".")
@@ -1026,9 +1033,9 @@ public class AstErrors extends ANY
 
   public static void cannotRedefine(AbstractFeature f, AbstractFeature existing)
   {
-    if (any() && f.isTypeFeature() || existing.isTypeFeature())
+    if (any() && f.isCotype() || existing.isCotype())
       {
-        // suppress subsequent errors in auto-generated type features
+        // suppress subsequent errors in auto-generated cotypes
       }
     else if (existing.isChoice())
       {
@@ -1692,11 +1699,14 @@ public class AstErrors extends ANY
   static void forwardTypeInference(SourcePosition pos, AbstractFeature f, SourcePosition at)
   {
     // NYI: It would be nice to output the whole cycle here as part of the detail message
-    error(pos,
-          "Illegal forward or cyclic type inference",
-          "The definition of a field using " + ss(":=") + ", or of a feature or function\n" +
-          "using " + ss("=>") + " must not create cyclic type dependencies.\n"+
-          "Referenced feature: " + s(f) + " at " + at.show());
+    if (!any() || !(f instanceof Feature ff && ff.impl() == Impl.ERROR))
+      {
+        error(pos,
+              "Illegal forward or cyclic type inference",
+              "The definition of a field using " + ss(":=") + ", or of a feature or function\n" +
+              "using " + ss("=>") + " must not create cyclic type dependencies.\n"+
+              "Referenced feature: " + s(f) + " at " + at.show());
+      }
   }
 
   public static void illegalSelect(SourcePosition pos, String select, NumberFormatException e)
@@ -1862,9 +1872,12 @@ public class AstErrors extends ANY
 
   static void failedToInferResultType(Feature f)
   {
-    error(f.pos(),
-          "Failed to infer result type for feature " + s(f) +  ".",
-          "To solve this, please specify a result type explicitly.");
+    if (!any() || f.impl() != Impl.ERROR)
+      {
+        error(f.pos(),
+              "Failed to infer result type for feature " + s(f) +  ".",
+              "To solve this, please specify a result type explicitly.");
+      }
   }
 
   /**
@@ -2069,7 +2082,7 @@ public class AstErrors extends ANY
           "Type depending on target: " + s(from) + "\n" +
           "Target type: " + s(to) + "\n" +
           "To solve this, you could try to use a value type as the target type of the call" +
-          (c.calledFeature().outer().isThisRef() ? " " : ", e,g., " + s(c.calledFeature().outer().selfType()) + ", ") +
+          (c.calledFeature().outer().isRef() ? " " : ", e,g., " + s(c.calledFeature().outer().selfType()) + ", ") +
           "or change the " + art + " of " + s(c.calledFeature()) + " to no longer depend on " + s(from) + ".");
   }
 
@@ -2216,16 +2229,18 @@ public class AstErrors extends ANY
 
   public static void unusedResult(Expr e)
   {
-    error(e.pos(), "Expression produces result of type " + s(e.type()) +  " but result is not used.",
-       "To solve this, use the result, explicitly ignore the result " + st("_ := <expression>") + " or change " + s(e.type().feature())
-              + " from constructor to routine by replacing" + skw("is") + " by " + skw("=>") + ".");
+    var t = e.type();
+    error(e.pos(), "Expression produces result of type " + s(t) +  " but result is not used.",
+        (!t.isGenericArgument() && t.feature().isConstructor()
+          ? "To solve this, use the result, explicitly ignore the result " + st("_ := <expression>") + " or change " + s(t.feature()) + " from constructor to routine by replacing " + skw("is") + " by " + skw("=>") + "."
+          : "To solve this, use the result or explicitly ignore the result " + st("_ := <expression>") + "."));
   }
   public static void redefiningFieldsIsForbidden(AbstractFeature existing, AbstractFeature f)
   {
     error(f.pos(),
           "Redefinition of non-argument fields is forbidden.",
           "The field being redefined: " + existing.pos().show() + System.lineSeparator() +
-          "To solve this, you may want to consider converting the redefined field into a routine by replacing" + skw(":=") + " by " + skw("=>") + ".");
+          "To solve this, you may want to consider converting the redefined field into a routine by replacing " + skw(":=") + " by " + skw("=>") + ".");
   }
 
   public static void mustNotDefineTypeFeatureInUniverse(AbstractFeature f)
@@ -2259,7 +2274,7 @@ public class AstErrors extends ANY
 
   public static void illegalVisibilityArgument(Feature f)
   {
-    error(f.pos(), "Argument features must not have visibility modifier.",
+    error(f.pos(), "Argument features of non-constructors must not have visibility modifier.",
       "To solve this, remove the visibility modifier " + s(f.visibility()) + " from feature " + s(f) + ".");
   }
 
@@ -2270,6 +2285,40 @@ public class AstErrors extends ANY
       "" /* NYI: UNDER DEVELOPMENT: can we give some useful suggestion here? */);
   }
 
+  public static void illegalFeatureDefiningType(Feature f)
+  {
+    error(f.pos(),
+      "Must not define type inside of type feature.",
+      "To solve this, move the type outside of the type feature." + System.lineSeparator() +
+      "E.g., instead of: " + System.lineSeparator() + code("type.union : Monoid bitset is") + System.lineSeparator() +
+      "do this: " + code("public type.union =>" + System.lineSeparator() + "  ref : Monoid bitset"));
+  }
+
+  public static void typeFeaturesMustOnlyBeDeclaredInFeaturesThatDefineType(Feature f)
+  {
+    error(f.pos(), "The outer feature of a type feature must define a type, i.e. constructors and choices.",
+      "To solve this, move the declared type feature to a feature that defines a type."
+    );
+  }
+
+  public static void illegalThisType(SourcePosition pos, AbstractType t)
+  {
+    error(pos, "Illegal " + skw(".this") + " type: " + s(t),
+      """
+        To solve this, either
+          - move the code inside of the feature the type refers to
+        or
+          - change the type to a legal"""  + " " + skw(".this") + " type.");
+  }
+
+  public static void notAnEffect(AbstractType t, SourcePosition pos)
+  {
+    var f = t.isGenericArgument() ? t.genericArgument().feature() : t.feature();
+    error(pos,
+          "Feature " + sbnf(f) + " is not an effect.",
+          "Effects required by a feature are specified with " + skw("!") + " in the signature. " +
+          "Therefore, only valid effects may follow after it.");
+  }
 
 }
 

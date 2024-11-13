@@ -105,14 +105,35 @@ public class TaggedValue extends Value implements Comparable<TaggedValue>
 
 
   /**
+   * Does this Value cover the values in other?
+   */
+  @Override
+  boolean contains(Value other)
+  {
+    return other instanceof TaggedValue ot &&
+      _clazz == ot._clazz &&
+      _tag == ot._tag &&
+      _original.contains(ot._original);
+  }
+
+
+  /**
    * Create the union of the values 'this' and 'v'. This is called by join()
    * after common cases (same instance, UNDEFINED) have been handled.
+   *
+   * @param dfa the current analysis context.
+   *
+   * @param v the value this value should be joined with.
+   *
+   * @param clazz the clazz of the resulting value. This is usually the same as
+   * the clazz of `this` or `v`, unless we are joining `ref` type values.
    */
-  public Value joinInstances(DFA dfa, Value v)
+  @Override
+  public Value joinInstances(DFA dfa, Value v, int clazz)
   {
     if (v instanceof TaggedValue tv && _tag == tv._tag)
       {
-        return _dfa.newTaggedValue(_clazz, _original.join(dfa, tv._original), _tag);
+        return _dfa.newTaggedValue(_clazz, _original.join(dfa, tv._original, clazz), _tag);
       }
     else
       {
@@ -133,7 +154,7 @@ public class TaggedValue extends Value implements Comparable<TaggedValue>
                   }
               }
           }
-        return super.joinInstances(dfa, v);
+        return super.joinInstances(dfa, v, clazz);
       }
   }
 

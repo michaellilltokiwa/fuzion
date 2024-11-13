@@ -29,7 +29,6 @@
 public switch(A type, B type /* NYI: B should be open generic */) :
   choice A B,
   # monad A (switch A B) NYI: does not work,
-  auto_unwrap A (try (switch A B)), /* NYI: BUG #3355: auto_unwrap T (try switch.this) */
   Sequence A
 is
 
@@ -143,12 +142,28 @@ is
                 | B => nil
 
 
-  # unwrap this switch
+  # convert this switch to an option
   #
-  public redef unwrap ! try switch.this =>
-    match switch.this
-      a A => a
-      b B => (try switch.this).env.raise (error $b)
+  public as_option option A
+  =>
+    switch.this ? a A => a
+                | B => nil
+
+
+  # convert this switch to an outcome
+  #
+  public as_outcome outcome A
+  =>
+    switch.this ? a A => a
+                | B => error "switch.as_outcome: no error message provided"
+
+
+  # convert this switch to an outcome
+  #
+  public as_outcome(e error) outcome A
+  =>
+    switch.this ? a A => a
+                | B => e
 
 
   # converts switch to a string

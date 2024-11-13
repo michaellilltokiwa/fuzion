@@ -56,8 +56,6 @@ import dev.flang.fuir.FUIR;
 
 import dev.flang.fuir.analysis.dfa.DFA;
 
-import dev.flang.me.MiddleEnd;
-
 import dev.flang.opt.Optimizer;
 
 import dev.flang.util.List;
@@ -87,7 +85,6 @@ public class Fuzion extends Tool
 
   static String  _binaryName_ = null;
   static boolean _useBoehmGC_ = true;
-  static boolean _xdfa_ = true;
   static String _cCompiler_ = null;
   static String _cFlags_ = null;
   static String _cTarget_ = null;
@@ -108,9 +105,7 @@ public class Fuzion extends Tool
       }
       void process(FuzionOptions options, FUIR fuir)
       {
-        var new_fuir = _xdfa_ ? new DFA(options, fuir).new_fuir() : fuir;
-
-        new Interpreter(options, new_fuir).run();
+        new Interpreter(options, fuir).run();
       }
     },
 
@@ -118,7 +113,7 @@ public class Fuzion extends Tool
     {
       String usage()
       {
-        return "[-o=<file>] [-Xgc=(on|off)] [-Xdfa=(on|off)] [-XkeepGeneratedCode=(on|off)] [-CC=<c compiler>] [-CFlags=\"list of c compiler flags\"] [-CTarget=\"e.g. x86_64-pc-linux-gnu\"] ";
+        return "[-o=<file>] [-Xgc=(on|off)] [-XkeepGeneratedCode=(on|off)] [-CC=<c compiler>] [-CFlags=\"list of c compiler flags\"] [-CTarget=\"e.g. x86_64-pc-linux-gnu\"] ";
       }
       boolean handleOption(Fuzion f, String o)
       {
@@ -131,11 +126,6 @@ public class Fuzion extends Tool
         else if (o.startsWith("-Xgc="))
           {
             _useBoehmGC_ = parseOnOffArg(o);
-            result = true;
-          }
-        else if (o.startsWith("-Xdfa="))
-          {
-            _xdfa_ = parseOnOffArg(o);
             result = true;
           }
         else if (o.startsWith("-CC="))
@@ -162,7 +152,7 @@ public class Fuzion extends Tool
       }
       void process(FuzionOptions options, FUIR fuir)
       {
-        new C(new COptions(options, _binaryName_, _useBoehmGC_, _xdfa_, _cCompiler_, _cFlags_, _cTarget_, _keepGeneratedCode_), fuir).compile();
+        new C(new COptions(options, _binaryName_, _useBoehmGC_, _cCompiler_, _cFlags_, _cTarget_, _keepGeneratedCode_), fuir).compile();
       }
     },
 
@@ -172,23 +162,18 @@ public class Fuzion extends Tool
     {
       String usage()
       {
-        return "[-Xdfa=(on|off)] ";
+        return "";
       }
       boolean handleOption(Fuzion f, String o)
       {
         boolean result = false;
-        if (o.startsWith("-Xdfa="))
-          {
-            _xdfa_ = parseOnOffArg(o);
-            result = true;
-          }
         return result;
       }
       void process(FuzionOptions options, FUIR fuir)
       {
         try
           {
-            new JVM(new JVMOptions(options, _xdfa_, /* run */ true, /* save classes */ false, /* save JAR */ false, Optional.empty()), fuir).compile();
+            new JVM(new JVMOptions(options, /* run */ true, /* save classes */ false, /* save JAR */ false, Optional.empty()), fuir).compile();
           }
         catch (QuietThreadTermination e)
           {
@@ -204,16 +189,11 @@ public class Fuzion extends Tool
     {
       String usage()
       {
-        return "[-o=<outputName>] [-Xdfa=(on|off)] ";
+        return "[-o=<outputName>] ";
       }
       boolean handleOption(Fuzion f, String o)
       {
         boolean result = false;
-        if (o.startsWith("-Xdfa="))
-          {
-            _xdfa_ = parseOnOffArg(o);
-            result = true;
-          }
         if (o.startsWith("-o="))
           {
             _jvmOutName_ = o.substring(3);
@@ -223,7 +203,7 @@ public class Fuzion extends Tool
       }
       void process(FuzionOptions options, FUIR fuir)
       {
-        new JVM(new JVMOptions(options, _xdfa_, /* run */ false, /* save classes */ true, /* save JAR */ false, Optional.ofNullable(_jvmOutName_)), fuir).compile();
+        new JVM(new JVMOptions(options, /* run */ false, /* save classes */ true, /* save JAR */ false, Optional.ofNullable(_jvmOutName_)), fuir).compile();
       }
     },
 
@@ -231,16 +211,11 @@ public class Fuzion extends Tool
     {
       String usage()
       {
-        return "[-o=<outputName>] [-Xdfa=(on|off)] ";
+        return "[-o=<outputName>] ";
       }
       boolean handleOption(Fuzion f, String o)
       {
         boolean result = false;
-        if (o.startsWith("-Xdfa="))
-          {
-            _xdfa_ = parseOnOffArg(o);
-            result = true;
-          }
         if (o.startsWith("-o="))
           {
             _jvmOutName_ = o.substring(3);
@@ -250,7 +225,7 @@ public class Fuzion extends Tool
       }
       void process(FuzionOptions options, FUIR fuir)
       {
-        new JVM(new JVMOptions(options, _xdfa_, /* run */ false, /* save classes */ false, /* save JAR */ true, Optional.ofNullable(_jvmOutName_)), fuir).compile();
+        new JVM(new JVMOptions(options, /* run */ false, /* save classes */ false, /* save JAR */ true, Optional.ofNullable(_jvmOutName_)), fuir).compile();
       }
     },
 
@@ -260,7 +235,7 @@ public class Fuzion extends Tool
     {
       void process(FuzionOptions options, FUIR fuir)
       {
-        new DFA(options, fuir).dfa();
+        // nothing to be done, DFA was already run by processFrontEnd which calls us.
       }
     },
 
@@ -390,7 +365,6 @@ public class Fuzion extends Tool
     {
       void process(FuzionOptions options, FUIR fuir)
       {
-        new DFA(options, fuir).new_fuir();
         Errors.showAndExit();
       }
     },
@@ -501,11 +475,10 @@ public class Fuzion extends Tool
      */
     void processFrontEnd(Fuzion f, FrontEnd fe)
     {
-      var mir  = fe.createMIR();                                                       f.timer("createMIR");
-      var me   = new MiddleEnd(fe._options, mir, fe.mainModule() /* NYI: remove */);
-      var air  = me.air();                                                             f.timer("me");
-      var fuir = new Optimizer(fe._options, air, me.clazzes()).fuir();                 f.timer("ir");
-      process(fe._options, fuir);
+      var o    = fe._options;
+      var mir  = fe.createMIR();                             f.timer("createMIR");
+      var fuir = new Optimizer(o, fe, mir).fuir();           f.timer("ir");
+      process(o, new DFA(o, fuir).new_fuir());
     }
 
     void process(FuzionOptions options, FUIR fuir)

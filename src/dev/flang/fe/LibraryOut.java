@@ -206,13 +206,13 @@ class LibraryOut extends ANY
    *   +--------+--------+---------------+-----------------------------------------------+
    *   | true   | 1      | Name          | module name                                   |
    *   +        +--------+---------------+-----------------------------------------------+
-   *   |        | 1      | u128          | module version                                |
+   *   |        | 1      | u128          | module hash                                   |
    *   +--------+--------+---------------+-----------------------------------------------+
    */
   void moduleRef(LibraryModule m)
   {
     _data.writeName(m.name());
-    _data.write(m.version());
+    _data.write(m.hash());
   }
 
 
@@ -448,14 +448,14 @@ class LibraryOut extends ANY
     _data.add(f);
     int k = f.visibility().ordinal() << 7;
     k = k | (!f.isConstructor() ? f.kind().ordinal() :
-              f.isThisRef()     ? FuzionConstants.MIR_FILE_KIND_CONSTRUCTOR_REF
+              f.isRef()     ? FuzionConstants.MIR_FILE_KIND_CONSTRUCTOR_REF
                                 : FuzionConstants.MIR_FILE_KIND_CONSTRUCTOR_VALUE);
     if (CHECKS) check
       (k >= 0,
        Errors.any() || f.isRoutine() || f.isChoice() || f.isIntrinsic() || f.isAbstract() || f.generics() == FormalGenerics.NONE);
-    if (f.hasTypeFeature())
+    if (f.hasCotype())
       {
-        k = k | FuzionConstants.MIR_FILE_KIND_HAS_TYPE_FEATURE;
+        k = k | FuzionConstants.MIR_FILE_KIND_HAS_COTYPE;
       }
     if ((f.modifiers() & FuzionConstants.MODIFIER_FIXED) != 0)
       {
@@ -490,9 +490,9 @@ class LibraryOut extends ANY
     _data.writeInt (n._id);         // NYI: id /= 0 only if argCount = 0, so join these two values.
     pos(f.pos());
     featureIndexOrZeroForUniverse(f.outer());
-    if ((k & FuzionConstants.MIR_FILE_KIND_HAS_TYPE_FEATURE) != 0)
+    if ((k & FuzionConstants.MIR_FILE_KIND_HAS_COTYPE) != 0)
       {
-        _data.writeOffset(f.typeFeature());
+        _data.writeOffset(f.cotype());
       }
     if (CHECKS) check
       (f.arguments().size() == argCount);
@@ -668,7 +668,7 @@ class LibraryOut extends ANY
    *   | hasPos | 1      | int           | source position: index in this file's         |
    *   |        |        |               | SourceFiles section, 0 for builtIn pos        |
    *   +--------+--------+---------------+-----------------------------------------------+
-   *   | k==Add | 1      | Assign        | assignment                                    |
+   *   | k==Ass | 1      | Assign        | assignment                                    |
    *   +--------+--------+---------------+-----------------------------------------------+
    *   | k==Con | 1      | Constant      | constant                                      |
    *   +--------+--------+---------------+-----------------------------------------------+
