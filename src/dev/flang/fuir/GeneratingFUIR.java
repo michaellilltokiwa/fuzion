@@ -1608,7 +1608,7 @@ public class GeneratingFUIR extends FUIR
       (s != SpecialClazzes.c_NOT_FOUND);
 
     var result = _specialClazzes[s.ordinal()];
-    if (result == null)
+    if (result == null && !_lookupDone)
       {
         if (s == SpecialClazzes.c_universe)
           {
@@ -1641,7 +1641,8 @@ public class GeneratingFUIR extends FUIR
     if (PRECONDITIONS) require
       (s != SpecialClazzes.c_NOT_FOUND);
 
-    return specialClazz(s)._id;
+    var sc = specialClazz(s);
+    return sc == null ? NO_CLAZZ : sc._id;
   }
 
 
@@ -2165,7 +2166,7 @@ public class GeneratingFUIR extends FUIR
    *
    * @param cl a clazz id
    *
-   * @param gix indec of the generic parameter
+   * @param gix index of the generic parameter
    *
    * @return id of cl's actual generic parameter #gix
    */
@@ -2174,6 +2175,20 @@ public class GeneratingFUIR extends FUIR
   {
     var cc = id2clazz(cl);
     return cc.actualTypeParameters()[gix]._id;
+  }
+
+
+  @Override
+  public int[] clazzActualGenerics(int cl)
+  {
+    var cc = id2clazz(cl);
+    var generics = cc.actualTypeParameters();
+    var result = new int[generics.length];
+    for (int gix = 0; gix < result.length; gix++)
+      {
+        result[gix] = generics[gix]._id;
+      }
+    return result;
   }
 
 

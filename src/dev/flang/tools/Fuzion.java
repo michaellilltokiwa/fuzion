@@ -53,12 +53,15 @@ import dev.flang.fe.FrontEnd;
 import dev.flang.fe.FrontEndOptions;
 
 import dev.flang.fuir.FUIR;
-
+import dev.flang.fuir.LibraryFuir;
+import dev.flang.fuir.FUIR.SpecialClazzes;
 import dev.flang.fuir.analysis.dfa.DFA;
-
+import dev.flang.ir.IR.ExprKind;
+import dev.flang.ir.IR.FeatureKind;
 import dev.flang.opt.Optimizer;
 
 import dev.flang.util.List;
+import dev.flang.util.DataOut;
 import dev.flang.util.Errors;
 import dev.flang.util.FuzionConstants;
 import dev.flang.util.FuzionOptions;
@@ -178,7 +181,256 @@ public class Fuzion extends Tool
       {
         try
           {
-            new JVM(new JVMOptions(options, /* run */ true, /* save classes */ false, /* save JAR */ false, Optional.empty()), fuir).compile();
+            // NYI: these generate new Clazzes, remove
+            // for (int cl = 1 /* no NOT_FOUND */; cl < SpecialClazzes.values().length; cl++)
+            //   {
+            //     fuir.clazz(SpecialClazzes.values()[cl]);
+            //   }
+            for (int cl = fuir.firstClazz(); cl <= fuir.lastClazz(); cl++)
+              {
+                fuir.clazzOuterRef(cl);
+              }
+            fuir.clazzCode(fuir.clazz(SpecialClazzes.c_Const_String));
+            for (int cl = fuir.firstClazz(); cl <= fuir.lastClazz(); cl++)
+              {
+                fuir.clazzResultField(cl);
+              }
+
+            // =====
+
+            var firstClazz = fuir.firstClazz();
+            var lastClazz = fuir.lastClazz();
+            var siteCount = fuir.siteCount();
+            var data = new DataOut();
+            data.writeInt(siteCount);
+            data.writeInt(firstClazz);
+            data.writeInt(lastClazz);
+            data.writeInt(fuir.mainClazzId());
+            for (int cl = firstClazz; cl <= lastClazz; cl++)
+              {
+                data.writeName(fuir.clazzBaseName(cl));
+              }
+            for (int cl = firstClazz; cl <= lastClazz; cl++)
+              {
+                data.writeInt(fuir.clazzOuterClazz(cl));
+              }
+            for (int cl = firstClazz; cl <= lastClazz; cl++)
+              {
+                data.writeBool(fuir.clazzIsBoxed(cl));
+              }
+            for (int cl = firstClazz; cl <= lastClazz; cl++)
+              {
+                data.writeInt(fuir.clazzArgCount(cl));
+                for (int i = 0; i < fuir.clazzArgCount(cl); i++)
+                  {
+                    data.writeInt(fuir.clazzArg(cl, i));
+                  }
+              }
+            check(lastClazz == fuir.lastClazz());
+            for (int cl = firstClazz; cl <= lastClazz; cl++)
+              {
+                data.writeInt(fuir.clazzKind(cl).ordinal());
+              }
+            check(lastClazz == fuir.lastClazz());
+            for (int cl = 1 /* no NOT_FOUND */; cl < SpecialClazzes.values().length; cl++)
+              {
+                data.writeInt(fuir.clazz(SpecialClazzes.values()[cl]));
+              }
+            check(lastClazz == fuir.lastClazz());
+            for (int cl = firstClazz; cl <= lastClazz; cl++)
+              {
+                data.writeInt(fuir.clazzOuterRef(cl));
+              }
+            check(lastClazz == fuir.lastClazz());
+            for (int cl = firstClazz; cl <= lastClazz; cl++)
+              {
+                data.writeInt(fuir.clazzResultClazz(cl));
+              }
+            check(lastClazz == fuir.lastClazz());
+            for (int cl = firstClazz; cl <= lastClazz; cl++)
+              {
+                data.writeBool(fuir.clazzIsRef(cl));
+              }
+            check(lastClazz == fuir.lastClazz());
+            for (int cl = firstClazz; cl <= lastClazz; cl++)
+              {
+                data.writeBool(fuir.clazzIsUnitType(cl));
+              }
+            check(lastClazz == fuir.lastClazz());
+            for (int cl = firstClazz; cl <= lastClazz; cl++)
+              {
+                data.writeBool(fuir.clazzIsChoice(cl));
+              }
+            check(lastClazz == fuir.lastClazz());
+            for (int cl = firstClazz; cl <= lastClazz; cl++)
+              {
+                data.writeInt(fuir.clazzAsValue(cl));
+              }
+            check(lastClazz == fuir.lastClazz());
+            for (int cl = firstClazz; cl <= lastClazz; cl++)
+              {
+                data.writeInt(fuir.clazzNumChoices(cl));
+                for (int i = 0; i < fuir.clazzNumChoices(cl); i++)
+                  {
+                    data.writeInt(fuir.clazzChoice(cl, i));
+                  }
+              }
+            check(lastClazz == fuir.lastClazz());
+            for (int cl = firstClazz; cl <= lastClazz; cl++)
+              {
+                var heirs = fuir.clazzInstantiatedHeirs(cl);
+                data.writeInt(heirs.length);
+                for (int i = 0; i < heirs.length; i++)
+                  {
+                    data.writeInt(heirs[i]);
+                  }
+              }
+            check(lastClazz == fuir.lastClazz());
+            for (int cl = firstClazz; cl <= lastClazz; cl++)
+              {
+                data.writeBool(fuir.hasData(cl));
+              }
+            check(lastClazz == fuir.lastClazz());
+            for (int cl = firstClazz; cl <= lastClazz; cl++)
+              {
+                data.writeBool(fuir.clazzNeedsCode(cl));
+              }
+            check(lastClazz == fuir.lastClazz());
+            for (int cl = firstClazz; cl <= lastClazz; cl++)
+              {
+                data.writeInt(fuir.clazzNumFields(cl));
+                for (int i = 0; i < fuir.clazzNumFields(cl); i++)
+                  {
+                    data.writeInt(fuir.clazzField(cl, i));
+                  }
+              }
+            check(lastClazz == fuir.lastClazz());
+            for (int cl = firstClazz; cl <= lastClazz; cl++)
+              {
+                var hasCode = fuir.clazzKind(cl) == FeatureKind.Routine &&
+                              (fuir.clazzNeedsCode(cl) ||
+                              cl == fuir.clazz_Const_String() ||
+                              cl == fuir.clazz_Const_String_utf8_data() ||
+                              cl == fuir.clazz_array_u8() ||
+                              cl == fuir.clazz_fuzionSysArray_u8() ||
+                              cl == fuir.clazz_fuzionSysArray_u8_data() ||
+                              cl == fuir.clazz_fuzionSysArray_u8_length());
+
+                data.writeInt(hasCode ? fuir.clazzCode(cl) : -1);
+              }
+            check(lastClazz == fuir.lastClazz());
+            for (int s = FUIR.SITE_BASE; s < siteCount+FUIR.SITE_BASE; s++)
+              {
+                data.writeInt(fuir.clazzAt(s));
+              }
+            check(lastClazz == fuir.lastClazz());
+            for (int cl = firstClazz; cl <= lastClazz; cl++)
+              {
+                data.writeInt(fuir.clazzResultField(cl));
+              }
+            check(lastClazz == fuir.lastClazz());
+            for (int s = FUIR.SITE_BASE; s < siteCount+FUIR.SITE_BASE; s++)
+              {
+                data.writeBool(fuir.withinCode(s) ? fuir.alwaysResultsInVoid(s) : false);
+              }
+            check(lastClazz == fuir.lastClazz());
+            for (int s = FUIR.SITE_BASE; s < siteCount+FUIR.SITE_BASE; s++)
+              {
+                data.writeInt(fuir.withinCode(s) ? fuir.codeAt(s).ordinal() : -1);
+              }
+            check(lastClazz == fuir.lastClazz());
+            for (int s = FUIR.SITE_BASE; s < siteCount+FUIR.SITE_BASE; s++)
+              {
+                data.writeInt(fuir.withinCode(s) && fuir.codeAt(s) == FUIR.ExprKind.Assign ? fuir.assignedType(s) : -1);
+              }
+            check(lastClazz == fuir.lastClazz());
+            for (int s = FUIR.SITE_BASE; s < siteCount+FUIR.SITE_BASE; s++)
+              {
+                data.writeInt(fuir.withinCode(s) && fuir.codeAt(s) == ExprKind.Const ? fuir.constClazz(s) : -1);
+              }
+            check(lastClazz == fuir.lastClazz());
+            for (int s = FUIR.SITE_BASE; s < siteCount+FUIR.SITE_BASE; s++)
+              {
+                var constData = fuir.withinCode(s) && fuir.codeAt(s) == ExprKind.Const ? fuir.constData(s) : new byte[0];
+                data.writeInt(constData.length);
+                data.write(constData);
+              }
+            check(lastClazz == fuir.lastClazz());
+            for (int s = FUIR.SITE_BASE; s < siteCount+FUIR.SITE_BASE; s++)
+              {
+                var b =fuir.withinCode(s) && (fuir.codeAt(s) == ExprKind.Call ||
+                                              fuir.codeAt(s) == ExprKind.Assign);
+                data.writeInt(b ? fuir.accessedClazz(s) : -1);
+              }
+            // check(lastClazz == fuir.lastClazz());
+            for (int s = FUIR.SITE_BASE; s < siteCount+FUIR.SITE_BASE; s++)
+              {
+                var b =fuir.withinCode(s) && (fuir.codeAt(s) == ExprKind.Call ||
+                                              fuir.codeAt(s) == ExprKind.Assign);
+                data.writeInt(b ? fuir.accessTargetClazz(s) : -1);
+              }
+            // check(lastClazz == fuir.lastClazz());
+            for (int s = FUIR.SITE_BASE; s < siteCount+FUIR.SITE_BASE; s++)
+              {
+                var b =fuir.withinCode(s) && (fuir.codeAt(s) == ExprKind.Call ||
+                  fuir.codeAt(s) == ExprKind.Assign && fuir.accessedClazz(s) != -1);
+                var accessedClazzes = b ? fuir.accessedClazzes(s) : new int[0];
+                data.writeInt(accessedClazzes.length);
+                for (int index = 0; index < accessedClazzes.length; index++)
+                  {
+                    data.writeInt(accessedClazzes[index]);
+                  }
+              }
+            // check(lastClazz == fuir.lastClazz());
+            for (int cl = firstClazz; cl <= lastClazz; cl++)
+              {
+                data.writeBool(fuir.clazzFieldIsAdrOfValue(cl));
+              }
+            // check(lastClazz == fuir.lastClazz());
+            for (int cl = firstClazz; cl <= lastClazz; cl++)
+              {
+                data.writeInt(fuir.clazzTypeParameterActualType(cl));
+              }
+            // check(lastClazz == fuir.lastClazz());
+            for (int cl = firstClazz; cl <= lastClazz; cl++)
+              {
+                data.writeName(fuir.clazzOriginalName(cl));
+              }
+            // check(lastClazz == fuir.lastClazz());
+            for (int s = FUIR.SITE_BASE; s < siteCount+FUIR.SITE_BASE; s++)
+              {
+                data.writeInt(fuir.withinCode(s) && fuir.codeAt(s) == ExprKind.Box ? fuir.boxValueClazz(s) : -1);
+              }
+            // check(lastClazz == fuir.lastClazz());
+            for (int s = FUIR.SITE_BASE; s < siteCount+FUIR.SITE_BASE; s++)
+              {
+                data.writeInt(fuir.withinCode(s) && fuir.codeAt(s) == ExprKind.Box ? fuir.boxResultClazz(s) : -1);
+              }
+            // check(lastClazz == fuir.lastClazz());
+            for (int cl = firstClazz; cl <= lastClazz; cl++)
+              {
+                var ag = fuir.clazzActualGenerics(cl);
+                data.writeInt(ag.length);
+                for (int i = 0; i < ag.length; i++)
+                  {
+                    data.writeInt(ag[i]);
+                  }
+              }
+            // check(lastClazz == fuir.lastClazz());
+            for (int s = FUIR.SITE_BASE; s < siteCount+FUIR.SITE_BASE; s++)
+              {
+                var mcc = fuir.withinCode(s) && fuir.codeAt(s) == ExprKind.Match ? fuir.matchCaseCount(s) : 0;
+                data.writeInt(mcc);
+                for (int index = 0; index < mcc; index++)
+                  {
+                    data.write(fuir.matchStaticSubject(0));
+
+                  }
+              }
+            // check(lastClazz == fuir.lastClazz());
+
+
+            new JVM(new JVMOptions(options, /* run */ true, /* save classes */ false, /* save JAR */ false, Optional.empty()), new LibraryFuir(data.buffer())).compile();
           }
         catch (QuietThreadTermination e)
           {

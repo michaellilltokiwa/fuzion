@@ -795,6 +795,8 @@ public abstract class FUIR extends IR
    */
   public abstract int clazzActualGeneric(int cl, int gix);
 
+  public abstract int[] clazzActualGenerics(int cl);
+
 
   /*---------------------  analysis results  ---------------------*/
 
@@ -1527,6 +1529,12 @@ public abstract class FUIR extends IR
    * features, there will be only one error for that clazz.
    */
   public abstract void reportAbstractMissing();
+
+
+  public int siteCount()
+  {
+    return _allCode.size();
+  }
 
 
 }
