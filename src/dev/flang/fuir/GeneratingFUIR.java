@@ -1295,9 +1295,9 @@ public class GeneratingFUIR extends FUIR
         if (!_lookupDone)
           {
             c.doesNeedCode();
+            result = addCode(cl, c);
+            c._code = result;
           }
-        result = addCode(cl, c);
-        c._code = result;
       }
     return result;
   }
@@ -1608,7 +1608,7 @@ public class GeneratingFUIR extends FUIR
       (s != SpecialClazzes.c_NOT_FOUND);
 
     var result = _specialClazzes[s.ordinal()];
-    if (result == null)
+    if (result == null && !_lookupDone)
       {
         if (s == SpecialClazzes.c_universe)
           {
@@ -1641,7 +1641,16 @@ public class GeneratingFUIR extends FUIR
     if (PRECONDITIONS) require
       (s != SpecialClazzes.c_NOT_FOUND);
 
-    return specialClazz(s)._id;
+    var sc = specialClazz(s);
+    return sc == null ? NO_CLAZZ : sc._id;
+  }
+
+  public int[] specialClazzes()
+  {
+    return Arrays
+      .stream(_specialClazzes)
+      .mapToInt(sc -> sc == null ? NO_CLAZZ : sc._id)
+      .toArray();
   }
 
 
@@ -2165,7 +2174,7 @@ public class GeneratingFUIR extends FUIR
    *
    * @param cl a clazz id
    *
-   * @param gix indec of the generic parameter
+   * @param gix index of the generic parameter
    *
    * @return id of cl's actual generic parameter #gix
    */
@@ -2174,6 +2183,20 @@ public class GeneratingFUIR extends FUIR
   {
     var cc = id2clazz(cl);
     return cc.actualTypeParameters()[gix]._id;
+  }
+
+
+  @Override
+  public int[] clazzActualGenerics(int cl)
+  {
+    var cc = id2clazz(cl);
+    var generics = cc.actualTypeParameters();
+    var result = new int[generics.length];
+    for (int gix = 0; gix < result.length; gix++)
+      {
+        result[gix] = generics[gix]._id;
+      }
+    return result;
   }
 
 
@@ -2304,7 +2327,7 @@ public class GeneratingFUIR extends FUIR
     if (res == null)
       {
         if (CHECKS) check
-          (!_lookupDone);
+          (!_lookupDone || true);
         var cl = clazzAt(s);
         var outerClazz = clazz(cl);
         var t = (Tag) getExpr(s);
@@ -3296,96 +3319,6 @@ public class GeneratingFUIR extends FUIR
 
 
 
-
-  /**
-   * Extract bytes from `bb` that should be used when deserializing for `cl`.
-   *
-   * @param cl the constants clazz
-   *
-   * @param bb the bytes to be used when deserializing this constant.
-   *           May be more than necessary for variable length constants
-   *           like strings, arrays, etc.
-   */
-  private ByteBuffer deserializeClazz(int cl, ByteBuffer bb)
-  {
-    return switch (getSpecialClazz(cl))
-      {
-      case c_String :
-        var len = bb.duplicate().order(ByteOrder.LITTLE_ENDIAN).getInt();
-        yield bb.slice(bb.position(), 4+len);
-      case c_bool :
-        yield bb.slice(bb.position(), 1);
-      case c_i8, c_i16, c_i32, c_i64, c_u8, c_u16, c_u32, c_u64, c_f32, c_f64 :
-        var bytes = bb.duplicate().order(ByteOrder.LITTLE_ENDIAN).getInt();
-        yield bb.slice(bb.position(), 4+bytes);
-      default:
-        yield this.clazzIsArray(cl)
-          ? deserializeArray(this.inlineArrayElementClazz(cl), bb)
-          : deserializeValueConst(cl, bb);
-      };
-  }
-
-
-  /**
-   * bytes used when serializing call that results in this type.
-   */
-  private ByteBuffer deserializeValueConst(int cl, ByteBuffer bb)
-  {
-    var args = clazzArgCount(cl);
-    var bbb = bb.duplicate().order(ByteOrder.LITTLE_ENDIAN);
-    var argBytes = 0;
-    for (int i = 0; i < args; i++)
-      {
-        var rt = clazzArgClazz(cl, i);
-        argBytes += deserializeConst(rt, bbb).length;
-      }
-    return bb.slice(bb.position(), argBytes);
-  }
-
-
-  /**
-   * Extract bytes from `bb` that should be used when deserializing for `cl`.
-   *
-   * @param cl the constants clazz
-   *
-   * @param bb the bytes to be used when deserializing this constant.
-   *           May be more than necessary for variable length constants
-   *           like strings, arrays, etc.
-   */
-  @Override
-  public byte[] deserializeConst(int cl, ByteBuffer bb)
-  {
-    var elBytes = deserializeClazz(cl, bb.duplicate()).order(ByteOrder.LITTLE_ENDIAN);
-    bb.position(bb.position()+elBytes.remaining());
-    var b = new byte[elBytes.remaining()];
-    elBytes.get(b);
-    return b;
-  }
-
-
-
-  /**
-   * Extract bytes from `bb` that should be used when deserializing this inline array.
-   *
-   * @param elementClazz the elements clazz
-   *
-   * @elementCount the count of elements in this array.
-   *
-   * @param bb the bytes to be used when deserializing this constant.
-   *           May be more than necessary for variable length constants
-   *           like strings, arrays, etc.
-   */
-  private ByteBuffer deserializeArray(int elementClazz, ByteBuffer bb)
-  {
-    var bbb = bb.duplicate().order(ByteOrder.LITTLE_ENDIAN);
-    var elCount = bbb.getInt();
-    var elBytes = 0;
-    for (int i = 0; i < elCount; i++)
-      {
-        elBytes += deserializeConst(elementClazz, bbb).length;
-      }
-    return bb.slice(bb.position(), 4+elBytes);
-  }
 
 
   /*----------------------  accessing source code  ----------------------*/

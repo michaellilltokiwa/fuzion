@@ -26,7 +26,12 @@ Fuzion language implementation.  If not, see <https://www.gnu.org/licenses/>.
 
 package dev.flang.fuir;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.ObjectOutputStream;
 import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+import java.util.function.Supplier;
 
 import dev.flang.ir.IR;
 import dev.flang.util.SourcePosition;
@@ -746,6 +751,8 @@ public abstract class FUIR extends IR
    */
   public abstract int clazzActualGeneric(int cl, int gix);
 
+  public abstract int[] clazzActualGenerics(int cl);
+
 
   /*---------------------  analysis results  ---------------------*/
 
@@ -1419,7 +1426,84 @@ public abstract class FUIR extends IR
    *           May be more than necessary for variable length constants
    *           like strings, arrays, etc.
    */
-  public abstract byte[] deserializeConst(int cl, ByteBuffer bb);
+  private ByteBuffer deserializeClazz(int cl, ByteBuffer bb)
+  {
+    return switch (getSpecialClazz(cl))
+      {
+      case c_String :
+        var len = bb.duplicate().order(ByteOrder.LITTLE_ENDIAN).getInt();
+        yield bb.slice(bb.position(), 4+len);
+      case c_bool :
+        yield bb.slice(bb.position(), 1);
+      case c_i8, c_i16, c_i32, c_i64, c_u8, c_u16, c_u32, c_u64, c_f32, c_f64 :
+        var bytes = bb.duplicate().order(ByteOrder.LITTLE_ENDIAN).getInt();
+        yield bb.slice(bb.position(), 4+bytes);
+      default:
+        yield this.clazzIsArray(cl)
+          ? deserializeArray(this.inlineArrayElementClazz(cl), bb)
+          : deserializeValueConst(cl, bb);
+      };
+  }
+
+
+  /**
+   * bytes used when serializing call that results in this type.
+   */
+  private ByteBuffer deserializeValueConst(int cl, ByteBuffer bb)
+  {
+    var args = clazzArgCount(cl);
+    var bbb = bb.duplicate().order(ByteOrder.LITTLE_ENDIAN);
+    var argBytes = 0;
+    for (int i = 0; i < args; i++)
+      {
+        var rt = clazzArgClazz(cl, i);
+        argBytes += deserializeConst(rt, bbb).length;
+      }
+    return bb.slice(bb.position(), argBytes);
+  }
+
+
+  /**
+   * Extract bytes from `bb` that should be used when deserializing for `cl`.
+   *
+   * @param cl the constants clazz
+   *
+   * @param bb the bytes to be used when deserializing this constant.
+   *           May be more than necessary for variable length constants
+   *           like strings, arrays, etc.
+   */
+  public byte[] deserializeConst(int cl, ByteBuffer bb)
+  {
+    var elBytes = deserializeClazz(cl, bb.duplicate()).order(ByteOrder.LITTLE_ENDIAN);
+    bb.position(bb.position()+elBytes.remaining());
+    var b = new byte[elBytes.remaining()];
+    elBytes.get(b);
+    return b;
+  }
+
+
+  /**
+   * Extract bytes from `bb` that should be used when deserializing this inline array.
+   *
+   * @param elementClazz the elements clazz
+   *
+   * @elementCount the count of elements in this array.
+   *
+   * @param bb the bytes to be used when deserializing this constant.
+   *           May be more than necessary for variable length constants
+   *           like strings, arrays, etc.
+   */
+  private ByteBuffer deserializeArray(int elementClazz, ByteBuffer bb)
+  {
+    var bbb = bb.duplicate().order(ByteOrder.LITTLE_ENDIAN);
+    var elCount = bbb.getInt();
+    var elBytes = 0;
+    for (int i = 0; i < elCount; i++)
+      {
+        elBytes += deserializeConst(elementClazz, bbb).length;
+      }
+    return bb.slice(bb.position(), 4+elBytes);
+  }
 
 
   /*----------------------  accessing source code  ----------------------*/
@@ -1474,6 +1558,194 @@ public abstract class FUIR extends IR
    * features, there will be only one error for that clazz.
    */
   public abstract void reportAbstractMissing();
+
+
+  public int siteCount()
+  {
+    return _allCode.size();
+  }
+
+
+  public int[] clazzArgs2(int cl)
+  {
+    var result = new int[clazzArgCount(cl)];
+    for (int i = 0; i < result.length; i++)
+      {
+        result[i]= clazzArg(cl, i);
+      }
+    return result;
+  }
+
+
+  public abstract int[] specialClazzes();
+
+
+  public int[] clazzChoices(int cl)
+  {
+    var numChoices = clazzNumChoices(cl);
+    var result = new int[numChoices > 0 ? numChoices : 0];
+    for (int i = 0; i < result.length; i++)
+      {
+        result[i]= clazzChoice(cl, i);
+      }
+    return result;
+  }
+
+
+  public int[] clazzFields(int cl)
+  {
+    var numFields = clazzNumFields(cl);
+    var result = new int[numFields > 0 ? numFields : 0];
+    for (int i = 0; i < result.length; i++)
+      {
+        result[i]= clazzField(cl, i);
+      }
+    return result;
+  }
+
+  public byte[] serialize()
+  {
+    // NYI: these generate new Clazzes, remove
+    for (int cl = firstClazz(); cl <= lastClazz(); cl++)
+      {
+        clazzOuterRef(cl);
+      }
+    clazzCode(clazz(SpecialClazzes.c_Const_String));
+
+    for (int cl = firstClazz(); cl <= lastClazz(); cl++)
+      {
+        clazzResultField(cl);
+      }
+
+    // =====
+    var firstClazz = firstClazz();
+    var lastClazz = lastClazz();
+    var siteCount = siteCount();
+
+    var baos = new ByteArrayOutputStream();
+    try (ObjectOutputStream oos = new ObjectOutputStream(baos))
+      {
+        oos.writeInt(mainClazzId());
+        var clazzes = new ClazzRecord[lastClazz-firstClazz+1];
+        for (int cl = firstClazz; cl <= lastClazz; cl++)
+          {
+            var cl0 = cl;
+            var needsCode = clazzKind(cl) == FeatureKind.Routine &&
+                            (clazzNeedsCode(cl) ||
+                            cl == clazz_Const_String() ||
+                            cl == clazz_Const_String_utf8_data() ||
+                            cl == clazz_array_u8() ||
+                            cl == clazz_fuzionSysArray_u8() ||
+                            cl == clazz_fuzionSysArray_u8_data() ||
+                            cl == clazz_fuzionSysArray_u8_length());
+            clazzes[clazzId2num(cl)] = new ClazzRecord(
+                clazzBaseName(cl),
+                clazzOuterClazz(cl),
+                clazzIsBoxed(cl),
+                clazzArgs2(cl),
+                clazzKind(cl),
+                clazzOuterRef(cl),
+                clazzResultClazz(cl),
+                clazzIsRef(cl),
+                clazzIsUnitType(cl),
+                clazzIsChoice(cl),
+                clazzAsValue(cl),
+                clazzChoices(cl),
+                clazzInstantiatedHeirs(cl),
+                hasData(cl),
+                clazzNeedsCode(cl),
+                clazzFields(cl),
+                needsCode ? clazzCode(cl) : NO_SITE,
+                clazzResultField(cl),
+                clazzFieldIsAdrOfValue(cl),
+                clazzTypeParameterActualType(cl),
+                clazzOriginalName(cl),
+                clazzActualGenerics(cl),
+                safe(()->lookupCall(cl0), -7),
+                safe(()->lookup_static_finally(cl0), -7),
+                clazzKind(cl) == FeatureKind.Routine ? lifeTime(cl) : null,
+                safe(()->clazzTypeName(cl0), null)
+                );
+          }
+        oos.writeObject(clazzes);
+
+        var sites = new SiteRecord[siteCount];
+        for (int s = SITE_BASE; s < SITE_BASE+siteCount; s++)
+          {
+            sites[s-SITE_BASE] = new SiteRecord(
+                clazzAt(s),
+                !withinCode(s) ? false : alwaysResultsInVoid(s),
+                !withinCode(s) ? null : codeAt(s),
+                !withinCode(s) ? -7 : codeAt(s) == ExprKind.Const ? constClazz(s) : NO_CLAZZ,
+                !withinCode(s) ? null : codeAt(s) == ExprKind.Const ? constData(s) : null,
+                !withinCode(s) ? -7 : (codeAt(s) == ExprKind.Call || codeAt(s) == ExprKind.Assign) ? accessedClazz(s) : NO_CLAZZ,
+                !withinCode(s) ? null : (codeAt(s) == ExprKind.Call || codeAt(s) == ExprKind.Assign) && accessedClazz(s) != NO_CLAZZ ? accessedClazzes(s) : null,
+                !withinCode(s) ? -7 : (codeAt(s) == ExprKind.Call || codeAt(s) == ExprKind.Assign) ? accessTargetClazz(s) : NO_CLAZZ,
+                !withinCode(s) ? -7 : codeAt(s) == ExprKind.Tag ? tagValueClazz(s) : NO_CLAZZ,
+                !withinCode(s) ? -7 : codeAt(s) == ExprKind.Assign ? assignedType(s) : NO_CLAZZ,
+                !withinCode(s) || codeAt(s) != ExprKind.Box ? -7 : boxValueClazz(s),
+                !withinCode(s) || codeAt(s) != ExprKind.Box ? -7 : boxResultClazz(s),
+                !withinCode(s) ? -7 : codeAt(s) == ExprKind.Match ? matchStaticSubject(s) : NO_CLAZZ,
+                !withinCode(s) ? -7 : codeAt(s) == ExprKind.Match ? matchCaseCount(s) : NO_CLAZZ,
+                !withinCode(s) ? null : codeAt(s) == ExprKind.Match ? matchCaseTags(s) : null,
+                !withinCode(s) ? null : codeAt(s) == ExprKind.Match ? matchCaseCode(s) : null,
+                !withinCode(s) || codeAt(s) != ExprKind.Tag ? -7 : tagNewClazz(s),
+                !withinCode(s) || codeAt(s) != ExprKind.Tag ? -7 : tagTagNum(s),
+                !withinCode(s) || codeAt(s) != ExprKind.Match ? null : matchCaseField(s),
+                !withinCode(s) || !(codeAt(s) == ExprKind.Assign || codeAt(s) == ExprKind.Call) ? false : accessIsDynamic(s)
+              );
+          }
+        oos.writeObject(sites);
+
+        oos.writeObject(specialClazzes());
+      }
+    catch(IOException e)
+      {
+        e.printStackTrace();
+      }
+    return baos.toByteArray();
+  }
+
+  private int[][] matchCaseTags(int s)
+  {
+    var result = new int[matchCaseCount(s)][];
+    for (int cix = 0; cix < result.length; cix++)
+      {
+        result[cix] = matchCaseTags(s, cix);
+      }
+    return result;
+  }
+
+  private int[] matchCaseCode(int s)
+  {
+    var result = new int[matchCaseCount(s)];
+    for (int cix = 0; cix < result.length; cix++)
+      {
+        result[cix] = matchCaseCode(s, cix);
+      }
+    return result;
+  }
+
+  // NYI: cleanup
+  private <T> T safe(Supplier<T> fn, T dflt)
+  {
+    try {
+      return fn.get();
+    } catch (Error e) {
+      return dflt;
+    }
+  }
+
+  private int[] matchCaseField(int s)
+  {
+    var result = new int[matchCaseCount(s)];
+    for (int cix = 0; cix < result.length; cix++)
+      {
+        result[cix] = matchCaseField(s, cix);
+      }
+    return result;
+  }
+
 
 
 }
