@@ -1,3 +1,29 @@
+/*
+
+This file is part of the Fuzion language implementation.
+
+The Fuzion language implementation is free software: you can redistribute it
+and/or modify it under the terms of the GNU General Public License as published
+by the Free Software Foundation, version 3 of the License.
+
+The Fuzion language implementation is distributed in the hope that it will be
+useful, but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public
+License for more details.
+
+You should have received a copy of the GNU General Public License along with The
+Fuzion language implementation.  If not, see <https://www.gnu.org/licenses/>.
+
+*/
+
+/*-----------------------------------------------------------------------
+ *
+ * Tokiwa Software GmbH, Germany
+ *
+ * Source of class LibraryFuir
+ *
+ *---------------------------------------------------------------------*/
+
 package dev.flang.fuir;
 
 import java.io.ByteArrayInputStream;
@@ -86,19 +112,13 @@ public class LibraryFuir extends FUIR {
   @Override
   public String clazzAsString(int cl)
   {
-    return cl == NO_CLAZZ ? "-- no clazz --" : "cl_" + clazzId2num(cl);
+    return cl == NO_CLAZZ ? "-- no clazz --" : clazzOriginalName(cl);
   }
 
   @Override
   public String clazzAsStringHuman(int cl)
   {
-    return cl == NO_CLAZZ ? "-- no clazz --" : clazzOriginalName(cl);
-  }
-
-  @Override
-  public String clazzAsStringWithArgsAndResult(int cl)
-  {
-    return cl == NO_CLAZZ ? "-- no clazz --" : clazzOriginalName(cl);
+    return  cl == NO_CLAZZ ? "-- no clazz --" : _clazzes[clazzId2num(cl)].clazzAsStringHuman();
   }
 
   @Override
@@ -330,7 +350,7 @@ public class LibraryFuir extends FUIR {
   {
     // NYI: move to FUIR
     var utf8_data = clazz_Const_String_utf8_data();
-    return clazzResultClazz(utf8_data);
+    return utf8_data == NO_CLAZZ ? NO_CLAZZ : clazzResultClazz(utf8_data);
   }
 
 
@@ -344,9 +364,8 @@ public class LibraryFuir extends FUIR {
   {
     // NYI: move to FUIR
     var a8 = clazz_array_u8();
-    var ia = lookup_array_internal_array(a8);
-    var res = clazzResultClazz(ia);
-    return res;
+    var ia = a8 == NO_CLAZZ ? NO_CLAZZ : lookup_array_internal_array(a8);
+    return ia == NO_CLAZZ ? NO_CLAZZ : clazzResultClazz(ia);
   }
 
 
@@ -360,7 +379,7 @@ public class LibraryFuir extends FUIR {
   {
     // NYI: move to FUIR
     var sa8 = clazz_fuzionSysArray_u8();
-    return lookup_fuzion_sys_internal_array_data(sa8);
+    return sa8 == NO_CLAZZ ? NO_CLAZZ : lookup_fuzion_sys_internal_array_data(sa8);
   }
 
 
@@ -374,43 +393,54 @@ public class LibraryFuir extends FUIR {
   {
     // NYI: move to FUIR
     var sa8 = clazz_fuzionSysArray_u8();
-    return lookup_fuzion_sys_internal_array_length(sa8);
+    return sa8 == NO_CLAZZ ? NO_CLAZZ : lookup_fuzion_sys_internal_array_length(sa8);
   }
 
 
   @Override
   public int clazz_fuzionJavaObject()
   {
-    // TODO Auto-generated method stub
+    for (var i = 0; i < _clazzes.length; i++)
+      {
+        if (_clazzes[i].clazzOriginalName().compareTo("fuzion.java.Java_Object") == 0)
+          {
+            return i+CLAZZ_BASE;
+          }
+      }
     throw new UnsupportedOperationException("Unimplemented method 'clazz_fuzionJavaObject'");
   }
 
   @Override
   public int clazz_fuzionJavaObject_Ref()
   {
-    // TODO Auto-generated method stub
-    throw new UnsupportedOperationException("Unimplemented method 'clazz_fuzionJavaObject_Ref'");
+    return lookupJavaRef(clazz_fuzionJavaObject());
   }
 
   @Override
   public int clazz_error()
   {
-    // TODO Auto-generated method stub
-    throw new UnsupportedOperationException("Unimplemented method 'clazz_error'");
+    return clazz(SpecialClazzes.c_error);
   }
 
   @Override
   public int lookupJavaRef(int cl)
   {
-    // TODO Auto-generated method stub
-    throw new UnsupportedOperationException("Unimplemented method 'lookupJavaRef'");
+    cl = clazzAsValue(cl);
+    for (int index = 0; index < clazzNumFields(cl); index++)
+      {
+        if (clazzBaseName(clazzField(cl, index)).compareTo("Java_Ref") == 0)
+          {
+            return clazzField(cl, index);
+          }
+      }
+    return NO_CLAZZ;
   }
 
   @Override
   public boolean isJavaRef(int cl)
   {
     // NYI: HACK
-    return this.clazzBaseName(cl).compareTo("Java_Ref") == 0;
+    return clazzKind(cl) == FeatureKind.Field && this.clazzBaseName(cl).compareTo("Java_Ref") == 0;
   }
 
   @Override
@@ -463,12 +493,12 @@ public class LibraryFuir extends FUIR {
   public int lookup_fuzion_sys_internal_array_data(int cl)
   {
     for (int index = 0; index < clazzNumFields(cl); index++)
-    {
-      if (clazzBaseName(clazzField(cl, index)).compareTo("data") == 0)
-        {
-          return clazzField(cl, index);
-        }
-    }
+      {
+        if (clazzBaseName(clazzField(cl, index)).compareTo("data") == 0)
+          {
+            return clazzField(cl, index);
+          }
+      }
     Errors.fatal("data field not found!");
     return -1;
   }
@@ -477,12 +507,12 @@ public class LibraryFuir extends FUIR {
   public int lookup_fuzion_sys_internal_array_length(int cl)
   {
     for (int index = 0; index < clazzNumFields(cl); index++)
-    {
-      if (clazzBaseName(clazzField(cl, index)).compareTo("length") == 0)
-        {
-          return clazzField(cl, index);
-        }
-    }
+      {
+        if (clazzBaseName(clazzField(cl, index)).compareTo("length") == 0)
+          {
+            return clazzField(cl, index);
+          }
+      }
     Errors.fatal("length field not found!");
     return -1;
   }
@@ -729,15 +759,14 @@ public class LibraryFuir extends FUIR {
   @Override
   public int inlineArrayElementClazz(int constCl)
   {
-    // TODO Auto-generated method stub
-    throw new UnsupportedOperationException("Unimplemented method 'inlineArrayElementClazz'");
+    return _clazzes[clazzId2num(constCl)].inlineArrayElementClazz();
   }
 
   @Override
   public boolean clazzIsArray(int constCl)
   {
     // NYI: cleanup
-    return clazzBaseName(constCl).compareTo("array") == 0;
+    return clazzOriginalName(constCl).compareTo("array") == 0;
   }
 
   @Override

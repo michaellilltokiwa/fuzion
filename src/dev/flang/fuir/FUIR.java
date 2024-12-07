@@ -189,7 +189,33 @@ public abstract class FUIR extends IR
    *
    * @param cl a clazz id.
    */
-  public abstract String clazzAsStringWithArgsAndResult(int cl);
+  public String clazzAsStringWithArgsAndResult(int cl)
+  {
+    if (PRECONDITIONS) require
+      (cl >= firstClazz(),
+       cl <= lastClazz());
+
+    var sb = new StringBuilder();
+    sb.append(clazzAsString(cl))
+      .append("(");
+    var o = clazzOuterClazz(cl);
+    if (o != -1)
+      {
+        sb.append("outer ")
+          .append(clazzAsString(o));
+      }
+    for (var i = 0; i < clazzArgCount(cl); i++)
+      {
+        var ai = clazzArg(cl,i);
+        sb.append(o != -1 || i > 0 ? ", " : "")
+          .append(clazzBaseName(ai))
+          .append(" ")
+          .append(clazzAsString(clazzResultClazz(ai)));
+      }
+    sb.append(") ")
+      .append(clazzAsString(clazzResultClazz(cl)));
+    return sb.toString();
+  }
 
 
   /**
@@ -1568,7 +1594,7 @@ public abstract class FUIR extends IR
 
   public int[] clazzArgs2(int cl)
   {
-    var result = new int[clazzArgCount(cl)];
+    var result = new int[safe(()->clazzArgCount(cl), 0)];
     for (int i = 0; i < result.length; i++)
       {
         result[i]= clazzArg(cl, i);
@@ -1605,19 +1631,6 @@ public abstract class FUIR extends IR
 
   public byte[] serialize()
   {
-    // NYI: these generate new Clazzes, remove
-    for (int cl = firstClazz(); cl <= lastClazz(); cl++)
-      {
-        clazzOuterRef(cl);
-      }
-    clazzCode(clazz(SpecialClazzes.c_Const_String));
-
-    for (int cl = firstClazz(); cl <= lastClazz(); cl++)
-      {
-        clazzResultField(cl);
-      }
-
-    // =====
     var firstClazz = firstClazz();
     var lastClazz = lastClazz();
     var siteCount = siteCount();
@@ -1644,7 +1657,7 @@ public abstract class FUIR extends IR
                 clazzIsBoxed(cl),
                 clazzArgs2(cl),
                 clazzKind(cl),
-                clazzOuterRef(cl),
+                safe(()->clazzOuterRef(cl0), -7),
                 clazzResultClazz(cl),
                 clazzIsRef(cl),
                 clazzIsUnitType(cl),
@@ -1664,7 +1677,9 @@ public abstract class FUIR extends IR
                 safe(()->lookupCall(cl0), -7),
                 safe(()->lookup_static_finally(cl0), -7),
                 clazzKind(cl) == FeatureKind.Routine ? lifeTime(cl) : null,
-                safe(()->clazzTypeName(cl0), null)
+                safe(()->clazzTypeName(cl0), null),
+                clazzIsArray(cl) ? inlineArrayElementClazz(cl) : NO_CLAZZ,
+                clazzAsStringHuman(cl)
                 );
           }
         oos.writeObject(clazzes);
@@ -1672,20 +1687,21 @@ public abstract class FUIR extends IR
         var sites = new SiteRecord[siteCount];
         for (int s = SITE_BASE; s < SITE_BASE+siteCount; s++)
           {
+            var s0 = s;
             sites[s-SITE_BASE] = new SiteRecord(
                 clazzAt(s),
                 !withinCode(s) ? false : alwaysResultsInVoid(s),
                 !withinCode(s) ? null : codeAt(s),
                 !withinCode(s) ? -7 : codeAt(s) == ExprKind.Const ? constClazz(s) : NO_CLAZZ,
                 !withinCode(s) ? null : codeAt(s) == ExprKind.Const ? constData(s) : null,
-                !withinCode(s) ? -7 : (codeAt(s) == ExprKind.Call || codeAt(s) == ExprKind.Assign) ? accessedClazz(s) : NO_CLAZZ,
-                !withinCode(s) ? null : (codeAt(s) == ExprKind.Call || codeAt(s) == ExprKind.Assign) && accessedClazz(s) != NO_CLAZZ ? accessedClazzes(s) : null,
+                !withinCode(s) ? -7 : (codeAt(s) == ExprKind.Call || codeAt(s) == ExprKind.Assign) ? safe(()->accessedClazz(s0), NO_CLAZZ) : NO_CLAZZ,
+                !withinCode(s) ? null : (codeAt(s) == ExprKind.Call || codeAt(s) == ExprKind.Assign) && safe(()->accessedClazz(s0), NO_CLAZZ) != NO_CLAZZ ? accessedClazzes(s) : null,
                 !withinCode(s) ? -7 : (codeAt(s) == ExprKind.Call || codeAt(s) == ExprKind.Assign) ? accessTargetClazz(s) : NO_CLAZZ,
                 !withinCode(s) ? -7 : codeAt(s) == ExprKind.Tag ? tagValueClazz(s) : NO_CLAZZ,
                 !withinCode(s) ? -7 : codeAt(s) == ExprKind.Assign ? assignedType(s) : NO_CLAZZ,
                 !withinCode(s) || codeAt(s) != ExprKind.Box ? -7 : boxValueClazz(s),
                 !withinCode(s) || codeAt(s) != ExprKind.Box ? -7 : boxResultClazz(s),
-                !withinCode(s) ? -7 : codeAt(s) == ExprKind.Match ? matchStaticSubject(s) : NO_CLAZZ,
+                !withinCode(s) ? -7 : codeAt(s) == ExprKind.Match ? safe(()->matchStaticSubject(s0), NO_CLAZZ) : NO_CLAZZ,
                 !withinCode(s) ? -7 : codeAt(s) == ExprKind.Match ? matchCaseCount(s) : NO_CLAZZ,
                 !withinCode(s) ? null : codeAt(s) == ExprKind.Match ? matchCaseTags(s) : null,
                 !withinCode(s) ? null : codeAt(s) == ExprKind.Match ? matchCaseCode(s) : null,
@@ -1731,7 +1747,7 @@ public abstract class FUIR extends IR
   {
     try {
       return fn.get();
-    } catch (Error e) {
+    } catch (Throwable e) {
       return dflt;
     }
   }
