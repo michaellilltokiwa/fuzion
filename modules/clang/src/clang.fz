@@ -1,0 +1,66 @@
+ex =>
+
+
+  clang_createIndex(excludeDeclarationsFromPCH, displayDiagnostics i32) fuzion.sys.Pointer => native
+  clang_disposeIndex(idx fuzion.sys.Pointer) unit => native
+  clang_parseTranslationUnit(
+    idx fuzion.sys.Pointer,
+    source_filename fuzion.sys.Pointer,
+    command_line_args fuzion.sys.Pointer,
+    num_command_line_args i32,
+    unsaved_files fuzion.sys.Pointer,
+    num_unsaved_files u32,
+    options u32
+  ) fuzion.sys.Pointer => native
+  clang_getTranslationUnitCursor(translation_unit fuzion.sys.Pointer) fuzion.sys.Pointer => native
+  clang_visitChildren(cursor fuzion.sys.Pointer, callback Function unit fuzion.sys.Pointer u32, x fuzion.sys.Pointer) fuzion.sys.Pointer => native
+  clang_getCursorKind(cursor fuzion.sys.Pointer) i32 => native
+  clang_getCursorSpelling(cursor fuzion.sys.Pointer) fuzion.sys.Pointer => native
+  clang_getCursorResultType(cursor fuzion.sys.Pointer) fuzion.sys.Pointer => native
+  clang_getTypeSpelling(t fuzion.sys.Pointer) fuzion.sys.Pointer => native
+  clang_getCString(str fuzion.sys.Pointer) fuzion.sys.Pointer => native
+  clang_disposeString(str fuzion.sys.Pointer) unit => native
+  clang_Cursor_getNumArguments(cursor fuzion.sys.Pointer) i32 => native
+  clang_Cursor_getArgument(cursor fuzion.sys.Pointer, idx i32) fuzion.sys.Pointer => native
+  clang_getCursorType(cursor fuzion.sys.Pointer) fuzion.sys.Pointer => native
+
+
+  NULL := [0].internal_array.data
+
+
+  find_functions : Function unit fuzion.sys.Pointer u32 =>
+    redef call(cursor fuzion.sys.Pointer, level u32) =>
+      CXCursor_FunctionDecl := 8
+      if clang_getCursorKind cursor = CXCursor_FunctionDecl
+        func_name := clang_getCursorSpelling cursor
+        return_type := clang_getCursorResultType cursor
+        return_type_spelling := clang_getTypeSpelling return_type
+
+        num_args := clang_Cursor_getNumArguments cursor
+        for i in 1..num_args do
+            arg := clang_Cursor_getArgument cursor i
+            arg_name := clang_getCursorSpelling arg
+            arg_type := clang_getCursorType arg
+            arg_type_spelling := clang_getTypeSpelling arg_type
+
+            clang_disposeString arg_name
+            clang_disposeString arg_type_spelling
+
+        clang_disposeString func_name
+        clang_disposeString return_type_spelling
+
+
+      clang_visitChildren cursor find_functions NULL
+
+
+  idx := clang_createIndex 0 0
+
+  args := ["-I/usr/include", "-I/usr/local/include"];
+  tu := clang_parseTranslationUnit idx (fuzion.sys.c_string header_file) args 2 NULL 0 0
+
+  # check tu != NULL
+
+  find_functions (clang_getTranslationUnitCursor tu) 0
+
+  clang_disposeTranslationUnit tu
+  clang_disposeIndex idx
