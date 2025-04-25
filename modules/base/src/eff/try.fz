@@ -36,6 +36,10 @@
 #
 #   res := try ERROR_TYPE FALLIBLE_TYPE RESULT_TYPE code || (s->handle post condition failure `s`)
 #
+# or even shorter by using type inference
+#
+#   res := try _ FALLIBLE_TYPE _ code || (s->handle post condition failure `s`)
+#
 public try(ERROR type, F type : fallible ERROR, T type, code_try ()->T) is
 
 
