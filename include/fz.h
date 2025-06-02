@@ -551,6 +551,14 @@ void *  fzE_file_stderr(void);
  */
 int32_t fzE_file_flush(void * file);
 
+/**
+ * poll file descriptor for reading
+ *
+ * @param desc the descriptor
+ *
+ * @return >0 data availabe, 0 no data available, -1 on error
+ */
+int32_t fzE_poll_read(int64_t desc);
 
 /**
  * @param addr pointer to an address in memory

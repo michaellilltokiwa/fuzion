@@ -34,13 +34,13 @@ module:public process(module id, std_in, std_out, std_err i64) : property.ordera
   # predefined read handler for reading from
   # standard out of the process
   #
-  std_out_read_handler => read_handler std_out
+  std_out_read_handler => read_handler std_out "out"
 
 
   # predefined read handler for reading from
   # standard err of the process
   #
-  std_err_read_handler => read_handler std_err
+  std_err_read_handler => read_handler std_err "err"
 
 
   # predefined write handler for writing to
@@ -51,9 +51,11 @@ module:public process(module id, std_in, std_out, std_err i64) : property.ordera
 
   # read bytes from standard out
   #
-  read_handler(desc i64) : io.Read_Handler is
+  read_handler(desc i64, name String) : io.Read_Handler is
     public redef read(count i32) choice (array u8) io.end_of_file error =>
       arr := array u8 pipe_buffer_size i->0
+      if fzE_poll_read desc <= 0
+        on_blocking.handle "reading from std$name of process $id"
       res := fzE_pipe_read desc arr.internal_array.data arr.count
       if res = -1
         error "error reading from stdout."

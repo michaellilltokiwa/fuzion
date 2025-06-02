@@ -932,3 +932,13 @@ int32_t fzE_file_flush(void * file)
 {
   return fflush(file) == 0 ? 0 : -1;
 }
+
+int32_t fzE_poll_read(int64_t desc)
+{
+  struct pollfd pfd;
+
+  pfd.fd = desc;
+  pfd.events = POLLIN;
+
+  return poll(&pfd, 1, 1000);
+}

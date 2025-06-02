@@ -357,6 +357,9 @@ module fzE_file_stderr File_Descriptor => native
 module fzE_file_flush(fd File_Descriptor) i32 => native
 
 
+module fzE_poll_read(fd i64) i32 => native
+
+
 # get a byte from a given mapped buffer
 #
 module fzE_mapped_buffer_get
