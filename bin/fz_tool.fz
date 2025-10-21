@@ -1,0 +1,32 @@
+
+
+print_usage =>
+  say "usage: "
+  say "cachegrind uses valgrinds tool cachegrind"
+  say "jfr uses java flight recorder"
+
+if envir.args.count < 2
+  print_usage
+else if envir.args[1] = "cachegrind"
+  check_installed "valgrind -h"
+  check_installed "kcachegrind -h"
+  # #!/bin/bash
+
+  # set -euo pipefail
+
+  # mkdir -p "$HOME/.cache"
+
+  # # compile
+  # fz -c -o=/home/sam/.cache/fz_c_out "$@"
+
+  # # grind
+  # valgrind --tool=cachegrind --cachegrind-out-file="$HOME/.cache/fz_c_out.cachegrind" "$HOME/.cache/fz_c_out"
+
+  # # display
+  # kcachegrind "$HOME/.cache/fz_c_out.cachegrind
+else if envir.args[1] = "jfr"
+  check_installed "zmc -h"
+  ~/Downloads/zmc9.1.1.35-ca-linux_x64/Azul\ Mission\ Control/zmc openvscode-server-fuzion/vscode-fuzion/fuzion/recording.jfr
+else
+  print_usage
+
