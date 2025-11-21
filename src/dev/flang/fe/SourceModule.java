@@ -258,6 +258,36 @@ public class SourceModule extends Module implements SrcModule
     _universe.scheduleForResolution(_res);
     _res.resolve();
     addRuntimeInitCall();
+    checkEffectAnotations(_universe);
+  }
+
+
+  private void checkEffectAnotations(AbstractFeature af)
+  {
+    if (af instanceof Feature f && f.visibility().typeVisibility() == Visi.PUB && !f.featureName().isInternal())
+      {
+        var sf = f._effects == null ? new TreeSet<>() : new TreeSet<>(f._effects);
+        var df = f.determinedEffects();
+
+        var notDeclaredEffects = new TreeSet<>();
+        for (AbstractType e : df)
+          {
+            if (!sf.contains(e)
+              && !e.toString().startsWith("fuzion.runtime")
+              && !e.toString().equals("panic")
+            )
+            {
+              notDeclaredEffects.add(e);
+            }
+          }
+
+        if (!notDeclaredEffects.isEmpty())
+          {
+
+            Errors.error(af.pos(), "public feature uses effects but does fully specifiy.", af.qualifiedName() + " " + notDeclaredEffects);
+          }
+      }
+    declaredFeatures(af).values().forEach(x -> checkEffectAnotations(x));
   }
 
 

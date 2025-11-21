@@ -399,7 +399,7 @@ public class Feature extends AbstractFeature
   /**
    * List of effects explicitly needed by this feature.
    */
-  private List<AbstractType> _effects;
+  public List<AbstractType> _effects;
 
 
   /**

@@ -26,8 +26,8 @@ Fuzion language implementation.  If not, see <https://www.gnu.org/licenses/>.
 
 package dev.flang.ast;
 
-import java.util.Arrays;
 import java.util.Set;
+import java.util.TreeSet;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -1852,6 +1852,77 @@ public abstract class AbstractFeature extends Expr implements Comparable<Abstrac
         result = o.cotypeOrigin().typeArguments().get(typeParameterIndex()-1);
       }
     return result;
+  }
+
+
+  private Set<AbstractType> determinedEffectsCache;
+  boolean determinedEffectsRecursive = false;
+  Set<AbstractType> empty = new TreeSet<>();
+  public Set<AbstractType> determinedEffects()
+  {
+    if (PRECONDITIONS) require
+      (state().atLeast(State.CHECKING_TYPES));
+
+    if (determinedEffectsRecursive == true)
+      {
+        return empty;
+      }
+    determinedEffectsRecursive = true;
+
+    if (determinedEffectsCache == null)
+      {
+        // NYI: must serialize effect anotations to fum
+        if ((isAbstract() || isNative() || isIntrinsic()) && this instanceof Feature f)
+          {
+            determinedEffectsCache = new TreeSet<>(f._effects);
+          }
+        else if (isRoutine() && !isConstructor())
+          {
+            var cfs = new TreeSet<AbstractFeature>();
+            determinedEffectsCache = new TreeSet<>();
+
+            var v = new FeatureVisitor() {
+              @Override
+              public void action(AbstractCall c)
+              {
+                cfs.add(c.calledFeature());
+                if (c.calledFeature() == Types.resolved.f_effect_from_env && !c.type().isThisType())
+                  {
+                    determinedEffectsCache.add(c.type());
+                  }
+              }
+            };
+            for (var c: inherits())
+              {
+                c.visit(v, this);
+              }
+            code().visit(v, this);
+
+            determinedEffectsCache.addAll(cfs
+              .stream()
+              .flatMap(af -> af.determinedEffects().stream())
+              .collect(Collectors.toSet()));
+          }
+
+        else
+          {
+            determinedEffectsCache = empty;
+          }
+      }
+    determinedEffectsRecursive = false;
+    return determinedEffectsCache;
+  }
+
+
+  /**
+   * visit all the expressions within this feature.
+   *
+   * @param v the visitor instance that defines an action to be performed on
+   * visited objects.
+   */
+  private void visit(FeatureVisitor v)
+  {
+
   }
 
 
