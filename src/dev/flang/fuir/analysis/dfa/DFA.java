@@ -1861,7 +1861,13 @@ public class DFA extends ANY
   static Value wrappedJavaObject(Call cl)
   {
     var rc   = fuir(cl).clazzResultClazz(cl.calledClazz());
-    return cl._dfa.newInstance(rc, NO_SITE, cl._context);
+    var result = cl._dfa.newInstance(rc, NO_SITE, cl._context);
+    var or = fuir(cl).clazzOuterRef(rc);
+    if (or != NO_CLAZZ)
+      {
+        result.setField(cl._dfa, or, Value.UNIT);
+      }
+    return result;
   }
 
   static
@@ -2434,6 +2440,11 @@ public class DFA extends ANY
             (jref != NO_CLAZZ);
           var jobj = cl._dfa.newInstance(rc, NO_SITE, cl._context);
           jobj.setField(cl._dfa, jref, Value.UNKNOWN_JAVA_REF);
+          var or = fuir(cl).clazzOuterRef(rc);
+          if (or != NO_CLAZZ)
+            {
+              jobj.setField(cl._dfa, or, Value.UNIT);
+            }
           yield jobj;
         }
       };
