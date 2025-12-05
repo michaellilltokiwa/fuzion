@@ -1,0 +1,753 @@
+gen : 155
+old : Main_Node[prev=failed_node(Main_Node[prev=--nil--](container_node[gen=129](singleton_node(70004, 70004), singleton_node(50004, 50004))))](tomb_node(50004, 50004))
+new : Main_Node[prev=--nil--](container_node[gen=129](singleton_node(70004, 70004), singleton_node(50004, 50004)))
+
+gen : 186
+old : Main_Node[prev=--nil--](container_node[gen=168](singleton_node(5, 5), singleton_node(40005, 40005)))
+new : Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=168](singleton_node(5, 5), singleton_node(40005, 40005)))](tomb_node(40005, 40005))
+
+gen : 168
+old : Main_Node[prev=--nil--](container_node[gen=168](singleton_node(60004, 60004), Indirection_Node[gen=168](Main_Node[prev=--nil--](container_node[gen=168](singleton_node(5, 5), singleton_node(40005, 40005)))), singleton_node(20006, 20006), singleton_node(70004, 70004), singleton_node(10006, 10006)))
+new : Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=168](singleton_node(60004, 60004), Indirection_Node[gen=168](Main_Node[prev=--nil--](container_node[gen=168](singleton_node(5, 5), singleton_node(40005, 40005)))), singleton_node(20006, 20006), singleton_node(70004, 70004), singleton_node(10006, 10006)))](container_node[gen=168](singleton_node(60004, 60004), Indirection_Node[gen=168](Main_Node[prev=--nil--](container_node[gen=168](singleton_node(5, 5), singleton_node(40005, 40005)))), singleton_node(20006, 20006), singleton_node(70004, 70004), singleton_node(10006, 10006), singleton_node(30007, 30007)))
+
+gen : 186
+old : Main_Node[prev=--nil--](container_node[gen=186](Indirection_Node[gen=186](Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=168](singleton_node(5, 5), singleton_node(40005, 40005)))](tomb_node(40005, 40005))), singleton_node(20006, 20006), singleton_node(70004, 70004), singleton_node(30007, 30007)))
+new : Main_Node[prev=--nil--](container_node[gen=186](Indirection_Node[gen=186](Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=168](singleton_node(5, 5), singleton_node(40005, 40005)))](tomb_node(40005, 40005))), singleton_node(20006, 20006), singleton_node(70004, 70004), singleton_node(50005, 50005), singleton_node(30007, 30007)))
+
+gen : 186
+old : Main_Node[prev=--nil--](container_node[gen=186](Indirection_Node[gen=168](Main_Node[prev=--nil--](container_node[gen=168](singleton_node(5, 5), singleton_node(40005, 40005)))), singleton_node(20006, 20006), singleton_node(70004, 70004), singleton_node(30007, 30007)))
+new : Main_Node[prev=--nil--](container_node[gen=186](Indirection_Node[gen=186](Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=168](singleton_node(5, 5), singleton_node(40005, 40005)))](tomb_node(40005, 40005))), singleton_node(20006, 20006), singleton_node(70004, 70004), singleton_node(30007, 30007)))
+
+gen : 186
+old : Main_Node[prev=--nil--](container_node[gen=186](singleton_node(60004, 60004), Indirection_Node[gen=168](Main_Node[prev=--nil--](container_node[gen=168](singleton_node(5, 5), singleton_node(40005, 40005)))), singleton_node(20006, 20006), singleton_node(70004, 70004), singleton_node(30007, 30007)))
+new : Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=186](singleton_node(60004, 60004), Indirection_Node[gen=168](Main_Node[prev=--nil--](container_node[gen=168](singleton_node(5, 5), singleton_node(40005, 40005)))), singleton_node(20006, 20006), singleton_node(70004, 70004), singleton_node(30007, 30007)))](container_node[gen=186](Indirection_Node[gen=168](Main_Node[prev=--nil--](container_node[gen=168](singleton_node(5, 5), singleton_node(40005, 40005)))), singleton_node(20006, 20006), singleton_node(70004, 70004), singleton_node(30007, 30007)))
+
+gen : 186
+old : Main_Node[prev=--nil--](container_node[gen=168](singleton_node(60004, 60004), Indirection_Node[gen=168](Main_Node[prev=--nil--](container_node[gen=168](singleton_node(5, 5), singleton_node(40005, 40005)))), singleton_node(20006, 20006), singleton_node(70004, 70004), singleton_node(10006, 10006), singleton_node(30007, 30007)))
+new : Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=168](singleton_node(60004, 60004), Indirection_Node[gen=168](Main_Node[prev=--nil--](container_node[gen=168](singleton_node(5, 5), singleton_node(40005, 40005)))), singleton_node(20006, 20006), singleton_node(70004, 70004), singleton_node(10006, 10006), singleton_node(30007, 30007)))](container_node[gen=186](singleton_node(60004, 60004), Indirection_Node[gen=168](Main_Node[prev=--nil--](container_node[gen=168](singleton_node(5, 5), singleton_node(40005, 40005)))), singleton_node(20006, 20006), singleton_node(70004, 70004), singleton_node(30007, 30007)))
+
+gen : 202
+old : Main_Node[prev=--nil--](container_node[gen=186](singleton_node(40005, 40005), singleton_node(50005, 50005)))
+new : Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=186](singleton_node(40005, 40005), singleton_node(50005, 50005)))](container_node[gen=202](singleton_node(40005, 40005)))
+
+gen : 186
+old : Main_Node[prev=--nil--](container_node[gen=186](singleton_node(40005, 40005), singleton_node(50005, 50005), singleton_node(30007, 30007)))
+new : Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=186](singleton_node(40005, 40005), singleton_node(50005, 50005), singleton_node(30007, 30007)))](container_node[gen=186](singleton_node(40005, 40005), singleton_node(50005, 50005)))
+
+gen : 186
+old : Main_Node[prev=--nil--](container_node[gen=186](Indirection_Node[gen=186](Main_Node[prev=--nil--](tomb_node(40005, 40005))), singleton_node(50005, 50005), singleton_node(30007, 30007)))
+new : Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=186](Indirection_Node[gen=186](Main_Node[prev=--nil--](tomb_node(40005, 40005))), singleton_node(50005, 50005), singleton_node(30007, 30007)))](container_node[gen=186](singleton_node(40005, 40005), singleton_node(50005, 50005), singleton_node(30007, 30007)))
+
+gen : 202
+old : Main_Node[prev=--nil--](container_node[gen=202](singleton_node(40005, 40005)))
+new : Main_Node[prev=--nil--](container_node[gen=202](singleton_node(40005, 40005), singleton_node(10007, 10007)))
+
+gen : 186
+old : Main_Node[prev=--nil--](container_node[gen=186](singleton_node(40005, 40005), singleton_node(50005, 50005)))
+new : Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=186](singleton_node(40005, 40005), singleton_node(50005, 50005)))](container_node[gen=186](singleton_node(50005, 50005)))
+
+gen : 186
+old : Main_Node[prev=failed_node(Main_Node[prev=--nil--](container_node[gen=186](singleton_node(40005, 40005), singleton_node(50005, 50005))))](container_node[gen=186](singleton_node(50005, 50005)))
+new : Main_Node[prev=--nil--](container_node[gen=186](singleton_node(40005, 40005), singleton_node(50005, 50005)))
+
+gen : 202
+old : Main_Node[prev=--nil--](container_node[gen=202](singleton_node(40005, 40005), singleton_node(10007, 10007)))
+new : Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=202](singleton_node(40005, 40005), singleton_node(10007, 10007)))](container_node[gen=202](singleton_node(40005, 40005), singleton_node(50006, 50006), singleton_node(10007, 10007)))
+
+gen : 186
+old : Main_Node[prev=--nil--](container_node[gen=186](Indirection_Node[gen=186](Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=168](singleton_node(5, 5), singleton_node(40005, 40005)))](tomb_node(40005, 40005))), singleton_node(70004, 70004), singleton_node(50005, 50005), singleton_node(30007, 30007)))
+new : Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=186](Indirection_Node[gen=186](Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=168](singleton_node(5, 5), singleton_node(40005, 40005)))](tomb_node(40005, 40005))), singleton_node(70004, 70004), singleton_node(50005, 50005), singleton_node(30007, 30007)))](container_node[gen=186](Indirection_Node[gen=186](Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=168](singleton_node(5, 5), singleton_node(40005, 40005)))](tomb_node(40005, 40005))), singleton_node(50005, 50005), singleton_node(30007, 30007)))
+
+gen : 186
+old : Main_Node[prev=--nil--](container_node[gen=186](Indirection_Node[gen=186](Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=168](singleton_node(5, 5), singleton_node(40005, 40005)))](tomb_node(40005, 40005))), singleton_node(20006, 20006), singleton_node(70004, 70004), singleton_node(50005, 50005), singleton_node(30007, 30007)))
+new : Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=186](Indirection_Node[gen=186](Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=168](singleton_node(5, 5), singleton_node(40005, 40005)))](tomb_node(40005, 40005))), singleton_node(20006, 20006), singleton_node(70004, 70004), singleton_node(50005, 50005), singleton_node(30007, 30007)))](container_node[gen=186](Indirection_Node[gen=186](Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=168](singleton_node(5, 5), singleton_node(40005, 40005)))](tomb_node(40005, 40005))), singleton_node(70004, 70004), singleton_node(50005, 50005), singleton_node(30007, 30007)))
+
+gen : 202
+old : Main_Node[prev=--nil--](container_node[gen=202](singleton_node(40005, 40005), singleton_node(50006, 50006), singleton_node(10007, 10007)))
+new : Main_Node[prev=--nil--](container_node[gen=202](singleton_node(40005, 40005), singleton_node(50006, 50006), singleton_node(10007, 10007), singleton_node(30008, 30008)))
+
+gen : 202
+old : Main_Node[prev=--nil--](container_node[gen=202](singleton_node(40005, 40005), singleton_node(6, 6), singleton_node(50006, 50006), singleton_node(30008, 30008)))
+new : Main_Node[prev=--nil--](container_node[gen=202](singleton_node(6, 6), singleton_node(50006, 50006), singleton_node(30008, 30008)))
+
+gen : 214
+old : Main_Node[prev=--nil--](container_node[gen=202](singleton_node(6, 6), singleton_node(50006, 50006), singleton_node(30008, 30008)))
+new : Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=202](singleton_node(6, 6), singleton_node(50006, 50006), singleton_node(30008, 30008)))](container_node[gen=214](singleton_node(60005, 60005), singleton_node(6, 6), singleton_node(50006, 50006), singleton_node(30008, 30008)))
+
+gen : 214
+old : Main_Node[prev=--nil--](container_node[gen=214](singleton_node(60005, 60005), singleton_node(6, 6), singleton_node(50006, 50006), singleton_node(30008, 30008)))
+new : Main_Node[prev=--nil--](container_node[gen=214](singleton_node(60005, 60005), singleton_node(6, 6), singleton_node(30008, 30008)))
+
+gen : 202
+old : Main_Node[prev=--nil--](container_node[gen=202](singleton_node(40005, 40005), singleton_node(6, 6), singleton_node(50006, 50006), singleton_node(10007, 10007), singleton_node(30008, 30008)))
+new : Main_Node[prev=--nil--](container_node[gen=202](singleton_node(40005, 40005), singleton_node(6, 6), singleton_node(50006, 50006), singleton_node(30008, 30008)))
+
+gen : 220
+old : Main_Node[prev=--nil--](container_node[gen=214](singleton_node(60005, 60005), singleton_node(6, 6), singleton_node(30008, 30008)))
+new : Main_Node[prev=--nil--](container_node[gen=220](singleton_node(60005, 60005), singleton_node(6, 6), singleton_node(70005, 70005), singleton_node(30008, 30008)))
+
+gen : 202
+old : Main_Node[prev=--nil--](container_node[gen=202](singleton_node(40005, 40005), singleton_node(50006, 50006), singleton_node(10007, 10007), singleton_node(30008, 30008)))
+new : Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=202](singleton_node(40005, 40005), singleton_node(50006, 50006), singleton_node(10007, 10007), singleton_node(30008, 30008)))](container_node[gen=202](singleton_node(40005, 40005), singleton_node(6, 6), singleton_node(50006, 50006), singleton_node(10007, 10007), singleton_node(30008, 30008)))
+
+gen : 220
+old : Main_Node[prev=--nil--](container_node[gen=220](singleton_node(60005, 60005), singleton_node(6, 6), singleton_node(70005, 70005), singleton_node(30008, 30008)))
+new : Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=220](singleton_node(60005, 60005), singleton_node(6, 6), singleton_node(70005, 70005), singleton_node(30008, 30008)))](container_node[gen=220](singleton_node(60005, 60005), singleton_node(6, 6), singleton_node(20007, 20007), singleton_node(70005, 70005), singleton_node(30008, 30008)))
+
+gen : 220
+old : Main_Node[prev=--nil--](container_node[gen=220](singleton_node(60005, 60005), singleton_node(6, 6), singleton_node(20007, 20007), singleton_node(70005, 70005)))
+new : Main_Node[prev=--nil--](container_node[gen=220](singleton_node(60005, 60005), Indirection_Node[gen=220](Main_Node[prev=--nil--](container_node[gen=220](singleton_node(6, 6), singleton_node(40006, 40006)))), singleton_node(20007, 20007), singleton_node(70005, 70005)))
+
+gen : 230
+old : Main_Node[prev=--nil--](container_node[gen=220](singleton_node(60005, 60005), Indirection_Node[gen=220](Main_Node[prev=--nil--](container_node[gen=220](singleton_node(6, 6), singleton_node(40006, 40006)))), singleton_node(20007, 20007), singleton_node(70005, 70005)))
+new : Main_Node[prev=--nil--](container_node[gen=230](Indirection_Node[gen=220](Main_Node[prev=--nil--](container_node[gen=220](singleton_node(6, 6), singleton_node(40006, 40006)))), singleton_node(20007, 20007), singleton_node(70005, 70005)))
+
+gen : 220
+old : Main_Node[prev=--nil--](container_node[gen=220](singleton_node(60005, 60005), singleton_node(6, 6), singleton_node(20007, 20007), singleton_node(70005, 70005), singleton_node(30008, 30008)))
+new : Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=220](singleton_node(60005, 60005), singleton_node(6, 6), singleton_node(20007, 20007), singleton_node(70005, 70005), singleton_node(30008, 30008)))](container_node[gen=220](singleton_node(60005, 60005), singleton_node(6, 6), singleton_node(20007, 20007), singleton_node(70005, 70005)))
+
+gen : 230
+old : Main_Node[prev=--nil--](container_node[gen=230](Indirection_Node[gen=220](Main_Node[prev=--nil--](container_node[gen=220](singleton_node(6, 6), singleton_node(40006, 40006)))), singleton_node(20007, 20007), singleton_node(70005, 70005)))
+new : Main_Node[prev=--nil--](container_node[gen=230](Indirection_Node[gen=220](Main_Node[prev=--nil--](container_node[gen=220](singleton_node(6, 6), singleton_node(40006, 40006)))), singleton_node(20007, 20007), singleton_node(70005, 70005), singleton_node(50007, 50007)))
+
+gen : 237
+old : Main_Node[prev=--nil--](container_node[gen=220](singleton_node(6, 6), singleton_node(40006, 40006)))
+new : Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=220](singleton_node(6, 6), singleton_node(40006, 40006)))](tomb_node(6, 6))
+
+gen : 237
+old : Main_Node[prev=--nil--](container_node[gen=237](Indirection_Node[gen=237](Main_Node[prev=--nil--](tomb_node(6, 6))), singleton_node(50007, 50007), singleton_node(10008, 10008)))
+new : Main_Node[prev=--nil--](container_node[gen=237](singleton_node(6, 6), singleton_node(50007, 50007), singleton_node(10008, 10008)))
+
+gen : 237
+old : Main_Node[prev=--nil--](container_node[gen=230](Indirection_Node[gen=220](Main_Node[prev=--nil--](container_node[gen=220](singleton_node(6, 6), singleton_node(40006, 40006)))), singleton_node(20007, 20007), singleton_node(70005, 70005), singleton_node(50007, 50007), singleton_node(10008, 10008)))
+new : Main_Node[prev=--nil--](container_node[gen=237](Indirection_Node[gen=220](Main_Node[prev=--nil--](container_node[gen=220](singleton_node(6, 6), singleton_node(40006, 40006)))), singleton_node(20007, 20007), singleton_node(50007, 50007), singleton_node(10008, 10008)))
+
+gen : 237
+old : Main_Node[prev=--nil--](container_node[gen=237](singleton_node(6, 6), singleton_node(50007, 50007), singleton_node(10008, 10008)))
+new : Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=237](singleton_node(6, 6), singleton_node(50007, 50007), singleton_node(10008, 10008)))](container_node[gen=237](singleton_node(6, 6), singleton_node(50007, 50007), singleton_node(10008, 10008), singleton_node(30009, 30009)))
+
+gen : 230
+old : Main_Node[prev=--nil--](container_node[gen=230](Indirection_Node[gen=220](Main_Node[prev=--nil--](container_node[gen=220](singleton_node(6, 6), singleton_node(40006, 40006)))), singleton_node(20007, 20007), singleton_node(70005, 70005), singleton_node(50007, 50007)))
+new : Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=230](Indirection_Node[gen=220](Main_Node[prev=--nil--](container_node[gen=220](singleton_node(6, 6), singleton_node(40006, 40006)))), singleton_node(20007, 20007), singleton_node(70005, 70005), singleton_node(50007, 50007)))](container_node[gen=230](Indirection_Node[gen=220](Main_Node[prev=--nil--](container_node[gen=220](singleton_node(6, 6), singleton_node(40006, 40006)))), singleton_node(20007, 20007), singleton_node(70005, 70005), singleton_node(50007, 50007), singleton_node(10008, 10008)))
+
+gen : 237
+old : Main_Node[prev=--nil--](container_node[gen=237](Indirection_Node[gen=237](Main_Node[prev=--nil--](container_node[gen=220](singleton_node(6, 6), singleton_node(40006, 40006)))), singleton_node(20007, 20007), singleton_node(50007, 50007), singleton_node(10008, 10008)))
+new : Main_Node[prev=--nil--](container_node[gen=237](Indirection_Node[gen=237](Main_Node[prev=--nil--](container_node[gen=220](singleton_node(6, 6), singleton_node(40006, 40006)))), singleton_node(50007, 50007), singleton_node(10008, 10008)))
+
+gen : 237
+old : Main_Node[prev=--nil--](container_node[gen=237](Indirection_Node[gen=220](Main_Node[prev=--nil--](container_node[gen=220](singleton_node(6, 6), singleton_node(40006, 40006)))), singleton_node(20007, 20007), singleton_node(50007, 50007), singleton_node(10008, 10008)))
+new : Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=237](Indirection_Node[gen=220](Main_Node[prev=--nil--](container_node[gen=220](singleton_node(6, 6), singleton_node(40006, 40006)))), singleton_node(20007, 20007), singleton_node(50007, 50007), singleton_node(10008, 10008)))](container_node[gen=237](Indirection_Node[gen=237](Main_Node[prev=--nil--](container_node[gen=220](singleton_node(6, 6), singleton_node(40006, 40006)))), singleton_node(20007, 20007), singleton_node(50007, 50007), singleton_node(10008, 10008)))
+
+gen : 237
+old : Main_Node[prev=--nil--](container_node[gen=237](singleton_node(6, 6), singleton_node(10008, 10008), singleton_node(30009, 30009)))
+new : Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=237](singleton_node(6, 6), singleton_node(10008, 10008), singleton_node(30009, 30009)))](container_node[gen=237](singleton_node(6, 6), singleton_node(40007, 40007), singleton_node(10008, 10008), singleton_node(30009, 30009)))
+
+gen : 237
+old : Main_Node[prev=--nil--](container_node[gen=237](singleton_node(6, 6), singleton_node(50007, 50007), singleton_node(10008, 10008), singleton_node(30009, 30009)))
+new : Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=237](singleton_node(6, 6), singleton_node(50007, 50007), singleton_node(10008, 10008), singleton_node(30009, 30009)))](container_node[gen=237](singleton_node(6, 6), singleton_node(10008, 10008), singleton_node(30009, 30009)))
+
+gen : 237
+old : Main_Node[prev=--nil--](container_node[gen=237](singleton_node(6, 6), singleton_node(40007, 40007), singleton_node(10008, 10008), singleton_node(30009, 30009)))
+new : Main_Node[prev=--nil--](container_node[gen=237](Indirection_Node[gen=237](Main_Node[prev=--nil--](container_node[gen=237](singleton_node(6, 6), singleton_node(60006, 60006)))), singleton_node(40007, 40007), singleton_node(10008, 10008), singleton_node(30009, 30009)))
+
+gen : 237
+old : Main_Node[prev=--nil--](container_node[gen=237](singleton_node(6, 6), singleton_node(60006, 60006)))
+new : Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=237](singleton_node(6, 6), singleton_node(60006, 60006)))](tomb_node(60006, 60006))
+
+gen : 237
+old : Main_Node[prev=--nil--](container_node[gen=237](Indirection_Node[gen=237](Main_Node[prev=--nil--](container_node[gen=237](singleton_node(6, 6), singleton_node(60006, 60006)))), singleton_node(40007, 40007), singleton_node(70006, 70006), singleton_node(10008, 10008), singleton_node(30009, 30009)))
+new : Main_Node[prev=--nil--](container_node[gen=237](Indirection_Node[gen=237](Main_Node[prev=--nil--](container_node[gen=237](singleton_node(6, 6), singleton_node(60006, 60006)))), singleton_node(40007, 40007), singleton_node(70006, 70006), singleton_node(10008, 10008)))
+
+gen : 237
+old : Main_Node[prev=--nil--](container_node[gen=237](Indirection_Node[gen=237](Main_Node[prev=--nil--](container_node[gen=237](singleton_node(6, 6), singleton_node(60006, 60006)))), singleton_node(40007, 40007), singleton_node(10008, 10008), singleton_node(30009, 30009)))
+new : Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=237](Indirection_Node[gen=237](Main_Node[prev=--nil--](container_node[gen=237](singleton_node(6, 6), singleton_node(60006, 60006)))), singleton_node(40007, 40007), singleton_node(10008, 10008), singleton_node(30009, 30009)))](container_node[gen=237](Indirection_Node[gen=237](Main_Node[prev=--nil--](container_node[gen=237](singleton_node(6, 6), singleton_node(60006, 60006)))), singleton_node(40007, 40007), singleton_node(70006, 70006), singleton_node(10008, 10008), singleton_node(30009, 30009)))
+
+gen : 237
+old : Main_Node[prev=--nil--](container_node[gen=237](Indirection_Node[gen=237](Main_Node[prev=--nil--](container_node[gen=237](singleton_node(6, 6), singleton_node(60006, 60006)))), singleton_node(40007, 40007), singleton_node(70006, 70006)))
+new : Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=237](Indirection_Node[gen=237](Main_Node[prev=--nil--](container_node[gen=237](singleton_node(6, 6), singleton_node(60006, 60006)))), singleton_node(40007, 40007), singleton_node(70006, 70006)))](container_node[gen=237](Indirection_Node[gen=237](Main_Node[prev=--nil--](container_node[gen=237](singleton_node(6, 6), singleton_node(60006, 60006)))), singleton_node(40007, 40007), singleton_node(20008, 20008), singleton_node(70006, 70006)))
+
+gen : 237
+old : Main_Node[prev=--nil--](container_node[gen=237](Indirection_Node[gen=237](Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=237](singleton_node(6, 6), singleton_node(60006, 60006)))](tomb_node(60006, 60006))), singleton_node(40007, 40007), singleton_node(20008, 20008), singleton_node(70006, 70006)))
+new : Main_Node[prev=--nil--](container_node[gen=237](Indirection_Node[gen=237](Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=237](singleton_node(6, 6), singleton_node(60006, 60006)))](tomb_node(60006, 60006))), singleton_node(20008, 20008), singleton_node(70006, 70006)))
+
+gen : 237
+old : Main_Node[prev=--nil--](container_node[gen=237](Indirection_Node[gen=237](Main_Node[prev=--nil--](tomb_node(60006, 60006))), singleton_node(20008, 20008), singleton_node(70006, 70006), singleton_node(50008, 50008)))
+new : Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=237](Indirection_Node[gen=237](Main_Node[prev=--nil--](tomb_node(60006, 60006))), singleton_node(20008, 20008), singleton_node(70006, 70006), singleton_node(50008, 50008)))](container_node[gen=237](singleton_node(60006, 60006), singleton_node(20008, 20008), singleton_node(70006, 70006), singleton_node(50008, 50008)))
+
+gen : 237
+old : Main_Node[prev=--nil--](container_node[gen=237](Indirection_Node[gen=237](Main_Node[prev=--nil--](container_node[gen=237](singleton_node(6, 6), singleton_node(60006, 60006)))), singleton_node(40007, 40007), singleton_node(70006, 70006), singleton_node(10008, 10008)))
+new : Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=237](Indirection_Node[gen=237](Main_Node[prev=--nil--](container_node[gen=237](singleton_node(6, 6), singleton_node(60006, 60006)))), singleton_node(40007, 40007), singleton_node(70006, 70006), singleton_node(10008, 10008)))](container_node[gen=237](Indirection_Node[gen=237](Main_Node[prev=--nil--](container_node[gen=237](singleton_node(6, 6), singleton_node(60006, 60006)))), singleton_node(40007, 40007), singleton_node(70006, 70006)))
+
+gen : 237
+old : Main_Node[prev=--nil--](container_node[gen=237](Indirection_Node[gen=237](Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=237](singleton_node(6, 6), singleton_node(60006, 60006)))](tomb_node(60006, 60006))), singleton_node(20008, 20008), singleton_node(70006, 70006)))
+new : Main_Node[prev=--nil--](container_node[gen=237](Indirection_Node[gen=237](Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=237](singleton_node(6, 6), singleton_node(60006, 60006)))](tomb_node(60006, 60006))), singleton_node(20008, 20008), singleton_node(70006, 70006), singleton_node(50008, 50008)))
+
+gen : 237
+old : Main_Node[prev=--nil--](container_node[gen=237](singleton_node(60006, 60006), singleton_node(20008, 20008), singleton_node(70006, 70006), singleton_node(50008, 50008)))
+new : Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=237](singleton_node(60006, 60006), singleton_node(20008, 20008), singleton_node(70006, 70006), singleton_node(50008, 50008)))](container_node[gen=237](singleton_node(60006, 60006), singleton_node(7, 7), singleton_node(20008, 20008), singleton_node(70006, 70006), singleton_node(50008, 50008)))
+
+gen : 262
+old : Main_Node[prev=--nil--](container_node[gen=262](singleton_node(60006, 60006), singleton_node(7, 7), singleton_node(20008, 20008), singleton_node(70006, 70006), singleton_node(50008, 50008), singleton_node(30010, 30010)))
+new : Main_Node[prev=--nil--](container_node[gen=262](singleton_node(60006, 60006), singleton_node(7, 7), singleton_node(20008, 20008), singleton_node(50008, 50008), singleton_node(30010, 30010)))
+
+gen : 262
+old : Main_Node[prev=--nil--](container_node[gen=237](singleton_node(60006, 60006), singleton_node(7, 7), singleton_node(20008, 20008), singleton_node(70006, 70006), singleton_node(50008, 50008)))
+new : Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=237](singleton_node(60006, 60006), singleton_node(7, 7), singleton_node(20008, 20008), singleton_node(70006, 70006), singleton_node(50008, 50008)))](container_node[gen=262](singleton_node(60006, 60006), singleton_node(7, 7), singleton_node(20008, 20008), singleton_node(70006, 70006), singleton_node(50008, 50008), singleton_node(30010, 30010)))
+
+gen : 262
+old : Main_Node[prev=--nil--](container_node[gen=262](singleton_node(60006, 60006), singleton_node(7, 7), singleton_node(40008, 40008), singleton_node(50008, 50008), singleton_node(30010, 30010)))
+new : Main_Node[prev=--nil--](container_node[gen=262](singleton_node(7, 7), singleton_node(40008, 40008), singleton_node(50008, 50008), singleton_node(30010, 30010)))
+
+gen : 262
+old : Main_Node[prev=--nil--](container_node[gen=262](singleton_node(60006, 60006), singleton_node(7, 7), singleton_node(50008, 50008), singleton_node(30010, 30010)))
+new : Main_Node[prev=--nil--](container_node[gen=262](singleton_node(60006, 60006), singleton_node(7, 7), singleton_node(40008, 40008), singleton_node(50008, 50008), singleton_node(30010, 30010)))
+
+gen : 262
+old : Main_Node[prev=--nil--](container_node[gen=262](singleton_node(60006, 60006), singleton_node(7, 7), singleton_node(20008, 20008), singleton_node(50008, 50008), singleton_node(30010, 30010)))
+new : Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=262](singleton_node(60006, 60006), singleton_node(7, 7), singleton_node(20008, 20008), singleton_node(50008, 50008), singleton_node(30010, 30010)))](container_node[gen=262](singleton_node(60006, 60006), singleton_node(7, 7), singleton_node(50008, 50008), singleton_node(30010, 30010)))
+
+gen : 262
+old : Main_Node[prev=--nil--](container_node[gen=262](singleton_node(7, 7), singleton_node(40008, 40008), singleton_node(50008, 50008), singleton_node(30010, 30010)))
+new : Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=262](singleton_node(7, 7), singleton_node(40008, 40008), singleton_node(50008, 50008), singleton_node(30010, 30010)))](container_node[gen=262](singleton_node(7, 7), singleton_node(40008, 40008), singleton_node(50008, 50008), singleton_node(10009, 10009), singleton_node(30010, 30010)))
+
+gen : 276
+old : Main_Node[prev=--nil--](container_node[gen=262](singleton_node(40008, 40008), singleton_node(70007, 70007), singleton_node(10009, 10009), singleton_node(30010, 30010)))
+new : Main_Node[prev=--nil--](container_node[gen=276](singleton_node(40008, 40008), singleton_node(70007, 70007), singleton_node(10009, 10009)))
+
+gen : 262
+old : Main_Node[prev=--nil--](container_node[gen=262](singleton_node(40008, 40008), singleton_node(10009, 10009), singleton_node(30010, 30010)))
+new : Main_Node[prev=--nil--](container_node[gen=262](singleton_node(40008, 40008), singleton_node(70007, 70007), singleton_node(10009, 10009), singleton_node(30010, 30010)))
+
+gen : 276
+old : Main_Node[prev=--nil--](container_node[gen=276](singleton_node(40008, 40008), singleton_node(70007, 70007), singleton_node(10009, 10009)))
+new : Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=276](singleton_node(40008, 40008), singleton_node(70007, 70007), singleton_node(10009, 10009)))](container_node[gen=276](singleton_node(60007, 60007), singleton_node(40008, 40008), singleton_node(70007, 70007), singleton_node(10009, 10009)))
+
+gen : 262
+old : Main_Node[prev=--nil--](container_node[gen=262](singleton_node(7, 7), singleton_node(40008, 40008), singleton_node(50008, 50008), singleton_node(10009, 10009), singleton_node(30010, 30010)))
+new : Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=262](singleton_node(7, 7), singleton_node(40008, 40008), singleton_node(50008, 50008), singleton_node(10009, 10009), singleton_node(30010, 30010)))](container_node[gen=262](singleton_node(7, 7), singleton_node(40008, 40008), singleton_node(10009, 10009), singleton_node(30010, 30010)))
+
+gen : 262
+old : Main_Node[prev=--nil--](container_node[gen=262](singleton_node(7, 7), singleton_node(40008, 40008), singleton_node(10009, 10009), singleton_node(30010, 30010)))
+new : Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=262](singleton_node(7, 7), singleton_node(40008, 40008), singleton_node(10009, 10009), singleton_node(30010, 30010)))](container_node[gen=262](singleton_node(40008, 40008), singleton_node(10009, 10009), singleton_node(30010, 30010)))
+
+gen : 276
+old : Main_Node[prev=--nil--](container_node[gen=276](singleton_node(60007, 60007), singleton_node(40008, 40008), singleton_node(70007, 70007), singleton_node(10009, 10009)))
+new : Main_Node[prev=--nil--](container_node[gen=276](singleton_node(60007, 60007), singleton_node(70007, 70007), singleton_node(10009, 10009)))
+
+gen : 276
+old : Main_Node[prev=--nil--](container_node[gen=276](singleton_node(60007, 60007), singleton_node(70007, 70007), singleton_node(10009, 10009)))
+new : Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=276](singleton_node(60007, 60007), singleton_node(70007, 70007), singleton_node(10009, 10009)))](container_node[gen=276](singleton_node(60007, 60007), singleton_node(20009, 20009), singleton_node(70007, 70007), singleton_node(10009, 10009)))
+
+gen : 276
+old : Main_Node[prev=--nil--](container_node[gen=276](singleton_node(60007, 60007), singleton_node(20009, 20009), singleton_node(30011, 30011)))
+new : Main_Node[prev=--nil--](container_node[gen=276](singleton_node(20009, 20009), singleton_node(30011, 30011)))
+
+gen : 276
+old : Main_Node[prev=--nil--](container_node[gen=276](singleton_node(60007, 60007), singleton_node(20009, 20009), singleton_node(70007, 70007)))
+new : Main_Node[prev=--nil--](container_node[gen=276](singleton_node(60007, 60007), singleton_node(20009, 20009), singleton_node(70007, 70007), singleton_node(30011, 30011)))
+
+gen : 276
+old : Main_Node[prev=--nil--](container_node[gen=276](singleton_node(20009, 20009), singleton_node(30011, 30011)))
+new : Main_Node[prev=--nil--](container_node[gen=276](singleton_node(20009, 20009), singleton_node(50009, 50009), singleton_node(30011, 30011)))
+
+gen : 276
+old : Main_Node[prev=--nil--](container_node[gen=276](singleton_node(60007, 60007), singleton_node(20009, 20009), singleton_node(70007, 70007), singleton_node(10009, 10009)))
+new : Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=276](singleton_node(60007, 60007), singleton_node(20009, 20009), singleton_node(70007, 70007), singleton_node(10009, 10009)))](container_node[gen=276](singleton_node(60007, 60007), singleton_node(20009, 20009), singleton_node(70007, 70007)))
+
+gen : 276
+old : Main_Node[prev=--nil--](container_node[gen=276](singleton_node(60007, 60007), singleton_node(20009, 20009), singleton_node(70007, 70007), singleton_node(30011, 30011)))
+new : Main_Node[prev=--nil--](container_node[gen=276](singleton_node(60007, 60007), singleton_node(20009, 20009), singleton_node(30011, 30011)))
+
+gen : 276
+old : Main_Node[prev=--nil--](container_node[gen=276](singleton_node(20009, 20009), singleton_node(50009, 50009), singleton_node(30011, 30011)))
+new : Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=276](singleton_node(20009, 20009), singleton_node(50009, 50009), singleton_node(30011, 30011)))](container_node[gen=276](singleton_node(8, 8), singleton_node(20009, 20009), singleton_node(50009, 50009), singleton_node(30011, 30011)))
+
+gen : 276
+old : Main_Node[prev=--nil--](container_node[gen=276](singleton_node(40009, 40009), singleton_node(20009, 20009)))
+new : Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=276](singleton_node(40009, 40009), singleton_node(20009, 20009)))](tomb_node(40009, 40009))
+
+gen : 276
+old : Main_Node[prev=failed_node(Main_Node[prev=--nil--](container_node[gen=276](singleton_node(40009, 40009), singleton_node(20009, 20009))))](tomb_node(40009, 40009))
+new : Main_Node[prev=--nil--](container_node[gen=276](singleton_node(40009, 40009), singleton_node(20009, 20009)))
+
+gen : 276
+old : Main_Node[prev=--nil--](container_node[gen=276](singleton_node(8, 8), singleton_node(20009, 20009), singleton_node(50009, 50009), singleton_node(30011, 30011)))
+new : Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=276](singleton_node(8, 8), singleton_node(20009, 20009), singleton_node(50009, 50009), singleton_node(30011, 30011)))](container_node[gen=276](singleton_node(8, 8), Indirection_Node[gen=276](Main_Node[prev=--nil--](container_node[gen=276](singleton_node(40009, 40009), singleton_node(20009, 20009)))), singleton_node(50009, 50009), singleton_node(30011, 30011)))
+
+gen : 300
+old : Main_Node[prev=--nil--](container_node[gen=276](singleton_node(40009, 40009), singleton_node(20009, 20009)))
+new : Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=276](singleton_node(40009, 40009), singleton_node(20009, 20009)))](tomb_node(40009, 40009))
+
+gen : 300
+old : Main_Node[prev=--nil--](container_node[gen=276](singleton_node(8, 8), singleton_node(60008, 60008)))
+new : Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=276](singleton_node(8, 8), singleton_node(60008, 60008)))](tomb_node(60008, 60008))
+
+gen : 276
+old : Main_Node[prev=--nil--](container_node[gen=276](singleton_node(8, 8), Indirection_Node[gen=276](Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=276](singleton_node(40009, 40009), singleton_node(20009, 20009)))](tomb_node(40009, 40009))), singleton_node(50009, 50009), singleton_node(30011, 30011)))
+new : Main_Node[prev=--nil--](container_node[gen=276](Indirection_Node[gen=276](Main_Node[prev=--nil--](container_node[gen=276](singleton_node(8, 8), singleton_node(60008, 60008)))), Indirection_Node[gen=276](Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=276](singleton_node(40009, 40009), singleton_node(20009, 20009)))](tomb_node(40009, 40009))), singleton_node(50009, 50009), singleton_node(30011, 30011)))
+
+gen : 276
+old : Main_Node[prev=--nil--](container_node[gen=276](Indirection_Node[gen=276](Main_Node[prev=--nil--](container_node[gen=276](singleton_node(8, 8), singleton_node(60008, 60008)))), Indirection_Node[gen=276](Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=276](singleton_node(40009, 40009), singleton_node(20009, 20009)))](tomb_node(40009, 40009))), singleton_node(50009, 50009), singleton_node(30011, 30011)))
+new : Main_Node[prev=--nil--](container_node[gen=276](Indirection_Node[gen=276](Main_Node[prev=--nil--](container_node[gen=276](singleton_node(8, 8), singleton_node(60008, 60008)))), Indirection_Node[gen=276](Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=276](singleton_node(40009, 40009), singleton_node(20009, 20009)))](tomb_node(40009, 40009))), singleton_node(50009, 50009)))
+
+gen : 276
+old : Main_Node[prev=--nil--](container_node[gen=276](Indirection_Node[gen=276](Main_Node[prev=--nil--](container_node[gen=276](singleton_node(8, 8), singleton_node(60008, 60008)))), Indirection_Node[gen=276](Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=276](singleton_node(40009, 40009), singleton_node(20009, 20009)))](tomb_node(40009, 40009))), singleton_node(50009, 50009)))
+new : Main_Node[prev=--nil--](container_node[gen=276](Indirection_Node[gen=276](Main_Node[prev=--nil--](container_node[gen=276](singleton_node(8, 8), singleton_node(60008, 60008)))), Indirection_Node[gen=276](Main_Node[prev=--nil--](container_node[gen=276](singleton_node(40009, 40009), singleton_node(20009, 20009))))))
+
+gen : 314
+old : Main_Node[prev=--nil--](container_node[gen=300](singleton_node(60008, 60008), singleton_node(40009, 40009), singleton_node(70008, 70008), singleton_node(10010, 10010)))
+new : Main_Node[prev=--nil--](container_node[gen=314](singleton_node(60008, 60008), singleton_node(40009, 40009), singleton_node(20010, 20010), singleton_node(70008, 70008), singleton_node(10010, 10010)))
+
+gen : 300
+old : Main_Node[prev=--nil--](container_node[gen=276](Indirection_Node[gen=276](Main_Node[prev=--nil--](container_node[gen=276](singleton_node(8, 8), singleton_node(60008, 60008)))), Indirection_Node[gen=276](Main_Node[prev=--nil--](container_node[gen=276](singleton_node(40009, 40009), singleton_node(20009, 20009))))))
+new : Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=276](Indirection_Node[gen=276](Main_Node[prev=--nil--](container_node[gen=276](singleton_node(8, 8), singleton_node(60008, 60008)))), Indirection_Node[gen=276](Main_Node[prev=--nil--](container_node[gen=276](singleton_node(40009, 40009), singleton_node(20009, 20009))))))](container_node[gen=300](Indirection_Node[gen=300](Main_Node[prev=--nil--](container_node[gen=276](singleton_node(8, 8), singleton_node(60008, 60008)))), Indirection_Node[gen=300](Main_Node[prev=--nil--](container_node[gen=276](singleton_node(40009, 40009), singleton_node(20009, 20009)))), singleton_node(70008, 70008)))
+
+gen : 300
+old : Main_Node[prev=--nil--](container_node[gen=300](Indirection_Node[gen=300](Main_Node[prev=--nil--](tomb_node(60008, 60008))), Indirection_Node[gen=300](Main_Node[prev=--nil--](tomb_node(40009, 40009))), singleton_node(70008, 70008), singleton_node(10010, 10010)))
+new : Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=300](Indirection_Node[gen=300](Main_Node[prev=--nil--](tomb_node(60008, 60008))), Indirection_Node[gen=300](Main_Node[prev=--nil--](tomb_node(40009, 40009))), singleton_node(70008, 70008), singleton_node(10010, 10010)))](container_node[gen=300](singleton_node(60008, 60008), singleton_node(40009, 40009), singleton_node(70008, 70008), singleton_node(10010, 10010)))
+
+gen : 314
+old : Main_Node[prev=--nil--](container_node[gen=314](singleton_node(60008, 60008), singleton_node(40009, 40009), singleton_node(20010, 20010), singleton_node(70008, 70008), singleton_node(10010, 10010)))
+new : Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=314](singleton_node(60008, 60008), singleton_node(40009, 40009), singleton_node(20010, 20010), singleton_node(70008, 70008), singleton_node(10010, 10010)))](container_node[gen=314](singleton_node(60008, 60008), Indirection_Node[gen=314](Main_Node[prev=--nil--](container_node[gen=314](singleton_node(9, 9), singleton_node(40009, 40009)))), singleton_node(20010, 20010), singleton_node(70008, 70008), singleton_node(10010, 10010)))
+
+gen : 314
+old : Main_Node[prev=--nil--](container_node[gen=314](singleton_node(60008, 60008), Indirection_Node[gen=314](Main_Node[prev=--nil--](container_node[gen=314](singleton_node(9, 9), singleton_node(40009, 40009)))), singleton_node(20010, 20010), singleton_node(70008, 70008), singleton_node(10010, 10010)))
+new : Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=314](singleton_node(60008, 60008), Indirection_Node[gen=314](Main_Node[prev=--nil--](container_node[gen=314](singleton_node(9, 9), singleton_node(40009, 40009)))), singleton_node(20010, 20010), singleton_node(70008, 70008), singleton_node(10010, 10010)))](container_node[gen=314](Indirection_Node[gen=314](Main_Node[prev=--nil--](container_node[gen=314](singleton_node(9, 9), singleton_node(40009, 40009)))), singleton_node(20010, 20010), singleton_node(70008, 70008), singleton_node(10010, 10010)))
+
+gen : 332
+old : Main_Node[prev=--nil--](container_node[gen=314](singleton_node(9, 9), singleton_node(40009, 40009)))
+new : Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=314](singleton_node(9, 9), singleton_node(40009, 40009)))](tomb_node(40009, 40009))
+
+gen : 314
+old : Main_Node[prev=--nil--](container_node[gen=314](Indirection_Node[gen=314](Main_Node[prev=--nil--](container_node[gen=314](singleton_node(9, 9), singleton_node(40009, 40009)))), singleton_node(20010, 20010), singleton_node(70008, 70008), singleton_node(10010, 10010)))
+new : Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=314](Indirection_Node[gen=314](Main_Node[prev=--nil--](container_node[gen=314](singleton_node(9, 9), singleton_node(40009, 40009)))), singleton_node(20010, 20010), singleton_node(70008, 70008), singleton_node(10010, 10010)))](container_node[gen=314](Indirection_Node[gen=314](Main_Node[prev=--nil--](container_node[gen=314](singleton_node(9, 9), singleton_node(40009, 40009)))), singleton_node(20010, 20010), singleton_node(70008, 70008), singleton_node(10010, 10010), singleton_node(30012, 30012)))
+
+gen : 324
+old : Main_Node[prev=--nil--](container_node[gen=314](Indirection_Node[gen=314](Main_Node[prev=--nil--](container_node[gen=314](singleton_node(9, 9), singleton_node(40009, 40009)))), singleton_node(20010, 20010), singleton_node(70008, 70008), singleton_node(10010, 10010), singleton_node(30012, 30012)))
+new : Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=314](Indirection_Node[gen=314](Main_Node[prev=--nil--](container_node[gen=314](singleton_node(9, 9), singleton_node(40009, 40009)))), singleton_node(20010, 20010), singleton_node(70008, 70008), singleton_node(10010, 10010), singleton_node(30012, 30012)))](container_node[gen=324](Indirection_Node[gen=324](Main_Node[prev=--nil--](container_node[gen=314](singleton_node(9, 9), singleton_node(40009, 40009)))), singleton_node(20010, 20010), singleton_node(70008, 70008), Indirection_Node[gen=324](Main_Node[prev=--nil--](container_node[gen=324](singleton_node(10010, 10010), singleton_node(50010, 50010)))), singleton_node(30012, 30012)))
+
+gen : 300
+old : Main_Node[prev=--nil--](container_node[gen=300](Indirection_Node[gen=300](Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=276](singleton_node(8, 8), singleton_node(60008, 60008)))](tomb_node(60008, 60008))), Indirection_Node[gen=300](Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=276](singleton_node(40009, 40009), singleton_node(20009, 20009)))](tomb_node(40009, 40009))), singleton_node(70008, 70008)))
+new : Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=300](Indirection_Node[gen=300](Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=276](singleton_node(8, 8), singleton_node(60008, 60008)))](tomb_node(60008, 60008))), Indirection_Node[gen=300](Main_Node[prev=--nil--](tomb_node(40009, 40009))), singleton_node(70008, 70008)))](container_node[gen=300](Indirection_Node[gen=300](Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=276](singleton_node(8, 8), singleton_node(60008, 60008)))](tomb_node(60008, 60008))), Indirection_Node[gen=300](Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=276](singleton_node(40009, 40009), singleton_node(20009, 20009)))](tomb_node(40009, 40009))), singleton_node(70008, 70008), singleton_node(10010, 10010)))
+
+gen : 332
+old : Main_Node[prev=--nil--](container_node[gen=332](Indirection_Node[gen=324](Main_Node[prev=--nil--](container_node[gen=314](singleton_node(9, 9), singleton_node(40009, 40009)))), singleton_node(70008, 70008), Indirection_Node[gen=324](Main_Node[prev=--nil--](container_node[gen=324](singleton_node(10010, 10010), singleton_node(50010, 50010)))), singleton_node(30012, 30012)))
+new : Main_Node[prev=--nil--](container_node[gen=332](Indirection_Node[gen=324](Main_Node[prev=--nil--](container_node[gen=314](singleton_node(9, 9), singleton_node(40009, 40009)))), Indirection_Node[gen=324](Main_Node[prev=--nil--](container_node[gen=324](singleton_node(10010, 10010), singleton_node(50010, 50010)))), singleton_node(30012, 30012)))
+
+gen : 332
+old : Main_Node[prev=--nil--](container_node[gen=332](Indirection_Node[gen=332](Main_Node[prev=--nil--](tomb_node(40009, 40009))), Indirection_Node[gen=332](Main_Node[prev=--nil--](container_node[gen=324](singleton_node(10010, 10010), singleton_node(50010, 50010)))), singleton_node(30012, 30012)))
+new : Main_Node[prev=--nil--](container_node[gen=332](singleton_node(40009, 40009), Indirection_Node[gen=332](Main_Node[prev=--nil--](container_node[gen=324](singleton_node(10010, 10010), singleton_node(50010, 50010)))), singleton_node(30012, 30012)))
+
+gen : 332
+old : Main_Node[prev=--nil--](container_node[gen=324](Indirection_Node[gen=324](Main_Node[prev=--nil--](container_node[gen=314](singleton_node(9, 9), singleton_node(40009, 40009)))), singleton_node(20010, 20010), singleton_node(70008, 70008), Indirection_Node[gen=324](Main_Node[prev=--nil--](container_node[gen=324](singleton_node(10010, 10010), singleton_node(50010, 50010)))), singleton_node(30012, 30012)))
+new : Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=324](Indirection_Node[gen=324](Main_Node[prev=--nil--](container_node[gen=314](singleton_node(9, 9), singleton_node(40009, 40009)))), singleton_node(20010, 20010), singleton_node(70008, 70008), Indirection_Node[gen=324](Main_Node[prev=--nil--](container_node[gen=324](singleton_node(10010, 10010), singleton_node(50010, 50010)))), singleton_node(30012, 30012)))](container_node[gen=332](Indirection_Node[gen=324](Main_Node[prev=--nil--](container_node[gen=314](singleton_node(9, 9), singleton_node(40009, 40009)))), singleton_node(70008, 70008), Indirection_Node[gen=324](Main_Node[prev=--nil--](container_node[gen=324](singleton_node(10010, 10010), singleton_node(50010, 50010)))), singleton_node(30012, 30012)))
+
+gen : 343
+old : Main_Node[prev=--nil--](container_node[gen=332](singleton_node(40009, 40009), Indirection_Node[gen=332](Main_Node[prev=--nil--](container_node[gen=324](singleton_node(10010, 10010), singleton_node(50010, 50010)))), singleton_node(30012, 30012)))
+new : Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=332](singleton_node(40009, 40009), Indirection_Node[gen=332](Main_Node[prev=--nil--](container_node[gen=324](singleton_node(10010, 10010), singleton_node(50010, 50010)))), singleton_node(30012, 30012)))](container_node[gen=343](singleton_node(40009, 40009), singleton_node(10, 10), Indirection_Node[gen=343](Main_Node[prev=--nil--](container_node[gen=324](singleton_node(10010, 10010), singleton_node(50010, 50010)))), singleton_node(30012, 30012)))
+
+gen : 350
+old : Main_Node[prev=--nil--](container_node[gen=343](singleton_node(40009, 40009), singleton_node(10, 10), Indirection_Node[gen=343](Main_Node[prev=--nil--](container_node[gen=324](singleton_node(10010, 10010), singleton_node(50010, 50010))))))
+new : Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=343](singleton_node(40009, 40009), singleton_node(10, 10), Indirection_Node[gen=343](Main_Node[prev=--nil--](container_node[gen=324](singleton_node(10010, 10010), singleton_node(50010, 50010))))))](container_node[gen=350](singleton_node(40009, 40009), singleton_node(10, 10), Indirection_Node[gen=350](Main_Node[prev=--nil--](container_node[gen=324](singleton_node(10010, 10010), singleton_node(50010, 50010))))))
+
+gen : 332
+old : Main_Node[prev=--nil--](container_node[gen=332](Indirection_Node[gen=324](Main_Node[prev=--nil--](container_node[gen=314](singleton_node(9, 9), singleton_node(40009, 40009)))), Indirection_Node[gen=324](Main_Node[prev=--nil--](container_node[gen=324](singleton_node(10010, 10010), singleton_node(50010, 50010)))), singleton_node(30012, 30012)))
+new : Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=332](Indirection_Node[gen=324](Main_Node[prev=--nil--](container_node[gen=314](singleton_node(9, 9), singleton_node(40009, 40009)))), Indirection_Node[gen=324](Main_Node[prev=--nil--](container_node[gen=324](singleton_node(10010, 10010), singleton_node(50010, 50010)))), singleton_node(30012, 30012)))](container_node[gen=332](Indirection_Node[gen=332](Main_Node[prev=--nil--](container_node[gen=314](singleton_node(9, 9), singleton_node(40009, 40009)))), Indirection_Node[gen=332](Main_Node[prev=--nil--](container_node[gen=324](singleton_node(10010, 10010), singleton_node(50010, 50010)))), singleton_node(30012, 30012)))
+
+gen : 343
+old : Main_Node[prev=--nil--](container_node[gen=343](singleton_node(40009, 40009), singleton_node(10, 10), Indirection_Node[gen=343](Main_Node[prev=--nil--](container_node[gen=324](singleton_node(10010, 10010), singleton_node(50010, 50010)))), singleton_node(30012, 30012)))
+new : Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=343](singleton_node(40009, 40009), singleton_node(10, 10), Indirection_Node[gen=343](Main_Node[prev=--nil--](container_node[gen=324](singleton_node(10010, 10010), singleton_node(50010, 50010)))), singleton_node(30012, 30012)))](container_node[gen=343](singleton_node(40009, 40009), singleton_node(10, 10), Indirection_Node[gen=343](Main_Node[prev=--nil--](container_node[gen=324](singleton_node(10010, 10010), singleton_node(50010, 50010))))))
+
+gen : 356
+old : Main_Node[prev=--nil--](container_node[gen=350](singleton_node(40009, 40009), singleton_node(10, 10), Indirection_Node[gen=350](Main_Node[prev=--nil--](container_node[gen=324](singleton_node(10010, 10010), singleton_node(50010, 50010))))))
+new : Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=350](singleton_node(40009, 40009), singleton_node(10, 10), Indirection_Node[gen=350](Main_Node[prev=--nil--](container_node[gen=324](singleton_node(10010, 10010), singleton_node(50010, 50010))))))](container_node[gen=356](singleton_node(40009, 40009), singleton_node(10, 10), Indirection_Node[gen=356](Main_Node[prev=--nil--](container_node[gen=324](singleton_node(10010, 10010), singleton_node(50010, 50010))))))
+
+gen : 350
+old : Main_Node[prev=--nil--](container_node[gen=324](singleton_node(10010, 10010), singleton_node(50010, 50010)))
+new : Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=324](singleton_node(10010, 10010), singleton_node(50010, 50010)))](tomb_node(10010, 10010))
+
+gen : 356
+old : Main_Node[prev=--nil--](container_node[gen=356](singleton_node(40009, 40009), singleton_node(10, 10), Indirection_Node[gen=356](Main_Node[prev=--nil--](container_node[gen=324](singleton_node(10010, 10010), singleton_node(50010, 50010))))))
+new : Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=356](singleton_node(40009, 40009), singleton_node(10, 10), Indirection_Node[gen=356](Main_Node[prev=--nil--](container_node[gen=324](singleton_node(10010, 10010), singleton_node(50010, 50010))))))](container_node[gen=356](singleton_node(40009, 40009), singleton_node(10, 10), singleton_node(70009, 70009), Indirection_Node[gen=356](Main_Node[prev=--nil--](container_node[gen=324](singleton_node(10010, 10010), singleton_node(50010, 50010))))))
+
+gen : 356
+old : Main_Node[prev=--nil--](container_node[gen=356](singleton_node(40009, 40009), singleton_node(10, 10), singleton_node(70009, 70009), Indirection_Node[gen=356](Main_Node[prev=--nil--](container_node[gen=324](singleton_node(10010, 10010), singleton_node(50010, 50010))))))
+new : Main_Node[prev=--nil--](container_node[gen=356](Indirection_Node[gen=356](Main_Node[prev=--nil--](container_node[gen=356](singleton_node(40009, 40009), singleton_node(60009, 60009)))), singleton_node(10, 10), singleton_node(70009, 70009), Indirection_Node[gen=356](Main_Node[prev=--nil--](container_node[gen=324](singleton_node(10010, 10010), singleton_node(50010, 50010))))))
+
+gen : 350
+old : Main_Node[prev=failed_node(Main_Node[prev=--nil--](container_node[gen=324](singleton_node(10010, 10010), singleton_node(50010, 50010))))](tomb_node(10010, 10010))
+new : Main_Node[prev=--nil--](container_node[gen=324](singleton_node(10010, 10010), singleton_node(50010, 50010)))
+
+gen : 356
+old : Main_Node[prev=--nil--](container_node[gen=324](singleton_node(10010, 10010), singleton_node(50010, 50010)))
+new : Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=324](singleton_node(10010, 10010), singleton_node(50010, 50010)))](tomb_node(50010, 50010))
+
+gen : 367
+old : Main_Node[prev=--nil--](container_node[gen=324](singleton_node(10010, 10010), singleton_node(50010, 50010)))
+new : Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=324](singleton_node(10010, 10010), singleton_node(50010, 50010)))](tomb_node(10010, 10010))
+
+gen : 356
+old : Main_Node[prev=failed_node(Main_Node[prev=--nil--](container_node[gen=324](singleton_node(10010, 10010), singleton_node(50010, 50010))))](tomb_node(50010, 50010))
+new : Main_Node[prev=--nil--](container_node[gen=324](singleton_node(10010, 10010), singleton_node(50010, 50010)))
+
+gen : 367
+old : Main_Node[prev=--nil--](container_node[gen=356](singleton_node(40009, 40009), singleton_node(60009, 60009)))
+new : Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=356](singleton_node(40009, 40009), singleton_node(60009, 60009)))](tomb_node(40009, 40009))
+
+gen : 367
+old : Main_Node[prev=--nil--](container_node[gen=367](Indirection_Node[gen=356](Main_Node[prev=--nil--](container_node[gen=356](singleton_node(40009, 40009), singleton_node(60009, 60009)))), singleton_node(20011, 20011), singleton_node(70009, 70009), Indirection_Node[gen=356](Main_Node[prev=--nil--](container_node[gen=324](singleton_node(10010, 10010), singleton_node(50010, 50010))))))
+new : Main_Node[prev=--nil--](container_node[gen=367](Indirection_Node[gen=367](Main_Node[prev=--nil--](container_node[gen=356](singleton_node(40009, 40009), singleton_node(60009, 60009)))), singleton_node(20011, 20011), singleton_node(70009, 70009), Indirection_Node[gen=367](Main_Node[prev=--nil--](container_node[gen=324](singleton_node(10010, 10010), singleton_node(50010, 50010))))))
+
+gen : 356
+old : Main_Node[prev=--nil--](container_node[gen=356](Indirection_Node[gen=356](Main_Node[prev=--nil--](container_node[gen=356](singleton_node(40009, 40009), singleton_node(60009, 60009)))), singleton_node(10, 10), singleton_node(70009, 70009), Indirection_Node[gen=356](Main_Node[prev=--nil--](container_node[gen=324](singleton_node(10010, 10010), singleton_node(50010, 50010))))))
+new : Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=356](Indirection_Node[gen=356](Main_Node[prev=--nil--](container_node[gen=356](singleton_node(40009, 40009), singleton_node(60009, 60009)))), singleton_node(10, 10), singleton_node(70009, 70009), Indirection_Node[gen=356](Main_Node[prev=--nil--](container_node[gen=324](singleton_node(10010, 10010), singleton_node(50010, 50010))))))](container_node[gen=356](Indirection_Node[gen=356](Main_Node[prev=--nil--](container_node[gen=356](singleton_node(40009, 40009), singleton_node(60009, 60009)))), singleton_node(10, 10), singleton_node(20011, 20011), singleton_node(70009, 70009), Indirection_Node[gen=356](Main_Node[prev=--nil--](container_node[gen=324](singleton_node(10010, 10010), singleton_node(50010, 50010))))))
+
+gen : 367
+old : Main_Node[prev=--nil--](container_node[gen=356](Indirection_Node[gen=356](Main_Node[prev=--nil--](container_node[gen=356](singleton_node(40009, 40009), singleton_node(60009, 60009)))), singleton_node(10, 10), singleton_node(20011, 20011), singleton_node(70009, 70009), Indirection_Node[gen=356](Main_Node[prev=--nil--](container_node[gen=324](singleton_node(10010, 10010), singleton_node(50010, 50010))))))
+new : Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=356](Indirection_Node[gen=356](Main_Node[prev=--nil--](container_node[gen=356](singleton_node(40009, 40009), singleton_node(60009, 60009)))), singleton_node(10, 10), singleton_node(20011, 20011), singleton_node(70009, 70009), Indirection_Node[gen=356](Main_Node[prev=--nil--](container_node[gen=324](singleton_node(10010, 10010), singleton_node(50010, 50010))))))](container_node[gen=367](Indirection_Node[gen=356](Main_Node[prev=--nil--](container_node[gen=356](singleton_node(40009, 40009), singleton_node(60009, 60009)))), singleton_node(20011, 20011), singleton_node(70009, 70009), Indirection_Node[gen=356](Main_Node[prev=--nil--](container_node[gen=324](singleton_node(10010, 10010), singleton_node(50010, 50010))))))
+
+gen : 367
+old : Main_Node[prev=--nil--](container_node[gen=367](singleton_node(40009, 40009), singleton_node(20011, 20011), singleton_node(30013, 30013)))
+new : Main_Node[prev=--nil--](container_node[gen=367](singleton_node(20011, 20011), singleton_node(30013, 30013)))
+
+gen : 367
+old : Main_Node[prev=--nil--](container_node[gen=367](Indirection_Node[gen=367](Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=356](singleton_node(40009, 40009), singleton_node(60009, 60009)))](tomb_node(40009, 40009))), singleton_node(20011, 20011), singleton_node(10010, 10010), singleton_node(30013, 30013)))
+new : Main_Node[prev=--nil--](container_node[gen=367](Indirection_Node[gen=367](Main_Node[prev=--nil--](tomb_node(40009, 40009))), singleton_node(20011, 20011), singleton_node(30013, 30013)))
+
+gen : 367
+old : Main_Node[prev=--nil--](container_node[gen=367](singleton_node(20011, 20011), singleton_node(30013, 30013)))
+new : Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=367](singleton_node(20011, 20011), singleton_node(30013, 30013)))](container_node[gen=367](singleton_node(30013, 30013)))
+
+gen : 367
+old : Main_Node[prev=--nil--](container_node[gen=367](Indirection_Node[gen=367](Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=356](singleton_node(40009, 40009), singleton_node(60009, 60009)))](tomb_node(40009, 40009))), singleton_node(20011, 20011), Indirection_Node[gen=367](Main_Node[prev=--nil--](tomb_node(10010, 10010))), singleton_node(30013, 30013)))
+new : Main_Node[prev=--nil--](container_node[gen=367](Indirection_Node[gen=367](Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=356](singleton_node(40009, 40009), singleton_node(60009, 60009)))](tomb_node(40009, 40009))), singleton_node(20011, 20011), singleton_node(10010, 10010), singleton_node(30013, 30013)))
+
+gen : 367
+old : Main_Node[prev=--nil--](container_node[gen=367](Indirection_Node[gen=367](Main_Node[prev=--nil--](container_node[gen=356](singleton_node(40009, 40009), singleton_node(60009, 60009)))), singleton_node(20011, 20011), singleton_node(70009, 70009), Indirection_Node[gen=367](Main_Node[prev=--nil--](container_node[gen=324](singleton_node(10010, 10010), singleton_node(50010, 50010))))))
+new : Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=367](Indirection_Node[gen=367](Main_Node[prev=--nil--](container_node[gen=356](singleton_node(40009, 40009), singleton_node(60009, 60009)))), singleton_node(20011, 20011), singleton_node(70009, 70009), Indirection_Node[gen=367](Main_Node[prev=--nil--](container_node[gen=324](singleton_node(10010, 10010), singleton_node(50010, 50010))))))](container_node[gen=367](Indirection_Node[gen=367](Main_Node[prev=--nil--](container_node[gen=356](singleton_node(40009, 40009), singleton_node(60009, 60009)))), singleton_node(20011, 20011), singleton_node(70009, 70009), Indirection_Node[gen=367](Main_Node[prev=--nil--](container_node[gen=324](singleton_node(10010, 10010), singleton_node(50010, 50010)))), singleton_node(30013, 30013)))
+
+gen : 367
+old : Main_Node[prev=--nil--](container_node[gen=367](Indirection_Node[gen=367](Main_Node[prev=--nil--](tomb_node(40009, 40009))), singleton_node(20011, 20011), singleton_node(30013, 30013)))
+new : Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=367](Indirection_Node[gen=367](Main_Node[prev=--nil--](tomb_node(40009, 40009))), singleton_node(20011, 20011), singleton_node(30013, 30013)))](container_node[gen=367](singleton_node(40009, 40009), singleton_node(20011, 20011), singleton_node(30013, 30013)))
+
+gen : 367
+old : Main_Node[prev=--nil--](container_node[gen=367](singleton_node(30013, 30013)))
+new : Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=367](singleton_node(30013, 30013)))](container_node[gen=367](singleton_node(11, 11), singleton_node(30013, 30013)))
+
+gen : 387
+old : Main_Node[prev=--nil--](container_node[gen=387](singleton_node(40010, 40010), singleton_node(11, 11), singleton_node(30013, 30013)))
+new : Main_Node[prev=--nil--](container_node[gen=387](singleton_node(40010, 40010), singleton_node(11, 11), singleton_node(10011, 10011), singleton_node(30013, 30013)))
+
+gen : 387
+old : Main_Node[prev=--nil--](container_node[gen=367](singleton_node(11, 11), singleton_node(30013, 30013)))
+new : Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=367](singleton_node(11, 11), singleton_node(30013, 30013)))](container_node[gen=387](singleton_node(40010, 40010), singleton_node(11, 11), singleton_node(30013, 30013)))
+
+gen : 387
+old : Main_Node[prev=--nil--](container_node[gen=387](singleton_node(40010, 40010), singleton_node(11, 11), singleton_node(10011, 10011), singleton_node(30013, 30013)))
+new : Main_Node[prev=--nil--](container_node[gen=387](singleton_node(40010, 40010), singleton_node(11, 11), singleton_node(20012, 20012), singleton_node(10011, 10011), singleton_node(30013, 30013)))
+
+gen : 367
+old : Main_Node[prev=--nil--](container_node[gen=367](Indirection_Node[gen=367](Main_Node[prev=--nil--](container_node[gen=356](singleton_node(40009, 40009), singleton_node(60009, 60009)))), singleton_node(20011, 20011), singleton_node(70009, 70009), Indirection_Node[gen=367](Main_Node[prev=--nil--](container_node[gen=324](singleton_node(10010, 10010), singleton_node(50010, 50010)))), singleton_node(30013, 30013)))
+new : Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=367](Indirection_Node[gen=367](Main_Node[prev=--nil--](container_node[gen=356](singleton_node(40009, 40009), singleton_node(60009, 60009)))), singleton_node(20011, 20011), singleton_node(70009, 70009), Indirection_Node[gen=367](Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=324](singleton_node(10010, 10010), singleton_node(50010, 50010)))](tomb_node(10010, 10010))), singleton_node(30013, 30013)))](container_node[gen=367](Indirection_Node[gen=367](Main_Node[prev=--nil--](container_node[gen=356](singleton_node(40009, 40009), singleton_node(60009, 60009)))), singleton_node(20011, 20011), Indirection_Node[gen=367](Main_Node[prev=--nil--](container_node[gen=324](singleton_node(10010, 10010), singleton_node(50010, 50010)))), singleton_node(30013, 30013)))
+
+gen : 398
+old : Main_Node[prev=--nil--](container_node[gen=387](singleton_node(10011, 10011), singleton_node(50011, 50011)))
+new : Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=387](singleton_node(10011, 10011), singleton_node(50011, 50011)))](tomb_node(50011, 50011))
+
+gen : 398
+old : Main_Node[prev=failed_node(Main_Node[prev=--nil--](container_node[gen=387](singleton_node(10011, 10011), singleton_node(50011, 50011))))](tomb_node(50011, 50011))
+new : Main_Node[prev=--nil--](container_node[gen=387](singleton_node(10011, 10011), singleton_node(50011, 50011)))
+
+gen : 387
+old : Main_Node[prev=--nil--](container_node[gen=387](singleton_node(40010, 40010), singleton_node(11, 11), singleton_node(20012, 20012), Indirection_Node[gen=387](Main_Node[prev=--nil--](container_node[gen=387](singleton_node(10011, 10011), singleton_node(50011, 50011)))), singleton_node(30013, 30013)))
+new : Main_Node[prev=--nil--](container_node[gen=387](singleton_node(40010, 40010), singleton_node(11, 11), singleton_node(20012, 20012), Indirection_Node[gen=387](Main_Node[prev=--nil--](container_node[gen=387](singleton_node(10011, 10011), singleton_node(50011, 50011))))))
+
+gen : 387
+old : Main_Node[prev=--nil--](container_node[gen=387](singleton_node(40010, 40010), singleton_node(11, 11), singleton_node(20012, 20012), singleton_node(10011, 10011), singleton_node(30013, 30013)))
+new : Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=387](singleton_node(40010, 40010), singleton_node(11, 11), singleton_node(20012, 20012), singleton_node(10011, 10011), singleton_node(30013, 30013)))](container_node[gen=387](singleton_node(40010, 40010), singleton_node(11, 11), singleton_node(20012, 20012), Indirection_Node[gen=387](Main_Node[prev=--nil--](container_node[gen=387](singleton_node(10011, 10011), singleton_node(50011, 50011)))), singleton_node(30013, 30013)))
+
+gen : 398
+old : Main_Node[prev=--nil--](container_node[gen=387](singleton_node(40010, 40010), singleton_node(11, 11), singleton_node(20012, 20012), Indirection_Node[gen=387](Main_Node[prev=--nil--](container_node[gen=387](singleton_node(10011, 10011), singleton_node(50011, 50011))))))
+new : Main_Node[prev=--nil--](container_node[gen=398](Indirection_Node[gen=398](Main_Node[prev=--nil--](container_node[gen=398](singleton_node(40010, 40010), singleton_node(60010, 60010)))), singleton_node(11, 11), singleton_node(20012, 20012), Indirection_Node[gen=398](Main_Node[prev=--nil--](container_node[gen=387](singleton_node(10011, 10011), singleton_node(50011, 50011))))))
+
+gen : 414
+old : Main_Node[prev=--nil--](container_node[gen=387](singleton_node(10011, 10011), singleton_node(50011, 50011)))
+new : Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=387](singleton_node(10011, 10011), singleton_node(50011, 50011)))](tomb_node(50011, 50011))
+
+gen : 414
+old : Main_Node[prev=--nil--](container_node[gen=398](singleton_node(40010, 40010), singleton_node(60010, 60010)))
+new : Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=398](singleton_node(40010, 40010), singleton_node(60010, 60010)))](tomb_node(60010, 60010))
+
+gen : 427
+old : Main_Node[prev=--nil--](container_node[gen=427](singleton_node(70010, 70010), singleton_node(50011, 50011), singleton_node(30014, 30014)))
+new : Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=427](singleton_node(70010, 70010), singleton_node(50011, 50011), singleton_node(30014, 30014)))](container_node[gen=427](singleton_node(70010, 70010), singleton_node(50011, 50011), singleton_node(10012, 10012), singleton_node(30014, 30014)))
+
+gen : 427
+old : Main_Node[prev=--nil--](container_node[gen=414](singleton_node(60010, 60010), singleton_node(70010, 70010), singleton_node(50011, 50011), singleton_node(30014, 30014)))
+new : Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=414](singleton_node(60010, 60010), singleton_node(70010, 70010), singleton_node(50011, 50011), singleton_node(30014, 30014)))](container_node[gen=427](singleton_node(70010, 70010), singleton_node(50011, 50011), singleton_node(30014, 30014)))
+
+gen : 414
+old : Main_Node[prev=--nil--](container_node[gen=414](Indirection_Node[gen=414](Main_Node[prev=--nil--](tomb_node(60010, 60010))), singleton_node(70010, 70010), Indirection_Node[gen=414](Main_Node[prev=--nil--](tomb_node(50011, 50011))), singleton_node(30014, 30014)))
+new : Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=414](Indirection_Node[gen=414](Main_Node[prev=--nil--](tomb_node(60010, 60010))), singleton_node(70010, 70010), Indirection_Node[gen=414](Main_Node[prev=--nil--](tomb_node(50011, 50011))), singleton_node(30014, 30014)))](container_node[gen=414](singleton_node(60010, 60010), singleton_node(70010, 70010), singleton_node(50011, 50011), singleton_node(30014, 30014)))
+
+gen : 398
+old : Main_Node[prev=--nil--](container_node[gen=398](Indirection_Node[gen=398](Main_Node[prev=--nil--](container_node[gen=398](singleton_node(40010, 40010), singleton_node(60010, 60010)))), singleton_node(11, 11), singleton_node(20012, 20012), Indirection_Node[gen=398](Main_Node[prev=--nil--](container_node[gen=387](singleton_node(10011, 10011), singleton_node(50011, 50011))))))
+new : Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=398](Indirection_Node[gen=398](Main_Node[prev=--nil--](container_node[gen=398](singleton_node(40010, 40010), singleton_node(60010, 60010)))), singleton_node(11, 11), singleton_node(20012, 20012), Indirection_Node[gen=398](Main_Node[prev=--nil--](container_node[gen=387](singleton_node(10011, 10011), singleton_node(50011, 50011))))))](container_node[gen=398](Indirection_Node[gen=398](Main_Node[prev=--nil--](container_node[gen=398](singleton_node(40010, 40010), singleton_node(60010, 60010)))), singleton_node(20012, 20012), Indirection_Node[gen=398](Main_Node[prev=--nil--](container_node[gen=387](singleton_node(10011, 10011), singleton_node(50011, 50011))))))
+
+gen : 414
+old : Main_Node[prev=--nil--](container_node[gen=408](Indirection_Node[gen=398](Main_Node[prev=--nil--](container_node[gen=398](singleton_node(40010, 40010), singleton_node(60010, 60010)))), Indirection_Node[gen=398](Main_Node[prev=--nil--](container_node[gen=387](singleton_node(10011, 10011), singleton_node(50011, 50011))))))
+new : Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=408](Indirection_Node[gen=398](Main_Node[prev=--nil--](container_node[gen=398](singleton_node(40010, 40010), singleton_node(60010, 60010)))), Indirection_Node[gen=398](Main_Node[prev=--nil--](container_node[gen=387](singleton_node(10011, 10011), singleton_node(50011, 50011))))))](container_node[gen=414](Indirection_Node[gen=414](Main_Node[prev=--nil--](container_node[gen=398](singleton_node(40010, 40010), singleton_node(60010, 60010)))), singleton_node(70010, 70010), Indirection_Node[gen=414](Main_Node[prev=--nil--](container_node[gen=387](singleton_node(10011, 10011), singleton_node(50011, 50011))))))
+
+gen : 414
+old : Main_Node[prev=--nil--](container_node[gen=414](Indirection_Node[gen=414](Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=398](singleton_node(40010, 40010), singleton_node(60010, 60010)))](tomb_node(60010, 60010))), singleton_node(70010, 70010), Indirection_Node[gen=414](Main_Node[prev=--nil--](tomb_node(50011, 50011)))))
+new : Main_Node[prev=--nil--](container_node[gen=414](Indirection_Node[gen=414](Main_Node[prev=--nil--](tomb_node(60010, 60010))), singleton_node(70010, 70010), Indirection_Node[gen=414](Main_Node[prev=--nil--](tomb_node(50011, 50011))), singleton_node(30014, 30014)))
+
+gen : 408
+old : Main_Node[prev=--nil--](container_node[gen=398](Indirection_Node[gen=398](Main_Node[prev=--nil--](container_node[gen=398](singleton_node(40010, 40010), singleton_node(60010, 60010)))), singleton_node(20012, 20012), Indirection_Node[gen=398](Main_Node[prev=--nil--](container_node[gen=387](singleton_node(10011, 10011), singleton_node(50011, 50011))))))
+new : Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=398](Indirection_Node[gen=398](Main_Node[prev=--nil--](container_node[gen=398](singleton_node(40010, 40010), singleton_node(60010, 60010)))), singleton_node(20012, 20012), Indirection_Node[gen=398](Main_Node[prev=--nil--](container_node[gen=387](singleton_node(10011, 10011), singleton_node(50011, 50011))))))](container_node[gen=408](Indirection_Node[gen=398](Main_Node[prev=--nil--](container_node[gen=398](singleton_node(40010, 40010), singleton_node(60010, 60010)))), Indirection_Node[gen=398](Main_Node[prev=--nil--](container_node[gen=387](singleton_node(10011, 10011), singleton_node(50011, 50011))))))
+
+gen : 427
+old : Main_Node[prev=--nil--](container_node[gen=427](singleton_node(70010, 70010), singleton_node(50011, 50011), singleton_node(10012, 10012), singleton_node(30014, 30014)))
+new : Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=427](singleton_node(70010, 70010), singleton_node(50011, 50011), singleton_node(10012, 10012), singleton_node(30014, 30014)))](container_node[gen=427](singleton_node(40011, 40011), singleton_node(70010, 70010), singleton_node(50011, 50011), singleton_node(10012, 10012), singleton_node(30014, 30014)))
+
+gen : 427
+old : Main_Node[prev=--nil--](container_node[gen=427](singleton_node(40011, 40011), singleton_node(70010, 70010), singleton_node(50011, 50011), singleton_node(10012, 10012), singleton_node(30014, 30014)))
+new : Main_Node[prev=--nil--](container_node[gen=427](singleton_node(40011, 40011), singleton_node(70010, 70010), singleton_node(50011, 50011), singleton_node(30014, 30014)))
+
+gen : 427
+old : Main_Node[prev=--nil--](container_node[gen=427](singleton_node(40011, 40011), singleton_node(70010, 70010), singleton_node(50011, 50011), singleton_node(30014, 30014)))
+new : Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=427](singleton_node(40011, 40011), singleton_node(70010, 70010), singleton_node(50011, 50011), singleton_node(30014, 30014)))](container_node[gen=427](Indirection_Node[gen=427](Main_Node[prev=--nil--](container_node[gen=427](singleton_node(40011, 40011), singleton_node(60011, 60011)))), singleton_node(70010, 70010), singleton_node(50011, 50011), singleton_node(30014, 30014)))
+
+gen : 440
+old : Main_Node[prev=--nil--](container_node[gen=440](Indirection_Node[gen=427](Main_Node[prev=--nil--](container_node[gen=427](singleton_node(40011, 40011), singleton_node(60011, 60011)))), singleton_node(12, 12)))
+new : Main_Node[prev=--nil--](container_node[gen=440](Indirection_Node[gen=427](Main_Node[prev=--nil--](container_node[gen=427](singleton_node(40011, 40011), singleton_node(60011, 60011)))), singleton_node(12, 12), singleton_node(20013, 20013)))
+
+gen : 427
+old : Main_Node[prev=--nil--](container_node[gen=427](Indirection_Node[gen=427](Main_Node[prev=--nil--](container_node[gen=427](singleton_node(40011, 40011), singleton_node(60011, 60011)))), singleton_node(70010, 70010), singleton_node(50011, 50011), singleton_node(30014, 30014)))
+new : Main_Node[prev=--nil--](container_node[gen=427](Indirection_Node[gen=427](Main_Node[prev=--nil--](container_node[gen=427](singleton_node(40011, 40011), singleton_node(60011, 60011)))), singleton_node(70010, 70010), singleton_node(30014, 30014)))
+
+gen : 440
+old : Main_Node[prev=--nil--](container_node[gen=427](Indirection_Node[gen=427](Main_Node[prev=--nil--](container_node[gen=427](singleton_node(40011, 40011), singleton_node(60011, 60011)))), singleton_node(12, 12), singleton_node(70010, 70010), singleton_node(30014, 30014)))
+new : Main_Node[prev=--nil--](container_node[gen=440](Indirection_Node[gen=427](Main_Node[prev=--nil--](container_node[gen=427](singleton_node(40011, 40011), singleton_node(60011, 60011)))), singleton_node(12, 12), singleton_node(30014, 30014)))
+
+gen : 427
+old : Main_Node[prev=--nil--](container_node[gen=427](Indirection_Node[gen=427](Main_Node[prev=--nil--](container_node[gen=427](singleton_node(40011, 40011), singleton_node(60011, 60011)))), singleton_node(70010, 70010), singleton_node(30014, 30014)))
+new : Main_Node[prev=--nil--](container_node[gen=427](Indirection_Node[gen=427](Main_Node[prev=--nil--](container_node[gen=427](singleton_node(40011, 40011), singleton_node(60011, 60011)))), singleton_node(12, 12), singleton_node(70010, 70010), singleton_node(30014, 30014)))
+
+gen : 440
+old : Main_Node[prev=--nil--](container_node[gen=427](singleton_node(40011, 40011), singleton_node(60011, 60011)))
+new : Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=427](singleton_node(40011, 40011), singleton_node(60011, 60011)))](tomb_node(40011, 40011))
+
+gen : 440
+old : Main_Node[prev=--nil--](container_node[gen=440](Indirection_Node[gen=427](Main_Node[prev=--nil--](container_node[gen=427](singleton_node(40011, 40011), singleton_node(60011, 60011)))), singleton_node(12, 12), singleton_node(30014, 30014)))
+new : Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=440](Indirection_Node[gen=427](Main_Node[prev=--nil--](container_node[gen=427](singleton_node(40011, 40011), singleton_node(60011, 60011)))), singleton_node(12, 12), singleton_node(30014, 30014)))](container_node[gen=440](Indirection_Node[gen=427](Main_Node[prev=--nil--](container_node[gen=427](singleton_node(40011, 40011), singleton_node(60011, 60011)))), singleton_node(12, 12)))
+
+gen : 440
+old : Main_Node[prev=--nil--](container_node[gen=440](Indirection_Node[gen=427](Main_Node[prev=--nil--](container_node[gen=427](singleton_node(40011, 40011), singleton_node(60011, 60011)))), singleton_node(12, 12), singleton_node(20013, 20013)))
+new : Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=440](Indirection_Node[gen=427](Main_Node[prev=--nil--](container_node[gen=427](singleton_node(40011, 40011), singleton_node(60011, 60011)))), singleton_node(12, 12), singleton_node(20013, 20013)))](container_node[gen=440](Indirection_Node[gen=440](Main_Node[prev=--nil--](container_node[gen=427](singleton_node(40011, 40011), singleton_node(60011, 60011)))), singleton_node(12, 12), singleton_node(20013, 20013)))
+
+gen : 440
+old : Main_Node[prev=--nil--](container_node[gen=440](Indirection_Node[gen=440](Main_Node[prev=--nil--](tomb_node(40011, 40011))), singleton_node(70011, 70011), singleton_node(50012, 50012), singleton_node(10013, 10013)))
+new : Main_Node[prev=--nil--](container_node[gen=440](singleton_node(40011, 40011), singleton_node(70011, 70011), singleton_node(50012, 50012), singleton_node(10013, 10013)))
+
+gen : 440
+old : Main_Node[prev=--nil--](container_node[gen=440](Indirection_Node[gen=440](Main_Node[prev=--nil--](container_node[gen=427](singleton_node(40011, 40011), singleton_node(60011, 60011)))), singleton_node(12, 12), singleton_node(20013, 20013)))
+new : Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=440](Indirection_Node[gen=440](Main_Node[prev=--nil--](container_node[gen=427](singleton_node(40011, 40011), singleton_node(60011, 60011)))), singleton_node(12, 12), singleton_node(20013, 20013)))](container_node[gen=440](Indirection_Node[gen=440](Main_Node[prev=--nil--](container_node[gen=427](singleton_node(40011, 40011), singleton_node(60011, 60011)))), singleton_node(12, 12), singleton_node(20013, 20013), singleton_node(10013, 10013)))
+
+gen : 440
+old : Main_Node[prev=--nil--](container_node[gen=440](Indirection_Node[gen=440](Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=427](singleton_node(40011, 40011), singleton_node(60011, 60011)))](tomb_node(40011, 40011))), singleton_node(12, 12), singleton_node(10013, 10013)))
+new : Main_Node[prev=--nil--](container_node[gen=440](Indirection_Node[gen=440](Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=427](singleton_node(40011, 40011), singleton_node(60011, 60011)))](tomb_node(40011, 40011))), singleton_node(12, 12), singleton_node(50012, 50012), singleton_node(10013, 10013)))
+
+gen : 456
+old : Main_Node[prev=--nil--](container_node[gen=440](singleton_node(40011, 40011), singleton_node(70011, 70011), singleton_node(50012, 50012), singleton_node(10013, 10013)))
+new : Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=440](singleton_node(40011, 40011), singleton_node(70011, 70011), singleton_node(50012, 50012), singleton_node(10013, 10013)))](container_node[gen=456](singleton_node(40011, 40011), singleton_node(70011, 70011), singleton_node(50012, 50012), singleton_node(10013, 10013), singleton_node(30015, 30015)))
+
+gen : 440
+old : Main_Node[prev=--nil--](container_node[gen=440](Indirection_Node[gen=440](Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=427](singleton_node(40011, 40011), singleton_node(60011, 60011)))](tomb_node(40011, 40011))), singleton_node(12, 12), singleton_node(50012, 50012), singleton_node(10013, 10013)))
+new : Main_Node[prev=--nil--](container_node[gen=440](Indirection_Node[gen=440](Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=427](singleton_node(40011, 40011), singleton_node(60011, 60011)))](tomb_node(40011, 40011))), singleton_node(12, 12), singleton_node(70011, 70011), singleton_node(50012, 50012), singleton_node(10013, 10013)))
+
+gen : 440
+old : Main_Node[prev=--nil--](container_node[gen=440](Indirection_Node[gen=440](Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=427](singleton_node(40011, 40011), singleton_node(60011, 60011)))](tomb_node(40011, 40011))), singleton_node(12, 12), singleton_node(20013, 20013), singleton_node(10013, 10013)))
+new : Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=440](Indirection_Node[gen=440](Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=427](singleton_node(40011, 40011), singleton_node(60011, 60011)))](tomb_node(40011, 40011))), singleton_node(12, 12), singleton_node(20013, 20013), singleton_node(10013, 10013)))](container_node[gen=440](Indirection_Node[gen=440](Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=427](singleton_node(40011, 40011), singleton_node(60011, 60011)))](tomb_node(40011, 40011))), singleton_node(12, 12), singleton_node(10013, 10013)))
+
+gen : 440
+old : Main_Node[prev=--nil--](container_node[gen=440](Indirection_Node[gen=440](Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=427](singleton_node(40011, 40011), singleton_node(60011, 60011)))](tomb_node(40011, 40011))), singleton_node(12, 12), singleton_node(70011, 70011), singleton_node(50012, 50012), singleton_node(10013, 10013)))
+new : Main_Node[prev=--nil--](container_node[gen=440](Indirection_Node[gen=440](Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=427](singleton_node(40011, 40011), singleton_node(60011, 60011)))](tomb_node(40011, 40011))), singleton_node(70011, 70011), singleton_node(50012, 50012), singleton_node(10013, 10013)))
+
+gen : 456
+old : Main_Node[prev=--nil--](container_node[gen=456](singleton_node(40011, 40011), singleton_node(70011, 70011), singleton_node(50012, 50012), singleton_node(10013, 10013), singleton_node(30015, 30015)))
+new : Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=456](singleton_node(40011, 40011), singleton_node(70011, 70011), singleton_node(50012, 50012), singleton_node(10013, 10013), singleton_node(30015, 30015)))](container_node[gen=456](singleton_node(70011, 70011), singleton_node(50012, 50012), singleton_node(10013, 10013), singleton_node(30015, 30015)))
+
+gen : 465
+old : Main_Node[prev=--nil--](container_node[gen=465](singleton_node(60012, 60012)))
+new : Main_Node[prev=--nil--](container_node[gen=465](singleton_node(60012, 60012), singleton_node(20014, 20014)))
+
+gen : 465
+old : Main_Node[prev=--nil--](container_node[gen=465](singleton_node(60012, 60012), singleton_node(70011, 70011)))
+new : Main_Node[prev=--nil--](container_node[gen=465](singleton_node(60012, 60012)))
+
+gen : 456
+old : Main_Node[prev=--nil--](container_node[gen=456](singleton_node(60012, 60012), singleton_node(70011, 70011), singleton_node(50012, 50012), singleton_node(30015, 30015)))
+new : Main_Node[prev=--nil--](container_node[gen=456](singleton_node(60012, 60012), singleton_node(70011, 70011), singleton_node(30015, 30015)))
+
+gen : 465
+old : Main_Node[prev=--nil--](container_node[gen=456](singleton_node(60012, 60012), singleton_node(70011, 70011), singleton_node(30015, 30015)))
+new : Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=456](singleton_node(60012, 60012), singleton_node(70011, 70011), singleton_node(30015, 30015)))](container_node[gen=465](singleton_node(60012, 60012), singleton_node(70011, 70011)))
+
+gen : 456
+old : Main_Node[prev=--nil--](container_node[gen=456](singleton_node(70011, 70011), singleton_node(50012, 50012), singleton_node(10013, 10013), singleton_node(30015, 30015)))
+new : Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=456](singleton_node(70011, 70011), singleton_node(50012, 50012), singleton_node(10013, 10013), singleton_node(30015, 30015)))](container_node[gen=456](singleton_node(60012, 60012), singleton_node(70011, 70011), singleton_node(50012, 50012), singleton_node(10013, 10013), singleton_node(30015, 30015)))
+
+gen : 465
+old : Main_Node[prev=--nil--](container_node[gen=465](singleton_node(60012, 60012), singleton_node(20014, 20014)))
+new : Main_Node[prev=--nil--](container_node[gen=465](singleton_node(60012, 60012), singleton_node(13, 13), singleton_node(20014, 20014)))
+
+gen : 456
+old : Main_Node[prev=--nil--](container_node[gen=456](singleton_node(60012, 60012), singleton_node(70011, 70011), singleton_node(50012, 50012), singleton_node(10013, 10013), singleton_node(30015, 30015)))
+new : Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=456](singleton_node(60012, 60012), singleton_node(70011, 70011), singleton_node(50012, 50012), singleton_node(10013, 10013), singleton_node(30015, 30015)))](container_node[gen=456](singleton_node(60012, 60012), singleton_node(70011, 70011), singleton_node(50012, 50012), singleton_node(30015, 30015)))
+
+gen : 465
+old : Main_Node[prev=--nil--](container_node[gen=465](singleton_node(40012, 40012), singleton_node(60012, 60012)))
+new : Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=465](singleton_node(40012, 40012), singleton_node(60012, 60012)))](tomb_node(40012, 40012))
+
+gen : 465
+old : Main_Node[prev=--nil--](container_node[gen=465](singleton_node(60012, 60012), singleton_node(13, 13), singleton_node(20014, 20014)))
+new : Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=465](singleton_node(60012, 60012), singleton_node(13, 13), singleton_node(20014, 20014)))](container_node[gen=465](Indirection_Node[gen=465](Main_Node[prev=--nil--](container_node[gen=465](singleton_node(40012, 40012), singleton_node(60012, 60012)))), singleton_node(13, 13), singleton_node(20014, 20014)))
+
+gen : 465
+old : Main_Node[prev=--nil--](container_node[gen=465](Indirection_Node[gen=465](Main_Node[prev=--nil--](container_node[gen=465](singleton_node(40012, 40012), singleton_node(60012, 60012)))), singleton_node(13, 13), singleton_node(20014, 20014)))
+new : Main_Node[prev=--nil--](container_node[gen=465](Indirection_Node[gen=465](Main_Node[prev=--nil--](container_node[gen=465](singleton_node(40012, 40012), singleton_node(60012, 60012)))), singleton_node(13, 13)))
+
+gen : 465
+old : Main_Node[prev=--nil--](container_node[gen=465](Indirection_Node[gen=465](Main_Node[prev=--nil--](container_node[gen=465](singleton_node(40012, 40012), singleton_node(60012, 60012)))), singleton_node(13, 13)))
+new : Main_Node[prev=--nil--](container_node[gen=465](Indirection_Node[gen=465](Main_Node[prev=--nil--](container_node[gen=465](singleton_node(40012, 40012), singleton_node(60012, 60012)))), singleton_node(13, 13), singleton_node(70012, 70012)))
+
+gen : 465
+old : Main_Node[prev=--nil--](container_node[gen=465](Indirection_Node[gen=465](Main_Node[prev=--nil--](container_node[gen=465](singleton_node(40012, 40012), singleton_node(60012, 60012)))), singleton_node(13, 13), singleton_node(70012, 70012)))
+new : Main_Node[prev=--nil--](container_node[gen=465](Indirection_Node[gen=465](Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=465](singleton_node(40012, 40012), singleton_node(60012, 60012)))](tomb_node(40012, 40012))), singleton_node(13, 13), singleton_node(70012, 70012), singleton_node(50013, 50013)))
+
+gen : 465
+old : Main_Node[prev=--nil--](container_node[gen=465](singleton_node(30016, 30016), Indirection_Node[gen=465](Main_Node[prev=--nil--](tomb_node(40012, 40012))), singleton_node(70012, 70012), singleton_node(50013, 50013), singleton_node(10014, 10014)))
+new : Main_Node[prev=--nil--](container_node[gen=465](singleton_node(30016, 30016), singleton_node(40012, 40012), singleton_node(70012, 70012), singleton_node(50013, 50013), singleton_node(10014, 10014)))
+
+gen : 465
+old : Main_Node[prev=--nil--](container_node[gen=465](Indirection_Node[gen=465](Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=465](singleton_node(40012, 40012), singleton_node(60012, 60012)))](tomb_node(40012, 40012))), singleton_node(13, 13), singleton_node(70012, 70012), singleton_node(50013, 50013)))
+new : Main_Node[prev=--nil--](container_node[gen=465](singleton_node(30016, 30016), Indirection_Node[gen=465](Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=465](singleton_node(40012, 40012), singleton_node(60012, 60012)))](tomb_node(40012, 40012))), singleton_node(13, 13), singleton_node(70012, 70012), singleton_node(50013, 50013)))
+
+gen : 465
+old : Main_Node[prev=--nil--](container_node[gen=465](singleton_node(30016, 30016), singleton_node(40012, 40012), singleton_node(70012, 70012), singleton_node(50013, 50013), singleton_node(10014, 10014)))
+new : Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=465](singleton_node(30016, 30016), singleton_node(40012, 40012), singleton_node(70012, 70012), singleton_node(50013, 50013), singleton_node(10014, 10014)))](container_node[gen=465](singleton_node(30016, 30016), singleton_node(70012, 70012), singleton_node(50013, 50013), singleton_node(10014, 10014)))
+
+gen : 485
+old : Main_Node[prev=--nil--](container_node[gen=465](singleton_node(30016, 30016), singleton_node(70012, 70012), singleton_node(50013, 50013), singleton_node(10014, 10014)))
+new : Main_Node[prev=--nil--](container_node[gen=485](singleton_node(30016, 30016), singleton_node(50013, 50013), singleton_node(10014, 10014)))
+
+gen : 485
+old : Main_Node[prev=--nil--](container_node[gen=485](singleton_node(30016, 30016), singleton_node(50013, 50013), singleton_node(10014, 10014)))
+new : Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=485](singleton_node(30016, 30016), singleton_node(50013, 50013), singleton_node(10014, 10014)))](container_node[gen=485](singleton_node(30016, 30016), singleton_node(20015, 20015), singleton_node(50013, 50013), singleton_node(10014, 10014)))
+
+gen : 485
+old : Main_Node[prev=--nil--](container_node[gen=485](singleton_node(30016, 30016), singleton_node(20015, 20015), singleton_node(50013, 50013), singleton_node(10014, 10014)))
+new : Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=485](singleton_node(30016, 30016), singleton_node(20015, 20015), singleton_node(50013, 50013), singleton_node(10014, 10014)))](container_node[gen=485](singleton_node(30016, 30016), singleton_node(20015, 20015), singleton_node(10014, 10014)))
+
+gen : 465
+old : Main_Node[prev=--nil--](container_node[gen=465](singleton_node(30016, 30016), Indirection_Node[gen=465](Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=465](singleton_node(40012, 40012), singleton_node(60012, 60012)))](tomb_node(40012, 40012))), singleton_node(70012, 70012), singleton_node(50013, 50013)))
+new : Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=465](singleton_node(30016, 30016), Indirection_Node[gen=465](Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=465](singleton_node(40012, 40012), singleton_node(60012, 60012)))](tomb_node(40012, 40012))), singleton_node(70012, 70012), singleton_node(50013, 50013)))](container_node[gen=465](singleton_node(30016, 30016), Indirection_Node[gen=465](Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=465](singleton_node(40012, 40012), singleton_node(60012, 60012)))](tomb_node(40012, 40012))), singleton_node(70012, 70012), singleton_node(50013, 50013), singleton_node(10014, 10014)))
+
+gen : 465
+old : Main_Node[prev=--nil--](container_node[gen=465](singleton_node(30016, 30016), Indirection_Node[gen=465](Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=465](singleton_node(40012, 40012), singleton_node(60012, 60012)))](tomb_node(40012, 40012))), singleton_node(13, 13), singleton_node(70012, 70012), singleton_node(50013, 50013)))
+new : Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=465](singleton_node(30016, 30016), Indirection_Node[gen=465](Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=465](singleton_node(40012, 40012), singleton_node(60012, 60012)))](tomb_node(40012, 40012))), singleton_node(13, 13), singleton_node(70012, 70012), singleton_node(50013, 50013)))](container_node[gen=465](singleton_node(30016, 30016), Indirection_Node[gen=465](Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=465](singleton_node(40012, 40012), singleton_node(60012, 60012)))](tomb_node(40012, 40012))), singleton_node(70012, 70012), singleton_node(50013, 50013)))
+
+gen : 485
+old : Main_Node[prev=--nil--](container_node[gen=485](singleton_node(30016, 30016), singleton_node(20015, 20015), singleton_node(10014, 10014)))
+new : Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=485](singleton_node(30016, 30016), singleton_node(20015, 20015), singleton_node(10014, 10014)))](container_node[gen=485](singleton_node(30016, 30016), singleton_node(60013, 60013), singleton_node(20015, 20015), singleton_node(10014, 10014)))
+
+gen : 485
+old : Main_Node[prev=--nil--](container_node[gen=485](singleton_node(60013, 60013), singleton_node(20015, 20015), singleton_node(10014, 10014)))
+new : Main_Node[prev=--nil--](container_node[gen=485](Indirection_Node[gen=485](Main_Node[prev=--nil--](container_node[gen=485](singleton_node(40013, 40013), singleton_node(60013, 60013)))), singleton_node(20015, 20015), singleton_node(10014, 10014)))
+
+gen : 485
+old : Main_Node[prev=--nil--](container_node[gen=485](singleton_node(30016, 30016), singleton_node(60013, 60013), singleton_node(20015, 20015), singleton_node(10014, 10014)))
+new : Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=485](singleton_node(30016, 30016), singleton_node(60013, 60013), singleton_node(20015, 20015), singleton_node(10014, 10014)))](container_node[gen=485](singleton_node(60013, 60013), singleton_node(20015, 20015), singleton_node(10014, 10014)))
+
+gen : 499
+old : Main_Node[prev=--nil--](container_node[gen=499](singleton_node(10014, 10014), singleton_node(50014, 50014)))
+new : Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=499](singleton_node(10014, 10014), singleton_node(50014, 50014)))](tomb_node(50014, 50014))
+
+14
+gen : 499
+old : Main_Node[prev=--nil--](container_node[gen=485](singleton_node(40013, 40013), singleton_node(60013, 60013)))
+new : Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=485](singleton_node(40013, 40013), singleton_node(60013, 60013)))](tomb_node(40013, 40013))
+
+gen : 485
+old : Main_Node[prev=--nil--](container_node[gen=485](Indirection_Node[gen=485](Main_Node[prev=--nil--](container_node[gen=485](singleton_node(40013, 40013), singleton_node(60013, 60013)))), singleton_node(20015, 20015), singleton_node(10014, 10014)))
+new : Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=485](Indirection_Node[gen=485](Main_Node[prev=--nil--](container_node[gen=485](singleton_node(40013, 40013), singleton_node(60013, 60013)))), singleton_node(20015, 20015), singleton_node(10014, 10014)))](container_node[gen=485](Indirection_Node[gen=485](Main_Node[prev=--nil--](container_node[gen=485](singleton_node(40013, 40013), singleton_node(60013, 60013)))), singleton_node(20015, 20015), singleton_node(70013, 70013), singleton_node(10014, 10014)))
+
+Ctrie[ro=false](root_node(Indirection_Node[gen=499](Main_Node[prev=--nil--](container_node[gen=499](singleton_node(30017, 30017), singleton_node(40013, 40013), singleton_node(70013, 70013), Indirection_Node[gen=499](Main_Node[prev=--nil--](container_node[gen=499](singleton_node(10014, 10014), singleton_node(50014, 50014)))))))))
+===
+gen : 499
+old : Main_Node[prev=--nil--](container_node[gen=499](Indirection_Node[gen=485](Main_Node[prev=--nil--](container_node[gen=485](singleton_node(40013, 40013), singleton_node(60013, 60013)))), singleton_node(70013, 70013), singleton_node(10014, 10014)))
+new : Main_Node[prev=--nil--](container_node[gen=499](Indirection_Node[gen=485](Main_Node[prev=--nil--](container_node[gen=485](singleton_node(40013, 40013), singleton_node(60013, 60013)))), singleton_node(70013, 70013), Indirection_Node[gen=499](Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=499](singleton_node(10014, 10014), singleton_node(50014, 50014)))](tomb_node(50014, 50014)))))
+
+gen : 499
+old : Main_Node[prev=--nil--](container_node[gen=485](Indirection_Node[gen=485](Main_Node[prev=--nil--](container_node[gen=485](singleton_node(40013, 40013), singleton_node(60013, 60013)))), singleton_node(20015, 20015), singleton_node(70013, 70013), singleton_node(10014, 10014)))
+new : Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=485](Indirection_Node[gen=485](Main_Node[prev=--nil--](container_node[gen=485](singleton_node(40013, 40013), singleton_node(60013, 60013)))), singleton_node(20015, 20015), singleton_node(70013, 70013), singleton_node(10014, 10014)))](container_node[gen=499](Indirection_Node[gen=485](Main_Node[prev=--nil--](container_node[gen=485](singleton_node(40013, 40013), singleton_node(60013, 60013)))), singleton_node(70013, 70013), singleton_node(10014, 10014)))
+
+gen : 499
+old : Main_Node[prev=--nil--](container_node[gen=499](singleton_node(40013, 40013), singleton_node(70013, 70013), Indirection_Node[gen=499](Main_Node[prev=--nil--](container_node[gen=499](singleton_node(10014, 10014), singleton_node(50014, 50014))))))
+new : Main_Node[prev=--nil--](container_node[gen=499](singleton_node(30017, 30017), singleton_node(40013, 40013), singleton_node(70013, 70013), Indirection_Node[gen=499](Main_Node[prev=--nil--](container_node[gen=499](singleton_node(10014, 10014), singleton_node(50014, 50014))))))
+
+gen : 499
+old : Main_Node[prev=--nil--](container_node[gen=499](Indirection_Node[gen=485](Main_Node[prev=--nil--](container_node[gen=485](singleton_node(40013, 40013), singleton_node(60013, 60013)))), singleton_node(70013, 70013), Indirection_Node[gen=499](Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=499](singleton_node(10014, 10014), singleton_node(50014, 50014)))](tomb_node(50014, 50014)))))
+new : Main_Node[prev=--nil--](container_node[gen=499](Indirection_Node[gen=499](Main_Node[prev=--nil--](container_node[gen=485](singleton_node(40013, 40013), singleton_node(60013, 60013)))), singleton_node(70013, 70013), Indirection_Node[gen=499](Main_Node[prev=--nil--](container_node[gen=499](singleton_node(10014, 10014), singleton_node(50014, 50014))))))
+
+gen : 499
+old : Main_Node[prev=--nil--](container_node[gen=499](Indirection_Node[gen=499](Main_Node[prev=--nil--](tomb_node(40013, 40013))), singleton_node(70013, 70013), Indirection_Node[gen=499](Main_Node[prev=--nil--](container_node[gen=499](singleton_node(10014, 10014), singleton_node(50014, 50014))))))
+new : Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=499](Indirection_Node[gen=499](Main_Node[prev=--nil--](tomb_node(40013, 40013))), singleton_node(70013, 70013), Indirection_Node[gen=499](Main_Node[prev=--nil--](container_node[gen=499](singleton_node(10014, 10014), singleton_node(50014, 50014))))))](container_node[gen=499](singleton_node(40013, 40013), singleton_node(70013, 70013), Indirection_Node[gen=499](Main_Node[prev=--nil--](container_node[gen=499](singleton_node(10014, 10014), singleton_node(50014, 50014))))))
+
+gen : 499
+old : Main_Node[prev=--nil--](container_node[gen=499](singleton_node(10014, 10014), singleton_node(50014, 50014)))
+new : Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=499](singleton_node(10014, 10014), singleton_node(50014, 50014)))](tomb_node(10014, 10014))
+
+gen : 499
+old : Main_Node[prev=--nil--](container_node[gen=499](singleton_node(30017, 30017), singleton_node(40013, 40013), singleton_node(70013, 70013), Indirection_Node[gen=499](Main_Node[prev=--nil--](container_node[gen=499](singleton_node(10014, 10014), singleton_node(50014, 50014))))))
+new : Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=499](singleton_node(30017, 30017), singleton_node(40013, 40013), singleton_node(70013, 70013), Indirection_Node[gen=499](Main_Node[prev=--nil--](container_node[gen=499](singleton_node(10014, 10014), singleton_node(50014, 50014))))))](container_node[gen=499](singleton_node(30017, 30017), singleton_node(40013, 40013), singleton_node(60014, 60014), singleton_node(70013, 70013), Indirection_Node[gen=499](Main_Node[prev=--nil--](container_node[gen=499](singleton_node(10014, 10014), singleton_node(50014, 50014))))))
+
+gen : 499
+old : Main_Node[prev=--nil--](container_node[gen=499](singleton_node(14, 14), singleton_node(60014, 60014)))
+new : Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=499](singleton_node(14, 14), singleton_node(60014, 60014)))](tomb_node(14, 14))
+
+Ctrie[ro=false](root_node(Indirection_Node[gen=499](Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=499](singleton_node(30017, 30017), singleton_node(40013, 40013), singleton_node(60014, 60014), singleton_node(70013, 70013), Indirection_Node[gen=499](Main_Node[prev=--nil--](container_node[gen=499](singleton_node(10014, 10014), singleton_node(50014, 50014))))))](container_node[gen=499](singleton_node(30017, 30017), singleton_node(40013, 40013), singleton_node(60014, 60014), Indirection_Node[gen=499](Main_Node[prev=--nil--](container_node[gen=499](singleton_node(10014, 10014), singleton_node(50014, 50014)))))))))
+===
+gen : 499
+old : Main_Node[prev=--nil--](container_node[gen=499](singleton_node(30017, 30017), singleton_node(40013, 40013), singleton_node(60014, 60014), singleton_node(20016, 20016), Indirection_Node[gen=499](Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=499](singleton_node(10014, 10014), singleton_node(50014, 50014)))](tomb_node(10014, 10014)))))
+new : Main_Node[prev=--nil--](container_node[gen=499](singleton_node(40013, 40013), singleton_node(60014, 60014), singleton_node(20016, 20016), Indirection_Node[gen=499](Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=499](singleton_node(10014, 10014), singleton_node(50014, 50014)))](tomb_node(10014, 10014)))))
+
+gen : 499
+old : Main_Node[prev=--nil--](container_node[gen=499](singleton_node(30017, 30017), singleton_node(40013, 40013), singleton_node(60014, 60014), singleton_node(70013, 70013), Indirection_Node[gen=499](Main_Node[prev=--nil--](container_node[gen=499](singleton_node(10014, 10014), singleton_node(50014, 50014))))))
+new : Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=499](singleton_node(30017, 30017), singleton_node(40013, 40013), singleton_node(60014, 60014), singleton_node(70013, 70013), Indirection_Node[gen=499](Main_Node[prev=--nil--](container_node[gen=499](singleton_node(10014, 10014), singleton_node(50014, 50014))))))](container_node[gen=499](singleton_node(30017, 30017), singleton_node(40013, 40013), singleton_node(60014, 60014), Indirection_Node[gen=499](Main_Node[prev=--nil--](container_node[gen=499](singleton_node(10014, 10014), singleton_node(50014, 50014))))))
+
+gen : 499
+old : Main_Node[prev=--nil--](container_node[gen=499](Indirection_Node[gen=499](Main_Node[prev=--nil--](tomb_node(14, 14))), singleton_node(20016, 20016), singleton_node(10014, 10014)))
+new : Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=499](Indirection_Node[gen=499](Main_Node[prev=--nil--](tomb_node(14, 14))), singleton_node(20016, 20016), singleton_node(10014, 10014)))](container_node[gen=499](singleton_node(14, 14), singleton_node(20016, 20016), singleton_node(10014, 10014)))
+
+gen : 499
+old : Main_Node[prev=--nil--](container_node[gen=499](singleton_node(30017, 30017), singleton_node(40013, 40013), singleton_node(60014, 60014), Indirection_Node[gen=499](Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=499](singleton_node(10014, 10014), singleton_node(50014, 50014)))](tomb_node(10014, 10014)))))
+new : Main_Node[prev=--nil--](container_node[gen=499](singleton_node(30017, 30017), singleton_node(40013, 40013), singleton_node(60014, 60014), singleton_node(20016, 20016), Indirection_Node[gen=499](Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=499](singleton_node(10014, 10014), singleton_node(50014, 50014)))](tomb_node(10014, 10014)))))
+
+gen : 499
+old : Main_Node[prev=--nil--](container_node[gen=499](Indirection_Node[gen=499](Main_Node[prev=--nil--](container_node[gen=499](singleton_node(14, 14), singleton_node(60014, 60014)))), singleton_node(20016, 20016), Indirection_Node[gen=499](Main_Node[prev=--nil--](tomb_node(10014, 10014)))))
+new : Main_Node[prev=--nil--](container_node[gen=499](Indirection_Node[gen=499](Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=499](singleton_node(14, 14), singleton_node(60014, 60014)))](tomb_node(14, 14))), singleton_node(20016, 20016), singleton_node(10014, 10014)))
+
+gen : 499
+old : Main_Node[prev=--nil--](container_node[gen=499](singleton_node(40013, 40013), Indirection_Node[gen=499](Main_Node[prev=--nil--](container_node[gen=499](singleton_node(14, 14), singleton_node(60014, 60014)))), singleton_node(20016, 20016), Indirection_Node[gen=499](Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=499](singleton_node(10014, 10014), singleton_node(50014, 50014)))](tomb_node(10014, 10014)))))
+new : Main_Node[prev=--nil--](container_node[gen=499](Indirection_Node[gen=499](Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=499](singleton_node(14, 14), singleton_node(60014, 60014)))](tomb_node(14, 14))), singleton_node(20016, 20016), Indirection_Node[gen=499](Main_Node[prev=--nil--](tomb_node(10014, 10014)))))
+
+gen : 499
+old : Main_Node[prev=--nil--](container_node[gen=499](singleton_node(14, 14), singleton_node(20016, 20016), singleton_node(10014, 10014)))
+new : Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=499](singleton_node(14, 14), singleton_node(20016, 20016), singleton_node(10014, 10014)))](container_node[gen=499](singleton_node(30018, 30018), singleton_node(14, 14), singleton_node(20016, 20016), singleton_node(10014, 10014)))
+
+Ctrie[ro=false](root_node(Indirection_Node[gen=499](Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=499](Indirection_Node[gen=499](Main_Node[prev=--nil--](tomb_node(14, 14))), singleton_node(20016, 20016), singleton_node(10014, 10014)))](container_node[gen=499](singleton_node(14, 14), singleton_node(20016, 20016), singleton_node(10014, 10014))))))
+---
+Ctrie[ro=false](root_node(Indirection_Node[gen=499](Main_Node[prev=Main_Node[prev=--nil--](container_node[gen=499](Indirection_Node[gen=499](Main_Node[prev=--nil--](tomb_node(14, 14))), singleton_node(20016, 20016), singleton_node(10014, 10014)))](container_node[gen=499](singleton_node(14, 14), singleton_node(20016, 20016), singleton_node(10014, 10014))))))
+*** failed *** panic ***: `removed key 10014 still present`

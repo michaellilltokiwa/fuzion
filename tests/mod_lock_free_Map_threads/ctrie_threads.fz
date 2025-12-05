@@ -139,8 +139,11 @@ ctrie_threads is
     ctrie := (lock_free.Map i32 i32).empty
 
     in_threads t->
-      for k in keys do
-        kt := (1000*t)+k
+
+      for k in keys
+          # a := container.expanding_array (lock_free.Map i32 i32) .empty, if k%5=0 then a.add s2 else a
+      do
+        kt := (10000*t)+k
 
         s := if k%5=0 then ctrie.snapshot true else ctrie
         ctrie.put kt kt
@@ -154,15 +157,23 @@ ctrie_threads is
           nil => panic "$kt not found"
           i32 =>
         if ctrie[kt].exists
+          say "{k}"
+          say "{ctrie.as_string_internal}"
+          say "==="
+          say "{s2.as_string_internal}"
+          say "==="
+          # say "{String.join (a.map (.as_string_internal)) "\n---\n"}"
           panic "removed key $kt still present"
         if k%5=0 && s2[kt].is_nil
           panic "removed key $kt from snapshot"
 
+    if ctrie.size != 0
+      panic "XX: {ctrie.as_string_internal}"
 
-  test1
-  test2 false
+  # test1
+  # test2 false
   # NYI: BUG: snapshot do not work yet
   # test2 true
   # NYI: BUG: snapshot do not work yet
   # test3
-  # NYI: BUG: test4 # this tests fails almost reliably
+  test4

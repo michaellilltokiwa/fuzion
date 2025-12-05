@@ -1,0 +1,37 @@
+test4: in 8 threads, add non-overlapping keys, then remove key, test if added/removed.
+63
+Ctrie[ro=false](root_node(Rdcss_Descriptor(old:
+Indirection_Node[gen=9036](Main_Node[prev=--nil--](container_node[gen=9036](singleton_node(40071, 40071), Indirection_Node[gen=9036](Main_Node[prev=--nil--](container_node[gen=9036](singleton_node(113, 113), singleton_node(30065, 30065), singleton_node(50065, 50065)))), Indirection_Node[gen=9036](Main_Node[prev=--nil--](container_node[gen=9036](singleton_node(70047, 70047), singleton_node(20063, 20063))))))),
+
+exp:
+ Main_Node[prev=--nil--](container_node[gen=9036](Indirection_Node[gen=9012](Main_Node[prev=--nil--](container_node[gen=8730](singleton_node(30065, 30065), singleton_node(50065, 50065)))), Indirection_Node[gen=9036](Main_Node[prev=--nil--](tomb_node(70047, 70047))))),
+
+new:
+Indirection_Node[gen=9084](Main_Node[prev=--nil--](container_node[gen=9036](Indirection_Node[gen=9036](Main_Node[prev=--nil--](container_node[gen=9036](singleton_node(113, 113), singleton_node(30065, 30065)))), Indirection_Node[gen=9036](Main_Node[prev=--nil--](tomb_node(20063, 20063)))))))))
+===
+Ctrie[ro=false](root_node(Indirection_Node[gen=9340](Main_Node[prev=--nil--](container_node[gen=9340](singleton_node(60068, 60068), singleton_node(40074, 40074), singleton_node(10062, 10062), singleton_node(117, 117), singleton_node(20063, 20063))))))
+===
+Ctrie[ro=false](root_node(Indirection_Node[gen=9340](Main_Node[prev=--nil--](container_node[gen=9340](Indirection_Node[gen=9340](Main_Node[prev=--nil--](container_node[gen=9340](singleton_node(70053, 70053), singleton_node(60069, 60069)))), singleton_node(30068, 30068), singleton_node(117, 117), singleton_node(20063, 20063))))))
+---
+Ctrie[ro=false](root_node(Indirection_Node[gen=9340](Main_Node[prev=--nil--](container_node[gen=9340](Indirection_Node[gen=9340](Main_Node[prev=--nil--](tomb_node(60069, 60069))), singleton_node(30068, 30068), singleton_node(20063, 20063))))))
+---
+Ctrie[ro=false](root_node(Indirection_Node[gen=9340](Main_Node[prev=--nil--](container_node[gen=9340](Indirection_Node[gen=9340](Main_Node[prev=--nil--](tomb_node(60069, 60069))), singleton_node(10063, 10063), singleton_node(30068, 30068), singleton_node(20063, 20063))))))
+---
+Ctrie[ro=false](root_node(Indirection_Node[gen=9340](Main_Node[prev=--nil--](container_node[gen=9340](Indirection_Node[gen=9340](Main_Node[prev=--nil--](tomb_node(60069, 60069))), singleton_node(10063, 10063), singleton_node(20063, 20063))))))
+---
+Ctrie[ro=false](root_node(Indirection_Node[gen=9340](Main_Node[prev=--nil--](container_node[gen=9340](Indirection_Node[gen=9340](Main_Node[prev=--nil--](tomb_node(60069, 60069))), singleton_node(10063, 10063), singleton_node(20063, 20063))))))
+---
+Ctrie[ro=false](root_node(Indirection_Node[gen=9486](Main_Node[prev=--nil--](container_node[gen=9460](singleton_node(20063, 20063))))))
+---
+Ctrie[ro=false](root_node(Indirection_Node[gen=9486](Main_Node[prev=--nil--](container_node[gen=9486](singleton_node(40076, 40076), singleton_node(20063, 20063))))))
+---
+Ctrie[ro=false](root_node(Indirection_Node[gen=9486](Main_Node[prev=--nil--](container_node[gen=9486](singleton_node(40076, 40076), singleton_node(50068, 50068), singleton_node(20063, 20063))))))
+---
+Ctrie[ro=false](root_node(Indirection_Node[gen=9486](Main_Node[prev=--nil--](container_node[gen=9486](singleton_node(40076, 40076), singleton_node(50068, 50068), singleton_node(20063, 20063))))))
+---
+Ctrie[ro=false](root_node(Indirection_Node[gen=9486](Main_Node[prev=--nil--](container_node[gen=9486](singleton_node(40076, 40076), singleton_node(50068, 50068), singleton_node(30069, 30069), singleton_node(20063, 20063))))))
+---
+Ctrie[ro=false](root_node(Indirection_Node[gen=9486](Main_Node[prev=--nil--](container_node[gen=9486](singleton_node(40076, 40076), singleton_node(30069, 30069), singleton_node(20063, 20063))))))
+---
+Ctrie[ro=false](root_node(Indirection_Node[gen=9486](Main_Node[prev=--nil--](container_node[gen=9486](singleton_node(40076, 40076), singleton_node(10064, 10064), Indirection_Node[gen=9486](Main_Node[prev=--nil--](tomb_node(30069, 30069))), singleton_node(119, 119), singleton_node(20063, 20063))))))
+*** failed *** panic ***: `removed key 20063 still present`

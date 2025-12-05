@@ -56,10 +56,10 @@
 
 # a tomb node
 # "a T-node is the last value assigned to an I-node"
-tomb_node(CTK type : property.hashable, CTV type, sn singleton_node CTK CTV) is
-  public redef as_string String => "tomb_node($sn)"
+tomb_node(CTK type : property.hashable, CTV type, k CTK, v CTV) is
+  public redef as_string String => "tomb_node($k, $v)"
 
-  as_list => sn.as_list
+  as_list => [(k,v)].as_list
 
 
 
@@ -158,7 +158,14 @@ Main_Node(CTK type : property.hashable, CTV type, data choice (container_node CT
 
   # compare and update `prev`
   cas_prev(o,n prev_node CTK CTV) =>
-    prev.compare_and_set o n
+    cnd.synchronized ()->
+      res := prev.compare_and_set o n
+      # if res
+      #   say "Main_Node"
+      #   say Main_Node.this
+      #   say "==="
+      res
+
 
   public redef as_string String =>
     s := match data
@@ -192,7 +199,7 @@ indirection_node(CTK type : property.hashable, CTV type, data Main_Node CTK CTV,
 
 
 # an indirection node
-Indirection_Node(CTK type : property.hashable, CTV type, data concur.atomic (Main_Node CTK CTV), gen u64) ref : property.equatable is
+Indirection_Node(CTK type : property.hashable, CTV type, main_node concur.atomic (Main_Node CTK CTV), gen u64) ref : property.equatable is
 
   id := unique_id
 
@@ -201,9 +208,15 @@ Indirection_Node(CTK type : property.hashable, CTV type, data concur.atomic (Mai
 
   # compare and update
   cas(old_n, new_n Main_Node CTK CTV) =>
-    data.compare_and_set old_n new_n
+    cnd.synchronized ()->
+      res := main_node.compare_and_set old_n new_n
+      if res
+        say "Indirection_Node"
+        say Indirection_Node.this
+        say "==="
+      res
 
-  public redef as_string String => "Indirection_Node[gen=$gen]({data.read})"
+  public redef as_string String => "Indirection_Node[gen=$gen]({main_node.read})"
 
   as_list(f Indirection_Node CTK CTV -> Main_Node CTK CTV) =>
     (f Indirection_Node.this).as_list f
@@ -257,7 +270,7 @@ is
   committed := concur.atomic bool .new false
 
   public redef as_string String =>
-    "Rdcss_Descriptor($ov, $exp, $nv)"
+    "Rdcss_Descriptor(old:\n$ov,\n\nexp:\n $exp,\n\nnew:\n$nv)"
 
 
 # the root node of the ctrie, normally an indirection node.
@@ -280,12 +293,21 @@ is
 
   # the data structure as human readable string
   # for debugging purposes
-  as_string_internal =>
+  public as_string_internal String =>
     "Ctrie[ro=$read_only]({root.read})"
 
   # compare and swap root of the ctrie
   cas_root(ov, nv root_node CTK CTV) =>
-    root.compare_and_set ov nv
+    cnd.synchronized ()->
+      res := root.compare_and_set ov nv
+      if res
+        say "root"
+        say "ov"
+        say ov
+        say "nv"
+        say nv
+        say "==="
+      res
 
 
   # copy an indirection node to a new generation
@@ -295,7 +317,7 @@ is
   #
   copy_to_gen(i Indirection_Node CTK CTV, new_gen u64)
     post
-      debug: result.data.read.prev.read.is_nil
+      debug: result.main_node.read.prev.read.is_nil
   =>
     indirection_node (gcas_read i) new_gen
 
@@ -368,7 +390,9 @@ is
       false
 
   # completes the generation sensitive compare and set
-  gcas_commit(i Indirection_Node CTK CTV, m Main_Node CTK CTV) Main_Node CTK CTV =>
+  gcas_commit(i Indirection_Node CTK CTV, m Main_Node CTK CTV) Main_Node CTK CTV
+    post debug: result.prev.read.is_nil
+  =>
     prev := m.prev.read
     # abortably read root and get the current gen
     root_gen := (read_root true).gen
@@ -378,7 +402,7 @@ is
         if i.cas m fn.prev
           fn.prev
         else
-          gcas_commit i i.data.read
+          gcas_commit i i.main_node.read
       n Main_Node =>
         if root_gen = i.gen && !read_only
           if m.cas_prev prev nil
@@ -387,11 +411,11 @@ is
             gcas_commit i m
         else
           _ := m.cas_prev prev (failed_node n)
-          gcas_commit i i.data.read
+          gcas_commit i i.main_node.read
 
   # read `data`, if prev is set commit first
   gcas_read(i Indirection_Node CTK CTV) Main_Node CTK CTV =>
-    m := i.data.read
+    m := i.main_node.read
     match m.prev.read
       nil => m
       * => gcas_commit i m
@@ -444,7 +468,7 @@ is
         i Indirection_Node =>
           match (gcas_read i).data
             # resurrect
-            tn tomb_node => tn.sn
+            tn tomb_node => singleton_node tn.k tn.v
             * => i
         sn singleton_node => sn
     contract (container_node cn.bmp narr g) lev
@@ -452,9 +476,9 @@ is
 
   # contract a container node
   contract(cn container_node CTK CTV, lev u32) choice (container_node CTK CTV) (tomb_node CTK CTV) (list_node CTK CTV) =>
-    if (lev > 0) && (cn.array.length = 1)
+    if (lev != 0) && (cn.array.length = 1)
       match cn[0]
-        sn singleton_node => tomb_node sn
+        sn singleton_node => tomb_node sn.k sn.v
         Indirection_Node  => cn
     else
       cn
@@ -486,7 +510,7 @@ is
                 if inode = i
                   match (gcas_read i).data
                     tn tomb_node =>
-                      ncn := cn.update pos tn.sn i.gen
+                      ncn := cn.update pos (singleton_node tn.k tn.v) i.gen
                       match gcas p m (contract ncn lev-width)
                         restart =>
                           if read_root.gen = gen
@@ -563,7 +587,7 @@ is
             sn singleton_node => if sn.k = k then sn.v else not_found
       tn tomb_node =>
         if read_only
-          (if k = tn.sn.k then tn.sn.v else not_found)
+          (if k = tn.k then tn.v else not_found)
         else
           clean parent (lev - width)
       ln list_node => ln.find_key k
@@ -659,7 +683,7 @@ is
         clean parent (lev - width)
       ln list_node =>
         fln := list_node <| ln.from.filter (sn -> sn.k != k) .as_array
-        match gcas i m (if fln.from.count = 1 then tomb_node fln.from.first.get else fln)
+        match gcas i m (if fln.from.count = 1 then tomb_node fln.from.first.get.k fln.from.first.get.v else fln)
           ctrie_ok => ln.find_key k
           restart => restart
 

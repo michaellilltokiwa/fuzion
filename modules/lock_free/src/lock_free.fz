@@ -25,3 +25,5 @@
 # data structures and algorithms
 #
 public lock_free is
+
+  module cnd := concur.sync.condition.new.val
