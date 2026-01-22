@@ -839,16 +839,21 @@ int fzE_process_create(char *args[], size_t argsLen, char *env[], size_t envLen,
 // returns exit code or -1 on wait-failure.
 int64_t fzE_process_wait(int64_t p){
   DWORD status = 0;
-  if (GetExitCodeProcess((HANDLE)p, &status)){
-    if (status == STILL_ACTIVE){
-      return -1;
-    }
-    else {
+  DWORD waitResult = WaitForSingleObject((HANDLE)p, 0);
+  
+  if (waitResult == WAIT_OBJECT_0) {
+    if (GetExitCodeProcess((HANDLE)p, &status)){
       CloseHandle((HANDLE)p);
       return (int64_t)status;
     }
+    return 255;
   }
-  return 255;
+  else if (waitResult == WAIT_TIMEOUT) {
+    return -1;
+  }
+  else {
+    return 255;
+  }
 }
 
 
