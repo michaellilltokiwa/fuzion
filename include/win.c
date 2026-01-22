@@ -984,14 +984,26 @@ void fzE_cnd_destroy(void *cnd) {
 
 int32_t fzE_file_read(void * file, void * buf, int32_t size)
 {
-  DWORD bytesRead = 0;
-  BOOL success = ReadFile(file, buf, (DWORD)size, &bytesRead, NULL);
+  HANDLE hFile = (HANDLE)file;
 
-  return !success
-    ? -2 // ERROR
-    : bytesRead == 0
-    ? -1 // EOF
-    : (int32_t)bytesRead;
+  while (1) {
+    DWORD bytesRead = 0;
+    BOOL success = ReadFile(hFile, buf, (DWORD)size, &bytesRead, NULL);
+
+    if (!success) {
+      DWORD error = GetLastError();
+      if (error == ERROR_BROKEN_PIPE) {
+        return -1; // EOF
+      }
+      return -2; // ERROR
+    }
+
+    if (bytesRead > 0) {
+      return (int32_t)bytesRead;
+    }
+
+    Sleep(1);
+  }
 }
 
 
