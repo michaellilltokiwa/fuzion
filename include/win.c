@@ -584,7 +584,73 @@ int fzE_stat(const char *pathname, int64_t * metadata)
  */
 int fzE_lstat(const char *pathname, int64_t * metadata)
 {
-  return fzE_stat(pathname, metadata);
+  int result = -1;
+
+  wchar_t* wideStr = utf8_to_wide_str(pathname);
+
+  DWORD attrs = GetFileAttributesW(wideStr);
+  if (attrs != INVALID_FILE_ATTRIBUTES)
+  {
+    BOOL isReparsePoint = (attrs & FILE_ATTRIBUTE_REPARSE_POINT) != 0;
+
+    if (isReparsePoint)
+    {
+      HANDLE hFile = CreateFileW(
+          wideStr,
+          0,
+          FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+          NULL,
+          OPEN_EXISTING,
+          FILE_FLAG_OPEN_REPARSE_POINT | FILE_FLAG_BACKUP_SEMANTICS,
+          NULL
+      );
+
+      if (hFile != INVALID_HANDLE_VALUE)
+      {
+        BY_HANDLE_FILE_INFORMATION fileInfo;
+        if (GetFileInformationByHandle(hFile, &fileInfo))
+        {
+          LARGE_INTEGER fileSize;
+          fileSize.LowPart = fileInfo.nFileSizeLow;
+          fileSize.HighPart = fileInfo.nFileSizeHigh;
+
+          ULARGE_INTEGER lat, lwt, ct;
+          lat.LowPart = fileInfo.ftLastAccessTime.dwLowDateTime;
+          lat.HighPart = fileInfo.ftLastAccessTime.dwHighDateTime;
+          lwt.LowPart = fileInfo.ftLastWriteTime.dwLowDateTime;
+          lwt.HighPart = fileInfo.ftLastWriteTime.dwHighDateTime;
+          ct.LowPart = fileInfo.ftCreationTime.dwLowDateTime;
+          ct.HighPart = fileInfo.ftCreationTime.dwHighDateTime;
+
+          metadata[0] = fileSize.QuadPart;
+          metadata[1] = win_time_to_unix_time(lat.QuadPart);
+          metadata[2] = win_time_to_unix_time(lwt.QuadPart);
+          metadata[3] = win_time_to_unix_time(ct.QuadPart);
+          metadata[4] = (fileInfo.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) ? 0 : 1;
+          metadata[5] = (fileInfo.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) ? 1 : 0;
+          metadata[6] = 1;
+          metadata[7] = 0;
+          metadata[8] = 0;
+
+          result = 0;
+        }
+        CloseHandle(hFile);
+      }
+    }
+    else
+    {
+      result = fzE_stat(pathname, metadata);
+    }
+  }
+  else
+  {
+    result = -1;
+    metadata[0] = (int64_t)GetLastError();
+  }
+
+  free(wideStr);
+
+  return result;
 }
 
 CRITICAL_SECTION fzE_global_mutex;
