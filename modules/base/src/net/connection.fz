@@ -41,10 +41,10 @@ module:public connection(desc i32) is
       # for a given descriptor
       #
       read_handler : io.Read_Handler is
-        public redef read(count i32) choice (Sequence u8) io.end_of_file error =>
-          match fuzion.sys.net.read desc count.as_i64
+        public redef read(max_count i32) choice (Sequence u8) io.end_of_file error =>
+          match fuzion.sys.net.read desc max_count.as_i64
             s Sequence =>
-              if s.is_empty && count != 0
+              if s.is_empty && max_count != 0
                 io.end_of_file
               else
                 s
@@ -80,8 +80,8 @@ module:public connection(desc i32) is
   #
   # NYI: DOCUMENTATION: see tests/sockets_thread_pool for now
   #
-  public in_thread_pool(T type, TP type : concur.thread_pool, LM type : mutate, lm LM, fn ()->T) concur.Future (outcome T)
+  public in_thread_pool(T type, TP type : concur.thread_pool, LM type : mutate, fn ()->T) concur.Future (outcome T)
   =>
     TP.env.submit (outcome T) ()->
-      lm ! ()->
+      LM.default_value.or_panic ! ()->
         with T LM fn

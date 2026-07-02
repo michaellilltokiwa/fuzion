@@ -76,9 +76,7 @@ is
     else
       tail => (from+?step ? next T => (interval next through step).as_list
                           | nil    => nil)
-      match through
-        nil => (list T).of_infinite from tail
-        * => (list T).of_finite from tail
+      list T .of from tail finite
 
 
   # get the number of elements in this interval
@@ -112,7 +110,7 @@ is
   public redef as_string String =>
     thru := through.bind ($)
                    .or_else ()->if step.sign < 0 then "-∞" else "∞"
-    "$from..$thru{if step = T.one then "" else ":$step"}"
+    "$from..$thru$(if step = T.one then "" else ":$step")"
 
 
   # create a new interval from a sequence of elements

@@ -391,7 +391,7 @@ include::rule.adoc[]
 Pre- and postconditions of features are introduced using the `pre` or `post`
 keyword if those features do not redefine an inherited feature:
 
-:RULE_SRC: src/dev/flang/fe/SourceModule.java
+:RULE_SRC: src/dev/flang/ast/Feature.java
 :RULE_ID: PARS_CONTR_PRE_NO_ELSE
 include::rule.adoc[]
 
@@ -399,10 +399,10 @@ include::rule.adoc[]
 :RULE_ID: PARS_CONTR_POST_NO_THEN
 include::rule.adoc[]
 
-In case of redefining an inhertied feature, pre- and postconditions are
+In case of redefining an inherited feature, pre- and postconditions are
 introduced using `pre else` or `post then`, respectively:
 
-:RULE_SRC: src/dev/flang/fe/SourceModule.java
+:RULE_SRC: src/dev/flang/ast/Feature.java
 :RULE_ID: PARS_CONTR_PRE_ELSE
 include::rule.adoc[]
 
@@ -410,11 +410,32 @@ include::rule.adoc[]
 :RULE_ID: PARS_CONTR_POST_THEN
 include::rule.adoc[]
 
+A feature redefining another feature, can only extend a precondition if
+all of the redefined features have or inherit a explicit precondition
+
+:RULE_SRC: src/dev/flang/ast/Feature.java
+:RULE_ID: PARS_CONTR_PRE_REDEF
+include::rule.adoc[]
+
 === Choice features
 
 :RULE_SRC: src/dev/flang/ast/Feature.java
 :RULE_ID: CHOICE_RESULT
 include::rule.adoc[]
+
+== Type System
+
+:RULE_SRC: src/dev/flang/ast/AbstractType.java
+:RULE_ID: TYPE_SYSTEM_ASSIGNABLE_FROM
+include::rule.adoc[]
+
+:RULE_SRC: src/dev/flang/ast/AbstractType.java
+:RULE_ID: TYPE_SYSTEM_COMMON_SUPERTYPE
+include::rule.adoc[]
+
+
+[appendix]
+
 
 
 == Semantics
@@ -471,7 +492,7 @@ include::rule.adoc[]
 [#fuzion_actual]
 ((Actual)):: An _actual argument_ is an expression that is parsed as an `actual` as part of a
 xref:feature_call[call] or the right hand side of an infix operator call. An _actual argument_ is either
-an xref:fuzion_actual_typeparameter[actual type paramater] or an xref:fuzion_actual_value_argument[actual value argument].
+an xref:fuzion_actual_typeparameter[actual type parameter] or an xref:fuzion_actual_value_argument[actual value argument].
 
 [#fuzion_actual_typeparameter]
 ((Actual Type Parameter)):: An _actual type parameter_ is a xref:fuzion_type[type] that replaces a
