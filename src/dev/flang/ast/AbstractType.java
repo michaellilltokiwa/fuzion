@@ -1070,7 +1070,7 @@ public abstract class AbstractType extends ANY implements Comparable<AbstractTyp
    */
   private AbstractType applyTypePars_(AbstractType tt)
   {
-    /* NYI: Performance: This requires time in O(this.depth *
+    /* NYI: PERFORMANCE: Performance: This requires time in O(this.depth *
      * feature.inheritanceDepth * t.depth), i.e. it is in O(n³)! Caching
      * is used to alleviate this a bit, but this is probably not sufficient!
      */
@@ -2481,7 +2481,7 @@ there is no common super type of the two types (Types.t_ERROR)
             ? ""
             : FuzionConstants.INTERNAL_NAME_SYMBOL + fn.argCount());
 
-    // NYI: would be good if postFeatures could be identified not be string comparison, but with something like
+    // NYI: ENHANCEMENT: would be good if postFeatures could be identified not be string comparison, but with something like
     // `f.isPostFeature()`. Note that this would need to be saved in .fum file as well!
     ///
     return fname.startsWith(FuzionConstants.POSTCONDITION_FEATURE_PREFIX)

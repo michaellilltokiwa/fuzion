@@ -686,7 +686,7 @@ public class Resolution extends ANY
    * @param name the name of the type feature to be created
    *
    * @param typeArgs arguments of the type feature.
-   * NYI: OPTIMIZATION: typeArgs should be determined within this method and
+   * NYI: PERFORMANCE: typeArgs should be determined within this method and
    * only when needed.
    *
    * @param inh the inheritance clause of the new type feature.

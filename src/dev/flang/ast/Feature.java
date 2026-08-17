@@ -603,7 +603,7 @@ public class Feature extends AbstractFeature
     this(pos,
          v,
          0,
-         t == null ? NoType.INSTANCE : new FunctionReturnType(t), /* NYI: try to avoid creation of ReturnType here, set actualtype directly? */
+         t == null ? NoType.INSTANCE : new FunctionReturnType(t), /* NYI: PERFORMANCE: try to avoid creation of ReturnType here, set actualtype directly? */
          new List<String>(qname),
          new List<>(),
          new List<>(),
@@ -642,7 +642,7 @@ public class Feature extends AbstractFeature
     this(pos,
          v,
          m,
-         t == null ? NoType.INSTANCE: new FunctionReturnType(t), /* NYI: try to avoid creation of ReturnType here, set actualtype directly? */
+         t == null ? NoType.INSTANCE: new FunctionReturnType(t), /* NYI: PERFORMANCE: try to avoid creation of ReturnType here, set actualtype directly? */
          new List<String>(n),
          new List<>(),
          new List<>(),
@@ -1295,7 +1295,7 @@ public class Feature extends AbstractFeature
       {
         Expr nc = c.visit(v, outer());
         if (CHECKS) check
-          (Errors.any() || c == nc); // NYI: This will fail when doing funny stuff like inherit from bool.infix &&, need to check and handle explicitly
+          (Errors.any() || c == nc); // NYI: BUG: This will fail when doing funny stuff like inherit from bool.infix &&, need to check and handle explicitly
       }
     _impl.visit(v, this);
     _returnType.visit(v, this);
@@ -2899,7 +2899,7 @@ A pre-condition of a feature that does not redefine an inherited feature must st
     this._returnType = new FunctionReturnType(frt);
   };
 
-  
+
   /**
    * is this feature a field that is nameless i.e. declared using {@code _ :=}
    */

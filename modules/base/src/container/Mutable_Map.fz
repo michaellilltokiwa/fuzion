@@ -111,7 +111,7 @@ public Mutable_Map(public K type : property.equatable, public V type) ref is
 
   # create an immutable copy of this mutable map
   #
-  # NYI: maybe add default implementation when there is a naive implementation only requiring property.equatable
+  # NYI: ENHANCEMENT: maybe add default implementation when there is a naive implementation only requiring property.equatable
   #
   public as_map container.Map K V => abstract
 

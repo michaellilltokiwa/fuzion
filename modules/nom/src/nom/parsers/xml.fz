@@ -92,8 +92,7 @@ public xml Parser String (Sequence codepoint) (Sequence nom.parsers.xml_node) =>
   parser_question_mark =>
     preceded (tag "<?") anything_but_question_end
 
-  # NYI
-  # # <! ...  >
+  # NYI: UNDER DEVELOPMENT:  # # <! ...  >
   # #
   # parser_exclamation_mark =>
   #   delimited (tag "<!")
@@ -107,7 +106,7 @@ public xml Parser String (Sequence codepoint) (Sequence nom.parsers.xml_node) =>
   # parser matching anything until -->
   #
   anything_but_comment_end =>
-    # NYI: technically incorrect, consider e.g. strings
+    # NYI: BUG: technically incorrect, consider e.g. strings
     parser (Sequence codepoint) (Sequence codepoint) unit input->
       match input.find "-->".codepoints
         nil => (error "--> not found")
@@ -117,7 +116,7 @@ public xml Parser String (Sequence codepoint) (Sequence nom.parsers.xml_node) =>
   # parser matching anything until ?>
   #
   anything_but_question_end =>
-    # NYI: technically incorrect, consider e.g. strings
+    # NYI: BUG: technically incorrect, consider e.g. strings
     parser (Sequence codepoint) (Sequence codepoint) unit input->
       match input.find "?>".codepoints
         nil => (error "?> not found")

@@ -155,7 +155,7 @@ public class TaggedValue extends Value implements Comparable<TaggedValue>
                       }
                     else
                       {
-                        // NYI: OPTIMIZATION: Create new valueset with tvv replaced by tvv joined with this.
+                        // NYI: PERFORMANCE: Create new valueset with tvv replaced by tvv joined with this.
                       }
                   }
               }

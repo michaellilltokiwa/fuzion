@@ -422,7 +422,7 @@ public class LibraryFuir extends FUIR {
   @Override
   public String comment(int s)
   {
-    return "NYI: Unimplemented method 'comment'";
+    return "NYI: UNDER DEVELOPMENT: Unimplemented method 'comment'";
   }
 
   @Override

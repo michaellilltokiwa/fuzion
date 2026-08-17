@@ -118,7 +118,7 @@ public class ClassFile extends ANY implements ClassFileConstants
     abstract void write(byte[] v);
 
 
-    void writeUTF(String s) // NYI: OPTIMIZATION: better use toUTF at the caller and cache the result there
+    void writeUTF(String s) // NYI: PERFORMANCE: better use toUTF at the caller and cache the result there
     {
       write(toUTF(s));
     }

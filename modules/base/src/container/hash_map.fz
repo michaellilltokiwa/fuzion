@@ -96,7 +96,7 @@ is
   #
   primes
     post
-      # NYI: OPTIMIZATION: this post-conditions causes sever performance degradation in the example from #5885, need to check why.
+      # NYI: PERFORMANCE: this post-conditions causes sever performance degradation in the example from #5885, need to check why.
       #
       # debug: result.min.or_panic > (hash_map HK V).max_size
   =>
@@ -169,7 +169,7 @@ is
             else         # conflict
               store (collision at h)
 
-/* NYI: With better pattern matching, this could be:
+/* NYI: ENHANCEMENT: With better pattern matching, this could be:
         match mcontents[at]
           nil,
           (k, _) =>  mcontent[at] := (k, v)  # no conflict

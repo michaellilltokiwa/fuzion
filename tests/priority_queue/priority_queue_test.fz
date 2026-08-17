@@ -210,7 +210,7 @@ priority_queue_test =>
   # mix enqueue and dequeue of pseudo-random elements
   # and compare the order of removed elements with a sorted list
   #
-  # NYI: OPTIMIZATION: slow for higher enq rate due to sorting of list
+  # NYI: PERFORMANCE: slow for higher enq rate due to sorting of list
   #
   # 🡩 : enqueue operation
   # 🡫 : dequeue operation returned smallest element

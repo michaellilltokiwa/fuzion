@@ -118,7 +118,7 @@ public class GeneratingFUIR extends FUIR
   /**
    * Flag to enable caching for result of clazzResultClazz.
    *
-   * NYI: OPTIMIZATION: Should be checked if this is actually beneficial for
+   * NYI: PERFORMANCE: Should be checked if this is actually beneficial for
    * analysis of larger code bases.
    */
   static final boolean CACHE_RESULT_CLAZZ = true;
@@ -127,7 +127,7 @@ public class GeneratingFUIR extends FUIR
   /**
    * Flag to enable caching for result of clazzArgClazz and clazzArgCount.
    *
-   * NYI: OPTIMIZATION: Should be checked if this is actually beneficial for
+   * NYI: PERFORMANCE: Should be checked if this is actually beneficial for
    * analysis of larger code bases.
    */
   static final boolean CACHE_ARG_CLAZZES = true;
@@ -610,7 +610,7 @@ public class GeneratingFUIR extends FUIR
             !o._type.feature().isIntrinsic())
           {  // but a recursive chain of value types is not permitted
 
-            // NYI: recursive chain of value types should be detected during
+            // NYI: ENHANCEMENT: recursive chain of value types should be detected during
             // types checking phase!
             StringBuilder chain = new StringBuilder();
             chain.append("1: "+actualType+" at "+actualType.declarationPos().show()+"\n");
@@ -1378,7 +1378,7 @@ public class GeneratingFUIR extends FUIR
    *
    * @param cl a clazz id
    *
-   * @return id of cl's result field or NO_CLAZZ if f has no result field (NYI: or a
+   * @return id of cl's result field or NO_CLAZZ if f has no result field (NYI: UNDER DEVELOPMENT: or a
    * result field that contains no data)
    */
   @Override
@@ -2753,7 +2753,7 @@ public class GeneratingFUIR extends FUIR
     if (CHECKS) check
       (!_lookupDone);
 
-    // NYI: lookupDone before layout
+    // NYI: UNDER DEVELOPMENT: lookupDone before layout
     // _lookupDone = true;
 
     // NYI: UNDER DEVELOPMENT: layout phase creates new clazzes, which is why we cannot iterate like this. Need to check why and remove this!
@@ -2825,7 +2825,7 @@ public class GeneratingFUIR extends FUIR
         var e = getExpr(s);
         tclazz = switch (e)
           {
-          case AbstractAssign ass  -> clazz(ass._target, outerClazz, _inh.get(s - SITE_BASE)); // NYI: This should be the same as assignedField._outer
+          case AbstractAssign ass  -> clazz(ass._target, outerClazz, _inh.get(s - SITE_BASE)); // NYI: BUG: This should be the same as assignedField._outer
           case Clazz          arg  -> outerClazz; // assignment to arg field in inherits call, so outer clazz is current instance
           case AbstractCall   call -> calledTarget(call, outerClazz, _inh.get(s - SITE_BASE));
           default                  -> { throw new Error("accessTargetClazz found unexpected Expr " + (e == null ? e : e.getClass()) + "."); }
@@ -2956,7 +2956,7 @@ public class GeneratingFUIR extends FUIR
     var result = NO_CLAZZ;
     if (f != null)
       {
-        // NYI: Check if this works for a case that is part of an inherits clause, do
+        // NYI: BUG: Check if this works for a case that is part of an inherits clause, do
         // we need to store in outerClazz.outer?
         result = outerClazz.lookup(f)._id;
       }

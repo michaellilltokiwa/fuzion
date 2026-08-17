@@ -104,7 +104,7 @@ public i128(public hi i64, public lo u64) : num.wrap_around, property.interval i
 
     res := (abs_to_u128 i128.this) / (abs_to_u128 other)
 
-    if i128.this.is_min && other = i128.one  # NYI: OPTIMIZATION: can this handling of special cases be avoided?
+    if i128.this.is_min && other = i128.one  # NYI: PERFORMANCE: can this handling of special cases be avoided?
       i128.min
     else
       (hi < 0) ^ (other.hi < 0) ? -res.as_i128 : res.as_i128

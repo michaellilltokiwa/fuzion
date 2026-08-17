@@ -662,7 +662,7 @@ public class Html extends ANY
   /**
    * Does text start with keyword, ignoring whitespaces at the beginning
    *
-   * NYI: OPTIMIZATION: This is a poor way to determine if a feature with a pre-/postcondition defines one itself or only
+   * NYI: PERFORMANCE: This is a poor way to determine if a feature with a pre-/postcondition defines one itself or only
    *                    inherits one. If a precondition is inherited but not defined {@code .preFeature().sourceText()}
    *                    returns the source code of the feature itself, and not an empty string.
    *                    So there seems to be no simple and good way to do this at the moment.
@@ -717,7 +717,7 @@ public class Html extends ANY
     var line = af.pos().line() - 1;
     var commentLines = new ArrayList<String>();
 
-    // NYI: OPTIMIZATION: use lexer to retrieve comments
+    // NYI: PERFORMANCE: use lexer to retrieve comments
     while (line > 0 && af.pos()._sourceFile.line(line).matches("(?s)^\\s*#.*"))
       {
         commentLines.add(af.pos()._sourceFile.line(line));

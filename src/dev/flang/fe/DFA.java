@@ -142,8 +142,7 @@ public class DFA extends ANY
                 break;
               }
           }
-        // NYI
-        break;
+        // NYI: UNDER DEVELOPMENT:        break;
       default:
         break;
       }

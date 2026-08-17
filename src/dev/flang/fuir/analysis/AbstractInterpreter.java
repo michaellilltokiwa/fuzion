@@ -555,7 +555,7 @@ public class AbstractInterpreter<VALUE, RESULT> extends ANY
       {
       case Assign:
         {
-          // NYI: pop the stack values even in case field is unused.
+          // NYI: BUG: pop the stack values even in case field is unused.
           var ft = _fuir.assignedType(s);
           var tc = _fuir.accessTargetClazz(s);
           var tvalue = pop(stack, tc);

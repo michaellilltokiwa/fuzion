@@ -160,7 +160,7 @@ public class Intrinsics extends ANY
   {
     Callable result;
     String in = executor.fuir().clazzOriginalName(innerClazz);
-    // NYI: We must check the argument count in addition to the name!
+    // NYI: BUG: We must check the argument count in addition to the name!
     var ca = _intrinsics_.get(in);
     if (ca != null)
       {
@@ -180,7 +180,7 @@ public class Intrinsics extends ANY
   /**
    * Atomic intrinsics are made atomic using this lock.
    *
-   * NYI: OPTIMIZATION: For atomic instances of types ref, i32, etc., we might
+   * NYI: PERFORMANCE: For atomic instances of types ref, i32, etc., we might
    * implement this using jdk.internal.misc.Unsafe or
    * java.util.concurrent.atomic.* to make these operations lock-free.
    */

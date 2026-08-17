@@ -1455,7 +1455,7 @@ public class Runtime extends ANY
       case char   [] arr ->  MemorySegment.ofArray(arr).copyFrom(memSeg);
       case short  [] arr ->  MemorySegment.ofArray(arr).copyFrom(memSeg);
       case float  [] arr ->  MemorySegment.ofArray(arr).copyFrom(memSeg);
-      case MemorySegment m ->  { /* NYI: UNDER DEVELOPMENT */ }
+      case MemorySegment m ->  { /* NYI: UNDER DEVELOPMENT: */ }
       case Object [] arr ->
         {
           if (arr.length > 0 && arr[0] instanceof MemorySegment)
@@ -1467,10 +1467,10 @@ public class Runtime extends ANY
             }
           else
             {
-              /* NYI: UNDER DEVELOPMENT */
+              /* NYI: UNDER DEVELOPMENT: */
             }
         }
-      default -> { /* NYI: check if value type */ }
+      default -> { /* NYI: UNDER DEVELOPMENT: check if value type */ }
     }
   }
 
@@ -1838,7 +1838,7 @@ public class Runtime extends ANY
   public static int native_string_length(MemorySegment segment)
   {
     int length = 0;
-    segment = segment.reinterpret(10000 /* NYI: magic constant */);
+    segment = segment.reinterpret(10000 /* NYI: HACK: magic constant */);
 
     while (segment.get(ValueLayout.JAVA_BYTE, length) != 0)
       {

@@ -1109,7 +1109,7 @@ public abstract class AbstractFeature extends Expr implements Comparable<Abstrac
    */
   void checkNoClosureAccesses(Resolution res, SourcePosition errorPos)
   {
-    // NYI: Check if there is any chance a library feature used in a choice makes illegal closure accesses
+    // NYI: UNDER DEVELOPMENT: Check if there is any chance a library feature used in a choice makes illegal closure accesses
   }
 
 
@@ -1169,7 +1169,7 @@ public abstract class AbstractFeature extends Expr implements Comparable<Abstrac
       (outer() != null);
 
     // if outer is a small and immutable value type, we can copy it:
-    return this.outer().isBuiltInPrimitive();  // NYI: We might copy user defined small types as well
+    return this.outer().isBuiltInPrimitive();  // NYI: ENHANCEMENT: We might copy user defined small types as well
   }
 
 
@@ -1277,7 +1277,7 @@ public abstract class AbstractFeature extends Expr implements Comparable<Abstrac
    * HAND_DOWN_FAILED in case of previous errors.
    */
   public List<AbstractType> handDown(List<AbstractType> l,
-                                     AbstractFeature heir)  // NYI: This does not distinguish different inheritance chains yet
+                                     AbstractFeature heir)  // NYI: UNDER DEVELOPMENT: This does not distinguish different inheritance chains yet
   {
     if (PRECONDITIONS) require
       (heir != null,
@@ -1499,7 +1499,7 @@ public abstract class AbstractFeature extends Expr implements Comparable<Abstrac
   /**
    * Find the chain of inheritance calls from this to its parent ancestor.
    *
-   * NYI: Repeated inheritance handling is still missing, there might be several
+   * NYI: UNDER DEVELOPMENT: Repeated inheritance handling is still missing, there might be several
    * different inheritance chains, need to check if they lead to the same result
    * (wrt generic arguments) or renaming/selection of the preferred
    * implementation.
@@ -1537,7 +1537,7 @@ public abstract class AbstractFeature extends Expr implements Comparable<Abstrac
   /**
    * Find the chain of inheritance calls from this to its parent f.
    *
-   * NYI: Repeated inheritance handling is still missing, there might be several
+   * NYI: UNDER DEVELOPMENT: Repeated inheritance handling is still missing, there might be several
    * different inheritance chains, need to check if they lead to the same result
    * (wrt generic arguments) or renaming/selection of the preferred
    * implementation.
@@ -1687,7 +1687,7 @@ public abstract class AbstractFeature extends Expr implements Comparable<Abstrac
           }
       }
     else
-      { // NYI: This might happen if the user adds additional features
+      { // NYI: BUG: This might happen if the user adds additional features
         // with different argCounts. name should contain argCount to
         // avoid this
         AstErrors.internallyReferencedFeatureNotUnique(pos(), name + (argcount >= 0 ? " (" + StringHelpers.argumentsString(argcount) : ""), set);

@@ -56,7 +56,7 @@ public class LongMap<T>
    *
    * This currently uses a @see java.util.HashMap.
    *
-   * NYI: OPTIMIZATION: We might use our own sparse array implementation here to
+   * NYI: PERFORMANCE: We might use our own sparse array implementation here to
    * improve performance by avoiding boxing into Long, allocation of
    * HashMap.Node elements, calling of Long.hashCode(), etc.
    */

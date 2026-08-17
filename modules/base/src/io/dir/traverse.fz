@@ -47,7 +47,7 @@ public traverse(
               t => red_fn res.or_panic x
               if descend
                 match io.file.stat x false
-                  error => res # NYI
+                  error => res # NYI: BUG
                   m io.file.meta_data => if m.is_dir then traverse x descend t red_fn else t
               else
                 t

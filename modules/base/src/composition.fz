@@ -232,12 +232,12 @@ public composition is
 
   # The Y fixed-point combinator
   # \f.(\x.f(xx))(\x.f(xx))
-  # NYI: possible?
+  # NYI: UNDER DEVELOPMENT: possible?
 
   # The Z fixed-point combinator
   # \f.(\x.f(\v.xxv))(\x.f(\v.xxv))
   # \f.M(\x.f(\v.Mxv))
-  # NYI: possible?
+  # NYI: UNDER DEVELOPMENT: possible?
 
   # fixed-point combinator using Lazy:
   #

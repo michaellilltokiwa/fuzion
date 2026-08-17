@@ -1990,7 +1990,7 @@ should be avoided as much as possible.
    * this creates a new instance and copies all the fields from value into the
    * new instance.
    *
-   * NYI: OPTIMIZATION: Once value features like {@code point(x,y i32)} are
+   * NYI: PERFORMANCE: Once value features like {@code point(x,y i32)} are
    * represented as tuples of primitive values ({@code int, int}) instead of instances
    * of Java classes ({@code class Point { int x, y; }}, this cloning will no longer
    * be needed.

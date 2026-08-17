@@ -56,7 +56,7 @@ public class IntMap<T>
    *
    * This currently uses a @see java.util.HashMap.
    *
-   * NYI: OPTIMIZATION: We might use our own sparse array implementation here to
+   * NYI: PERFORMANCE: We might use our own sparse array implementation here to
    * improve performance by avoiding boxing into Integer, allocation of
    * HashMap.Node elements, calling of Integer.hashCode(), etc.
    */
