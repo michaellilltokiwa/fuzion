@@ -902,6 +902,12 @@ public String ref : property.hashable, property.orderable is
     String.from_codepoints (codepoints.map (c -> encodings.unicode.mappings.lower_case[c.val].or_else c))
 
 
+  # convert this string to title case
+  #
+  public title_case String =>
+    String.from_codepoints (codepoints.map (c -> encodings.unicode.mappings.title_case[c.val].or_else c))
+
+
   # Does this String consist of nothing but ascii codepoints?
   #
   public is_ascii bool =>
