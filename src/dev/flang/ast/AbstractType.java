@@ -2937,39 +2937,46 @@ there is no common super type of the two types (Types.t_ERROR)
 
   /**
    */
-  public boolean containsCycle()
+  public int containsCycle()
   {
-    return !isRef() && (generics().stream().anyMatch(g -> g.containsCycle(this))
-      || outer() != null && outer().containsCycle(this));
+    return isRef() || outer() == null
+      ? -1
+      : outer().containsCycle(0, this);
   }
 
 
   /**
    * Helper is isSelfReferential
    */
-  private boolean containsCycle(AbstractType t)
+  private int containsCycle(int level, AbstractType t)
   {
     var s = outer();
-    return s != null && s.isEmbeddedInViaRef(t)
-      || generics().stream().anyMatch(g -> g.containsCycle(t))
-      || s != null && s.containsCycle(t);
+    return s != null && s.isEmbeddedInViaRef(level+1, t) != -1
+      ? s.isEmbeddedInViaRef(level, t)
+      : s == null
+      ? -1
+      : s.containsCycle(level+1, t);
   }
 
 
   /**
    */
-  private boolean isEmbeddedInViaRef(AbstractType t)
+  private int isEmbeddedInViaRef(int level, AbstractType t)
   {
     var o = this;
     var t1 = t;
+    var l = level;
 
     while (o != null && t1 != null && o.feature() == t1.feature())
       {
         o = o.outer();
         t1 = t1.outer();
+        l++;
       }
 
-    return o != null && t1 != null && t1.feature().inheritsFrom(o.feature());
+    return o != null && t1 != null && t1.feature().inheritsFrom(o.feature())
+      ? l
+      : -1;
   }
 
 }

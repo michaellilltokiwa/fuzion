@@ -2795,9 +2795,33 @@ public class GeneratingFUIR extends FUIR
             FuirErrors.callResultsInRecursiveType(c, innerClazz._type);
             innerClazz = tclazz;
           }
-        if (innerClazz._type.containsCycle() && innerClazz._type.feature() == tclazz._outer.feature()) // see #5061 where this is required
+        /**
+         * see #5061 where this is required
+         *
+         * e.g., when Y inherits from X:
+         *
+         * innerClazz = X.a.Y.a
+         * tclazz     = X.a.Y
+         *
+         * we normalize innerClazz to X.a, to prevent endless recursion
+         */
+        if (innerClazz._type.containsCycle() > -1)
           {
-            innerClazz = tclazz._outer;
+            var i = innerClazz;
+            var l = innerClazz._type.containsCycle();
+            while (l > 0)
+              {
+                i = i._outer;
+                l--;
+              }
+            say(i);
+            say(innerClazz);
+            say(innerClazz._type.containsCycle());
+            say("--");
+            if (CHECKS) check
+              (Errors.any() || innerClazz._type.feature() == i._type.feature());
+
+            innerClazz = i;
           }
         if (cf == Types.resolved.f_Type_infix_colon)
           {
