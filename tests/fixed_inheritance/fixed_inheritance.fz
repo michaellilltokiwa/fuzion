@@ -1,0 +1,27 @@
+a is
+  fixed name String => "a"
+
+b : a is
+
+c : a is
+  redef name String => "c"
+
+d : c is
+
+e : d is
+
+  redef name String => "e"
+
+f : c is
+  redef fixed name String => "f"
+
+g : f is
+
+check a.name="a"
+_ := b.name # should not be callable as abstract
+# fixed feature should be redefable, like an abstract feature
+check c.name="c"
+check d.name="c"
+check e.name="e"
+check f.name="f"
+check g.name="c" # should this be c or lead to compile time error since name is abstract again

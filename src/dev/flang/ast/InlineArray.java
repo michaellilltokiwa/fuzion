@@ -208,6 +208,10 @@ public class InlineArray extends ExprWithPos
   @Override
   Expr propagateExpectedType(Resolution res, Context context, AbstractType t, Supplier<String> from)
   {
+    if (context.outerFeature().isFixed() && t.isRelayType())
+      {
+        t = t.typeParameter().outer().cotypeOrigin().selfType();
+      }
     var arrayType = t.isNormalType() && Types.resolved.f_array.inheritsFrom(t.feature()) && t.feature().typeArguments().size()==1
       ? t.feature()
       : Types.resolved.f_array;

@@ -906,7 +906,7 @@ part of the (((inner features))) declarations of the corresponding
 A feature that redefines at least one inherited feature must use the `redef` modifier.
     // end::fuzion_rule_PARS_REDEF[]
                 */
-                if (visibleFor(existing, f.outer()))
+                if (visibleFor(existing, f.outer()) && !existing.isFixed())
                   {
                     AstErrors.redefineModifierMissing(f.pos(), f, existing);
                   }
@@ -920,7 +920,21 @@ A post-condition of a feature that redefines one or several inherited features m
                 */
                 AstErrors.redefinePostconditionMustUseThen(c._hasPost, f);
               }
-            if (visibleFor(existing, f))
+            if (existing.isFixed())
+              {
+                if (!existing.isTypeParameter())
+                  {
+                    if (existing.redefines().isEmpty())
+                      {
+                        f.redefines().add(existing);
+                      }
+                    else
+                      {
+                        f.redefines().add(existing.redefines().iterator().next());
+                      }
+                  }
+              }
+            else if (visibleFor(existing, f))
               {
                 if (existing.isNonArgumentField() ||
                     // @fridis writes: "If we redefine an argument field by a field that is not an argument field,
@@ -1065,7 +1079,7 @@ A post-condition of a feature that does not redefine an inherited feature must s
   private void addToHeirs(AbstractFeature outer, FeatureName fn, Feature f)
   {
     var d = data(outer);
-    if (d != null && !f.isFixed())
+    if (d != null)
       {
         for (var h : d._heirs)
           {
@@ -1222,7 +1236,8 @@ A post-condition of a feature that does not redefine an inherited feature must s
               {
                 if ((use == null || (hidden != featureVisible(use.pos()._sourceFile, v))) &&
                     !(use instanceof Call c && !c.isInheritanceCall() && v.isChoice()) &&
-                    (use == null || /* NYI: do we have to evaluate inScope for all possible outers? */ inScope(use, v)))
+                    (use == null || /* NYI: do we have to evaluate inScope for all possible outers? */ inScope(use, v)) &&
+                    (!v.isFixed() || v.outer().compareTo(curOuter) == 0))
                   {
                     result.add(new FeatureAndOuter(v, curOuter, inner));
                   }
@@ -2099,7 +2114,7 @@ A feature that is a constructor, choice or a type parameter may not redefine an 
                 var isInherited2 = outer != f2.outer();
 
                 // NYI: take visibility into account!!!
-                if (isInherited1 && isInherited2)
+                if (isInherited1 && isInherited2 && !f1.isFixed() && !f2.isFixed())
                   { // NYI: Should be ok if existing or f is abstract.
                     AstErrors.repeatedInheritanceCannotBeResolved(outer.pos(), outer, fn, f1, f2);
                   }

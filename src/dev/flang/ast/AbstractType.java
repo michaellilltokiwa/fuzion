@@ -641,6 +641,10 @@ public abstract class AbstractType extends ANY implements Comparable<AbstractTyp
       {
         result = isAssignableFrom(actual.selfOrConstraint(context).asRef(true), context, allowBoxing, allowTagging, assignableTo);
       }
+    if (result.no() && context != Context.NONE && context.outerFeature().isFixed() && isRelayType())
+      {
+        result = typeParameter().outer().cotypeOrigin().selfType().isAssignableFrom(actual, context, allowBoxing, allowTagging, assignableTo);
+      }
     return result;
   }
 

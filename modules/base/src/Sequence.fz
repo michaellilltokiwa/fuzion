@@ -1492,7 +1492,7 @@ is
 
   # create an empty Sequence
   #
-  public fixed type.empty Sequence T
+  public fixed type.empty Sequence.this
     post
       result.finite.is_yes_or_unknown
       result.count = 0
